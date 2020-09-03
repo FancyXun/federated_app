@@ -1,48 +1,42 @@
-gRPC Simulation
+Federated Learning Application
 ==============================================
 
 You may want to read through the
 [Quick Start](https://grpc.io/docs/languages/java/quickstart)
-before trying out the examples.
-
-## Basic examples
-
-- [Hello world](src/main/java/io/grpc/learning/helloworld)
+before trying out this repo.
 
 
-### <a name="to-build-the-examples"></a> To build the examples
+### <a name="Build"></a> Build
 
-1. From federated_mobile/simulation directory:
+1. Install server and client in PC:
 ```
 $ ./gradlew installDist
 ```
 
-This creates the scripts `hello-world-server`, `hello-world-client`. in the
-`build/install/learning/bin/` directory that run the examples. Each
+This creates the scripts `computation-server`, `computation-client`. in the
+`build/install/learning/bin/` directory that run the example. The
 example requires the server to be running before starting the client.
 
-For example, to try the hello world example first run:
+First run server:
 
 ```
-$ ./build/install/learning/bin/hello-world-server
+$ ./build/install/learning/bin/computation-server
 ```
 
 And in a different terminal window run:
 
 ```
-$ cd android/helloworld; ../../gradlew installDebug
+$ cd android/framework; ../../gradlew installDebug
 ```
 
 Launch the client app from your device.
 
-In the client app, enter the server’s Host and Port information. The values you enter depend on the device kind (real or virtual) — for details, see [Connecting to the server](https://grpc.io/docs/languages/android/quickstart/#connecting-to-the-server) below.
 
-Type “Alice” in the Message box and click Send. You’ll see the following response:
+Click “联邦训练” . You’ll see some following information:
 ```
-Hello Alice
+训练中...
 ```
 
 That's it!
 
-For more information, refer to gRPC Java's [README](../README.md) and
-[tutorial](https://grpc.io/docs/languages/java/basics).
+For more information, refer to gRPC Java's [tutorial](https://grpc.io/docs/languages/java/basics).
