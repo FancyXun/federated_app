@@ -32,10 +32,7 @@ $ cd android/framework; ../../gradlew installDebug
 Launch the client app from your device.
 
 
-Click “联邦训练” . You’ll see some following information:
-```
-训练中...
-```
+Click “MUL” . You’ll see multiplication of x and y
 
 That's it!
 
