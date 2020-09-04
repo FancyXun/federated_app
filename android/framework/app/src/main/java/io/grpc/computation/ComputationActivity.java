@@ -45,32 +45,49 @@ import org.tensorflow.Session;
 import org.tensorflow.Tensor;
 
 public class ComputationActivity extends AppCompatActivity {
+
+    static {
+        System.loadLibrary("tensorflow_inference");
+    }
+
     private Button sendButton;
     private TextView resultText;
+    private EditText hostEdit;
+    private EditText portEdit;
+    private EditText x;
+    private EditText y;
+    private static final String DATA_FILE = "file:///android_asset/";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_computation);
         sendButton = (Button) findViewById(R.id.send_button);
+        hostEdit = (EditText) findViewById(R.id.host_edit_text);
+        portEdit = (EditText) findViewById(R.id.port_edit_text);
+        x = (EditText) findViewById(R.id.x);
+        y = (EditText) findViewById(R.id.y);
         resultText = (TextView) findViewById(R.id.server_response_text);
         resultText.setMovementMethod(new ScrollingMovementMethod());
     }
 
-    public void sendId(View view) {
+    public void Mul(View view) {
         sendButton.setEnabled(false);
         resultText.setText("");
-        new ComputationTask(this)
+        new MulTask(this)
                 .execute(
-                        "localhost",
-                        "8080");
+                        hostEdit.getText().toString(),
+                        portEdit.getText().toString(),
+                        x.getText().toString(),
+                        y.getText().toString()
+                        );
     }
 
-    private static class ComputationTask extends AsyncTask<String, Void, String> {
+    private static class MulTask extends AsyncTask<String, Void, String> {
         private final WeakReference<Activity> activityReference;
         private ManagedChannel channel;
 
-        private ComputationTask(Activity activity) {
+        private MulTask(Activity activity) {
             this.activityReference = new WeakReference<Activity>(activity);
         }
 
@@ -78,6 +95,17 @@ public class ComputationActivity extends AppCompatActivity {
         protected String doInBackground(String... params) {
             String host = params[0];
             String portStr = params[1];
+            String xStr = params[2];
+            String yStr = params[3];
+            float x;
+            float y ;
+            try{
+                x = Float.parseFloat(xStr);
+                y = Float.parseFloat(yStr);
+            } catch (Exception e){
+                return String.format("Failed to convert string to float");
+            }
+
             String local_id = UUID.randomUUID().toString().replaceAll("-","");
             int port = TextUtils.isEmpty(portStr) ? 0 : Integer.valueOf(portStr);
             try {
@@ -85,12 +113,11 @@ public class ComputationActivity extends AppCompatActivity {
                 ComputationGrpc.ComputationBlockingStub stub = ComputationGrpc.newBlockingStub(channel);
                 ComputationRequest request = ComputationRequest.newBuilder().setId(local_id).build();
                 ComputationReply reply = stub.call(request);
-                reply.getGraph().toByteArray();
                 Graph graph = new Graph();
-//                graph.importGraphDef(reply.getGraph().toByteArray());
-//                Session session = new Session(graph);
-//                Tensor tensor = session.runner().fetch("xy").feed("x", Tensor.create(5.0f)).feed("y", Tensor.create(2.0f)).run().get(0);
-                return reply.getMessage();
+                graph.importGraphDef(reply.getGraph().toByteArray());
+                Session session = new Session(graph);
+                Tensor tensor = session.runner().fetch("xy").feed("x", Tensor.create(x)).feed("y", Tensor.create(y)).run().get(0);
+                return String.valueOf(tensor.floatValue());
             } catch (Exception e) {
                 StringWriter sw = new StringWriter();
                 PrintWriter pw = new PrintWriter(sw);
