@@ -29,12 +29,16 @@ service Computation {
 
 // The request message containing the user's id.
 message ComputationRequest {
+  // The client id of remote device
   string id = 1;
+  // The request node name in AST
+  string node_name = 2;
 }
 
-// The response message containing the greetings
+// The response message containing the computation graph
 message ComputationReply {
   string message = 1;
+  // The Computation graph
   bytes graph = 2;
 }
 

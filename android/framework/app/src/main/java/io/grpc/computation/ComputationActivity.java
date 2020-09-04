@@ -28,16 +28,19 @@ import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
+
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import io.grpc.learning.computation.ComputationGrpc;
 import io.grpc.learning.computation.ComputationReply;
 import io.grpc.learning.computation.ComputationRequest;
+
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.lang.ref.WeakReference;
 import java.util.concurrent.TimeUnit;
 import java.util.UUID;
+
 import org.tensorflow.contrib.android.TensorFlowInferenceInterface;
 import org.tensorflow.Graph;
 import org.tensorflow.Operation;
@@ -80,7 +83,7 @@ public class ComputationActivity extends AppCompatActivity {
                         portEdit.getText().toString(),
                         x.getText().toString(),
                         y.getText().toString()
-                        );
+                );
     }
 
     private static class MulTask extends AsyncTask<String, Void, String> {
@@ -98,20 +101,20 @@ public class ComputationActivity extends AppCompatActivity {
             String xStr = params[2];
             String yStr = params[3];
             float x;
-            float y ;
-            try{
+            float y;
+            try {
                 x = Float.parseFloat(xStr);
                 y = Float.parseFloat(yStr);
-            } catch (Exception e){
+            } catch (Exception e) {
                 return String.format("Failed to convert string to float");
             }
 
-            String local_id = UUID.randomUUID().toString().replaceAll("-","");
+            String local_id = UUID.randomUUID().toString().replaceAll("-", "");
             int port = TextUtils.isEmpty(portStr) ? 0 : Integer.valueOf(portStr);
             try {
                 channel = ManagedChannelBuilder.forAddress(host, port).usePlaintext().build();
                 ComputationGrpc.ComputationBlockingStub stub = ComputationGrpc.newBlockingStub(channel);
-                ComputationRequest request = ComputationRequest.newBuilder().setId(local_id).build();
+                ComputationRequest request = ComputationRequest.newBuilder().setId(local_id).setNodeName("FloatMul").build();
                 ComputationReply reply = stub.call(request);
                 Graph graph = new Graph();
                 graph.importGraphDef(reply.getGraph().toByteArray());
