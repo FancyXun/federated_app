@@ -31,6 +31,10 @@ public class LogisticsRegression extends BaseGraph {
         }
     }
 
+    public LogisticsRegression(){
+        this(true,"src/main/python/LogisticsRegression.py");
+    }
+
     private void loadGraph() {
         Graph graph = new Graph();
         InputStream modelStream = null;

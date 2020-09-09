@@ -17,14 +17,12 @@
 package io.grpc.computation;
 
 import android.app.Activity;
-import android.content.Context;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.text.TextUtils;
 import android.text.method.ScrollingMovementMethod;
 import android.view.View;
-import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
@@ -41,9 +39,7 @@ import java.lang.ref.WeakReference;
 import java.util.concurrent.TimeUnit;
 import java.util.UUID;
 
-import org.tensorflow.contrib.android.TensorFlowInferenceInterface;
 import org.tensorflow.Graph;
-import org.tensorflow.Operation;
 import org.tensorflow.Session;
 import org.tensorflow.Tensor;
 
@@ -54,18 +50,20 @@ public class ComputationActivity extends AppCompatActivity {
     }
 
     private Button sendButton;
+    private Button trainButton;
     private TextView resultText;
     private EditText hostEdit;
     private EditText portEdit;
     private EditText x;
     private EditText y;
-    private static final String DATA_FILE = "file:///android_asset/";
+    private static final String DATA_FILE = "file:///android_asset/bank_zhongyuan/test_data1";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_computation);
         sendButton = (Button) findViewById(R.id.send_button);
+        trainButton = (Button) findViewById(R.id.train_button);
         hostEdit = (EditText) findViewById(R.id.host_edit_text);
         portEdit = (EditText) findViewById(R.id.port_edit_text);
         x = (EditText) findViewById(R.id.x);
@@ -84,6 +82,16 @@ public class ComputationActivity extends AppCompatActivity {
                         x.getText().toString(),
                         y.getText().toString()
                 );
+    }
+
+    public void Training(View view) {
+        trainButton.setEnabled(false);
+        resultText.setText("");
+        new TrainingTask.LocalTrainingTask(this).execute(
+                hostEdit.getText().toString(),
+                portEdit.getText().toString(),
+                DATA_FILE
+        );
     }
 
     private static class MulTask extends AsyncTask<String, Void, String> {

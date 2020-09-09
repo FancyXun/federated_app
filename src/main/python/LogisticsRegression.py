@@ -11,9 +11,9 @@ graph_name = args["graph_name"]
 graph = tf.Graph()
 
 with graph.as_default():
-    x = tf.compat.v1.placeholder(tf.float32, [None, None], name='x')
-    y = tf.compat.v1.placeholder(tf.float32, [None, None], name='y')
-    w = tf.Variable(tf.zeros([2, 2], name="w/init"), validate_shape=False, name='w')
+    x = tf.compat.v1.placeholder(tf.float32, [None, 141], name='x')
+    y = tf.compat.v1.placeholder(tf.float32, [None, 2], name='y')
+    w = tf.Variable(tf.zeros([141, 2], name="w/init"), validate_shape=False, name='w')
     b = tf.Variable(tf.zeros([2], name="b/init"), validate_shape=False, name='b')
     y_pre = tf.nn.softmax(tf.matmul(x, w) + b, name="y_pre")
     cost = tf.reduce_mean(-tf.reduce_sum(y * tf.compat.v1.log(y_pre), axis=1), name="cost")

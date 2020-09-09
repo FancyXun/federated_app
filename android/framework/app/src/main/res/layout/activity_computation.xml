@@ -51,6 +51,13 @@
             android:onClick="Mul"
             android:text="Mul" />
 
+    <Button
+        android:id="@+id/train_button"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:onClick="Training"
+        android:text="Local Training" />
+
     <TextView
             android:id="@+id/server_response_text"
             android:layout_width="match_parent"

@@ -20,7 +20,7 @@ example requires the server to be running before starting the client.
 First run server:
 
 ```
-$ ./build/install/learning/bin/computation-server
+$ ./build/install/federated_learning/bin/computation-server
 ```
 
 And in a different terminal window run:
