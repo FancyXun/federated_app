@@ -90,7 +90,7 @@ public class ComputationActivity extends AppCompatActivity {
     public void Training(View view) {
         trainButton.setEnabled(false);
         resultText.setText("");
-        new TrainingTask.LocalTrainingTask(this, this.context).execute(
+        new TrainingTask.LocalTrainingTask(this, this.context, this.resultText).execute(
                 hostEdit.getText().toString(),
                 portEdit.getText().toString(),
                 (String) data.getSelectedItem(),

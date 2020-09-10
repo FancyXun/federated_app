@@ -1,8 +1,11 @@
 package io.grpc.computation;
 
+import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.Context;
 import android.os.AsyncTask;
+import android.os.Handler;
+import android.os.Message;
 import android.text.TextUtils;
 import android.widget.Button;
 import android.widget.TextView;
@@ -35,10 +38,12 @@ public class TrainingTask {
         private final WeakReference<Activity> activityReference;
         private ManagedChannel channel;
         private Context context;
+        private TextView textView;
 
-        protected LocalTrainingTask(Activity activity, Context context) {
+        protected LocalTrainingTask(Activity activity, Context context, TextView textView) {
             this.activityReference = new WeakReference<Activity>(activity);
             this.context = context;
+            this.textView = textView;
         }
         @Override
         protected String doInBackground(String... params) {
@@ -75,11 +80,12 @@ public class TrainingTask {
                     session.runner().feed("x", Tensor.create(x))
                             .feed("y", Tensor.create(y))
                             .feed("batch_size",Tensor.create(batchSize)).addTarget("b_assign").run();
+                    this.textView.setText(String.valueOf("the cost of epoch "+ i +"/"+ epoch +" is: "+ tensor.floatValue()));
                 }
                 if (null == tensor){
                     return "";
                 }
-                return String.valueOf("the cost of epoch "+ epoch +" is: "+ tensor.floatValue());
+                return String.valueOf("the cost of epoch "+ epoch +"/"+ epoch +" is: "+ tensor.floatValue());
             } catch (Exception e) {
                 StringWriter sw = new StringWriter();
                 PrintWriter pw = new PrintWriter(sw);
