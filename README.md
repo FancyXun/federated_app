@@ -32,7 +32,7 @@ $ cd android/framework; ../../gradlew installDebug
 Launch the client app from your device.
 
 
-Click “MUL” . You’ll see multiplication of x and y
+Input Local epoch number, Click “LocalTraining” . You’ll see the loss of Logistic regression
 
 That's it!
 
