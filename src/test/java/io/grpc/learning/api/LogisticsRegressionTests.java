@@ -58,6 +58,7 @@ public class LogisticsRegressionTests {
         float [][] y = localCSVReader.getY_oneHot();
         float [] b = new float[localCSVReader.getY_oneHot()[0].length];
         float [][] w = new float[localCSVReader.getX()[0].length][localCSVReader.getY_oneHot()[0].length];
+        float batchSize = x.length;
         Graph graph = new Graph();
         InputStream modelStream = null;
         try {
@@ -76,7 +77,11 @@ public class LogisticsRegressionTests {
             Tensor tensor = session.runner().fetch("cost").feed("x", Tensor.create(x))
                     .feed("y", Tensor.create(y)).run().get(0);
             session.runner().feed("x", Tensor.create(x))
-                    .feed("y", Tensor.create(y)).addTarget("minimizeGradientDescent").run();
+                    .feed("y", Tensor.create(y))
+                    .feed("batch_size",Tensor.create(batchSize)).addTarget("w_assign").run();
+            session.runner().feed("x", Tensor.create(x))
+                    .feed("y", Tensor.create(y))
+                    .feed("batch_size",Tensor.create(batchSize)).addTarget("b_assign").run();
             System.out.println(tensor.floatValue());
         }
         logisticsRegression.deletePBFile();

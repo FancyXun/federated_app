@@ -17,6 +17,7 @@
 package io.grpc.computation;
 
 import android.app.Activity;
+import android.content.Context;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
@@ -25,6 +26,7 @@ import android.text.method.ScrollingMovementMethod;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.Spinner;
 import android.widget.TextView;
 
 import io.grpc.ManagedChannel;
@@ -54,22 +56,23 @@ public class ComputationActivity extends AppCompatActivity {
     private TextView resultText;
     private EditText hostEdit;
     private EditText portEdit;
-    private EditText x;
-    private EditText y;
-    private static final String DATA_FILE = "file:///android_asset/bank_zhongyuan/test_data1";
+    private EditText epoch;
+    private Spinner data;
+    private static final String DATA_FILE = "file:///android_asset/bank_zhongyuan/test_data1.csv";
+    private Context context;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_computation);
-        sendButton = (Button) findViewById(R.id.send_button);
         trainButton = (Button) findViewById(R.id.train_button);
         hostEdit = (EditText) findViewById(R.id.host_edit_text);
         portEdit = (EditText) findViewById(R.id.port_edit_text);
-        x = (EditText) findViewById(R.id.x);
-        y = (EditText) findViewById(R.id.y);
+        epoch = (EditText) findViewById(R.id.epoch);
+        data = (Spinner) findViewById(R.id.data);
         resultText = (TextView) findViewById(R.id.server_response_text);
         resultText.setMovementMethod(new ScrollingMovementMethod());
+        this.context = getApplicationContext();
     }
 
     public void Mul(View view) {
@@ -79,19 +82,20 @@ public class ComputationActivity extends AppCompatActivity {
                 .execute(
                         hostEdit.getText().toString(),
                         portEdit.getText().toString(),
-                        x.getText().toString(),
-                        y.getText().toString()
+                        "5",
+                        "10"
                 );
     }
 
     public void Training(View view) {
         trainButton.setEnabled(false);
         resultText.setText("");
-        new TrainingTask.LocalTrainingTask(this).execute(
+        new TrainingTask.LocalTrainingTask(this, this.context).execute(
                 hostEdit.getText().toString(),
                 portEdit.getText().toString(),
-                DATA_FILE
-        );
+                (String) data.getSelectedItem(),
+                epoch.getText().toString()
+                );
     }
 
     private static class MulTask extends AsyncTask<String, Void, String> {
@@ -150,9 +154,7 @@ public class ComputationActivity extends AppCompatActivity {
                 return;
             }
             TextView resultText = (TextView) activity.findViewById(R.id.server_response_text);
-            Button sendButton = (Button) activity.findViewById(R.id.send_button);
             resultText.setText(result);
-            sendButton.setEnabled(true);
         }
     }
 }

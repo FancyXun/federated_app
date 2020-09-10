@@ -1,10 +1,12 @@
 package io.grpc.utils;
 
+import android.content.Context;
+
 import com.opencsv.CSVReader;
 import com.opencsv.exceptions.CsvValidationException;
 
-import java.io.FileReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -59,13 +61,17 @@ public class LocalCSVReader {
 
 
     /**
+     * @param context Android context for read resource
      * @param CSVPath training data csv path
      * @param header  csv has header or not, 0 or 1
      */
-    public LocalCSVReader(String CSVPath, int header, String target) {
+    public LocalCSVReader(Context context, String CSVPath, int header, String target) {
         this.target = target;
         List<List<String>> records = new ArrayList<List<String>>();
-        try (CSVReader csvReader = new CSVReader(new FileReader(CSVPath));) {
+        String var = CSVPath;
+        boolean var1 = var.startsWith("file:///android_asset/");
+        String var2 = var1 ? var.split("file:///android_asset/")[1] : var;
+        try (CSVReader csvReader = new CSVReader(new InputStreamReader(context.getAssets().open(var2)))) {
             String[] values;
             if (header == 0) {
                 String[] valuesHeader = csvReader.readNext();

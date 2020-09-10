@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string-array name="spingarr">
+        <item>bank_zhongyuan/test_data1.csv</item>
+        <item>bank_zhongyuan/test_data2.csv</item>
+        <item>bank_zhongyuan/test_data3.csv</item>
+        <item>bank_zhongyuan/test_data4.csv</item>
+        <item>bank_zhongyuan/test_data5.csv</item>
+        <item>bank_zhongyuan/test_data6.csv</item>
+        <item>bank_zhongyuan/test_data7.csv</item>
+        <item>bank_zhongyuan/test_data8.csv</item>
+        <item>bank_zhongyuan/test_data9.csv</item>
+        <item>bank_zhongyuan/test_data10.csv</item>
+    </string-array>
+</resources>

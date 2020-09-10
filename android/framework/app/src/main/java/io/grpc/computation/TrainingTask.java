@@ -1,6 +1,7 @@
 package io.grpc.computation;
 
 import android.app.Activity;
+import android.content.Context;
 import android.os.AsyncTask;
 import android.text.TextUtils;
 import android.widget.Button;
@@ -33,9 +34,11 @@ public class TrainingTask {
      static class LocalTrainingTask extends AsyncTask<String, Void, String> {
         private final WeakReference<Activity> activityReference;
         private ManagedChannel channel;
+        private Context context;
 
-        protected LocalTrainingTask(Activity activity) {
+        protected LocalTrainingTask(Activity activity, Context context) {
             this.activityReference = new WeakReference<Activity>(activity);
+            this.context = context;
         }
         @Override
         protected String doInBackground(String... params) {
@@ -43,6 +46,7 @@ public class TrainingTask {
             String portStr = params[1];
             String local_id = UUID.randomUUID().toString().replaceAll("-", "");
             String dataPath = params[2];
+            int epoch = TextUtils.isEmpty(portStr) ? 0 : Integer.valueOf(params[3]);
             int port = TextUtils.isEmpty(portStr) ? 0 : Integer.valueOf(portStr);
             try {
                 channel = ManagedChannelBuilder.forAddress(host, port).usePlaintext().build();
@@ -52,26 +56,30 @@ public class TrainingTask {
                 Graph graph = new Graph();
                 // todo: implement bp in android device
                 graph.importGraphDef(reply.getGraph().toByteArray());
-                LocalCSVReader localCSVReader = new LocalCSVReader(dataPath, 0,"target");
+                LocalCSVReader localCSVReader = new LocalCSVReader(this.context, dataPath, 0,"target");
                 float [][] x = localCSVReader.getX();
                 float [][] y = localCSVReader.getY_oneHot();
                 float [] b = new float[localCSVReader.getY_oneHot()[0].length];
                 float [][] w = new float[localCSVReader.getX()[0].length][localCSVReader.getY_oneHot()[0].length];
+                float batchSize = x.length;
                 Session session = new Session(graph);
                 session.runner().feed("w/init", Tensor.create(w)).addTarget("w/Assign").run();
                 session.runner().feed("b/init", Tensor.create(b)).addTarget("b/Assign").run();
                 Tensor tensor = null;
-                for (int i = 0; i < 10; i++){
+                for (int i = 0; i < epoch; i++){
                     tensor = session.runner().fetch("cost").feed("x", Tensor.create(x))
                             .feed("y", Tensor.create(y)).run().get(0);
                     session.runner().feed("x", Tensor.create(x))
-                            .feed("y", Tensor.create(y)).addTarget("minimizeGradientDescent").run();
-                    System.out.println(tensor.floatValue());
+                            .feed("y", Tensor.create(y))
+                            .feed("batch_size",Tensor.create(batchSize)).addTarget("w_assign").run();
+                    session.runner().feed("x", Tensor.create(x))
+                            .feed("y", Tensor.create(y))
+                            .feed("batch_size",Tensor.create(batchSize)).addTarget("b_assign").run();
                 }
                 if (null == tensor){
                     return "";
                 }
-                return String.valueOf(tensor.floatValue());
+                return String.valueOf("the cost of epoch "+ epoch +" is: "+ tensor.floatValue());
             } catch (Exception e) {
                 StringWriter sw = new StringWriter();
                 PrintWriter pw = new PrintWriter(sw);
