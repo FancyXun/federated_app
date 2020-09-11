@@ -32,6 +32,7 @@ import io.grpc.learning.computation.ComputationGrpc;
 import io.grpc.learning.computation.ComputationReply;
 import io.grpc.learning.computation.ComputationRequest;
 import io.grpc.utils.LocalCSVReader;
+import io.grpc.utils.StateInfo;
 
 public class TrainingTask {
      static class LocalTrainingTask extends AsyncTask<String, Void, String> {
@@ -39,12 +40,15 @@ public class TrainingTask {
         private ManagedChannel channel;
         private Context context;
         private TextView textView;
+        private StateInfo stateInfo;
 
         protected LocalTrainingTask(Activity activity, Context context, TextView textView) {
             this.activityReference = new WeakReference<Activity>(activity);
             this.context = context;
             this.textView = textView;
+            this.stateInfo = new StateInfo();
         }
+        @SuppressLint("WrongThread")
         @Override
         protected String doInBackground(String... params) {
             String host = params[0];
@@ -61,6 +65,7 @@ public class TrainingTask {
                 Graph graph = new Graph();
                 // todo: implement bp in android device
                 graph.importGraphDef(reply.getGraph().toByteArray());
+
                 LocalCSVReader localCSVReader = new LocalCSVReader(this.context, dataPath, 0,"target");
                 float [][] x = localCSVReader.getX();
                 float [][] y = localCSVReader.getY_oneHot();
@@ -85,6 +90,7 @@ public class TrainingTask {
                 if (null == tensor){
                     return "";
                 }
+                this.stateInfo.setStateCode(1);
                 return String.valueOf("the cost of epoch "+ epoch +"/"+ epoch +" is: "+ tensor.floatValue());
             } catch (Exception e) {
                 StringWriter sw = new StringWriter();
