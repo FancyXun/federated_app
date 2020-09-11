@@ -58,6 +58,7 @@ public class LogisticsRegressionTests {
         float [][] y = localCSVReader.getY_oneHot();
         float [] b = new float[localCSVReader.getY_oneHot()[0].length];
         float [][] w = new float[localCSVReader.getX()[0].length][localCSVReader.getY_oneHot()[0].length];
+        float [][] copy = new float[localCSVReader.getX()[0].length][localCSVReader.getY_oneHot()[0].length];
         float batchSize = x.length;
         Graph graph = new Graph();
         InputStream modelStream = null;
@@ -73,7 +74,7 @@ public class LogisticsRegressionTests {
         Iterator<Operation> operationIterator = graph.operations();
         session.runner().feed("w/init", Tensor.create(w)).addTarget("w/Assign").run();
         session.runner().feed("b/init", Tensor.create(b)).addTarget("b/Assign").run();
-        for (int i = 0; i < 10; i++){
+        for (int i = 0; i < 5; i++){
             Tensor tensor = session.runner().fetch("cost").feed("x", Tensor.create(x))
                     .feed("y", Tensor.create(y)).run().get(0);
             session.runner().feed("x", Tensor.create(x))
@@ -82,8 +83,17 @@ public class LogisticsRegressionTests {
             session.runner().feed("x", Tensor.create(x))
                     .feed("y", Tensor.create(y))
                     .feed("batch_size",Tensor.create(batchSize)).addTarget("b_assign").run();
-            System.out.println(tensor.floatValue());
+            Tensor tensor1 = session.runner().fetch("w_assign")
+                    .feed("x", Tensor.create(x))
+                    .feed("y", Tensor.create(y))
+                    .feed("batch_size",Tensor.create(batchSize)).run().get(0);
+            tensor1.copyTo(copy);
+            System.out.println(copy[0][0]);
+            System.out.println("cost:" + tensor.floatValue());
+
         }
+
+
         logisticsRegression.deletePBFile();
     }
 

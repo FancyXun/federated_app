@@ -40,7 +40,7 @@ public class LogisticsRegression extends BaseGraph {
         InputStream modelStream = null;
         try {
             modelStream = new FileInputStream(this.pbPath);
-            graph.importGraphDef(IOUtils.readAllBytes(modelStream));
+            graph.importGraphDef(new byte[modelStream.available()]);
             this.graph = graph;
         } catch (FileNotFoundException e) {
             e.printStackTrace();
