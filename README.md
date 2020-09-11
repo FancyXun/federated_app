@@ -22,6 +22,11 @@ First run server:
 ```
 $ ./build/install/federated_learning/bin/computation-server
 ```
+This would give you log info like bellow
+```
+{Datetime} io.grpc.learning.computation.ComputationServer start
+INFO: Server started, ip is {server ip} listening on 50051
+```
 
 And in a different terminal window run:
 
@@ -32,8 +37,11 @@ $ cd android/framework; ../../gradlew installDebug
 Launch the client app from your device.
 
 
-Input Local epoch number, Click “LocalTraining” . You’ll see the loss of Logistic regression
+Input server ip and local epoch number, Click “LocalTraining” . You’ll see the loss of Logistic regression
 
 That's it!
+
+##### Note
+The client (android device) can access the server.
 
 For more information, refer to gRPC Java's [tutorial](https://grpc.io/docs/languages/java/basics).

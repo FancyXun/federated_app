@@ -22,6 +22,10 @@ import io.grpc.learning.api.BaseGraph;
 import io.grpc.stub.StreamObserver;
 
 import java.io.IOException;
+import java.net.Inet4Address;
+import java.net.InetAddress;
+import java.net.NetworkInterface;
+import java.util.Enumeration;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 
@@ -39,12 +43,25 @@ public class ComputationServer {
 
     private void start() throws IOException {
         /* The port on which the server should run */
+        String localIP = "127.0.0.1";
+        Enumeration<NetworkInterface> n = NetworkInterface.getNetworkInterfaces();
+        try {
+            NetworkInterface e = n.nextElement();
+            Enumeration<InetAddress> a = e.getInetAddresses();
+            a.nextElement();
+            InetAddress addr = a.nextElement();
+            localIP = addr.getHostAddress();
+        }
+        catch (Exception e1){
+            localIP = "127.0.0.1";
+        }
+
         int port = 50051;
         server = ServerBuilder.forPort(port)
                 .addService(new ComputationImpl())
                 .build()
                 .start();
-        logger.info("Server started, listening on " + port);
+        logger.info("Server started, ip is "+localIP + " listening on " + port);
         Runtime.getRuntime().addShutdownHook(new Thread() {
             @Override
             public void run() {
