@@ -18,7 +18,7 @@
             android:layout_height="wrap_content"
             android:layout_weight="2"
             android:hint="Enter Host"
-            android:text="10.1.199.38" />
+            android:text="52.81.112.107" />
 
         <EditText
             android:id="@+id/port_edit_text"

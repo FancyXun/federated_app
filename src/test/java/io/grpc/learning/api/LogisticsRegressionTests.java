@@ -19,7 +19,7 @@ public class LogisticsRegressionTests {
 
     @Test
     public void LogisticsRegressionTest(){
-        LogisticsRegression logisticsRegression = new LogisticsRegression(true,"src/main/python/LogisticsRegression.py");
+        LogisticsRegression logisticsRegression = new LogisticsRegression(false);
         float [][] x = {{1f,1f}, {2f, 2f}};
         float [] y = {1f, 2f};
         float [] b = new float[2];
@@ -53,7 +53,7 @@ public class LogisticsRegressionTests {
     public void LogisticsRegressionTrainingTest(){
         String dataPath = "src/main/resources/test_data/bank_zhongyuan/test_data1.csv";
         LocalCSVReader localCSVReader = new LocalCSVReader(dataPath, 0,"target");
-        LogisticsRegression logisticsRegression = new LogisticsRegression(true,"src/main/python/LogisticsRegression.py");
+        LogisticsRegression logisticsRegression = new LogisticsRegression(false);
         float [][] x = localCSVReader.getX();
         float [][] y = localCSVReader.getY_oneHot();
         float [] b = new float[localCSVReader.getY_oneHot()[0].length];

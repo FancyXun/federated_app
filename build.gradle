@@ -5,7 +5,13 @@ plugins {
     id 'com.google.protobuf' version '0.8.8'
     // Generate IntelliJ IDEA's .idea & .iml project files
     id 'idea'
+
+    id 'java'
+
+    id 'com.github.johnrengelman.shadow' version '4.0.3'
 }
+
+mainClassName = 'io.grpc.learning.computation.ComputationServer'
 
 repositories {
     maven {
@@ -92,4 +98,17 @@ applicationDistribution.into('bin') {
     from(computationServer)
     from(computationClient)
     fileMode = 0755
+}
+
+jar {
+    manifest {
+        attributes(
+                "Manifest-Version": 1.0,
+                "Main-Class": "io.grpc.learning.computation.ComputationServer"   //主函数的名称
+        )
+    }
+    from { configurations.compile.collect { it.isDirectory() ? it : zipTree(it) } }
+    into('lib') {
+        from configurations.runtime
+    }
 }

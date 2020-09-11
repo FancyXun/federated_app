@@ -19,6 +19,7 @@ public abstract class BaseGraph {
     protected Graph graph;
     private ResourceBundle rb = ResourceBundle.getBundle("resource", Locale.getDefault());
     private String pythonExe = (String) rb.getObject("pythonExe");
+    protected String pbDiskPath = (String) rb.getObject("pbDiskPath");
     protected String pbSuffix = ".pb";
 
     protected static File pbFile = Files.createTempDir();
