@@ -16,12 +16,9 @@
 
 package io.grpc.computation;
 
-import android.app.Activity;
 import android.content.Context;
-import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
-import android.text.TextUtils;
 import android.text.method.ScrollingMovementMethod;
 import android.view.View;
 import android.widget.Button;
@@ -29,21 +26,7 @@ import android.widget.EditText;
 import android.widget.Spinner;
 import android.widget.TextView;
 
-import io.grpc.ManagedChannel;
-import io.grpc.ManagedChannelBuilder;
-import io.grpc.learning.computation.ComputationGrpc;
-import io.grpc.learning.computation.ComputationReply;
-import io.grpc.learning.computation.ComputationRequest;
-
-import java.io.PrintWriter;
-import java.io.StringWriter;
-import java.lang.ref.WeakReference;
-import java.util.concurrent.TimeUnit;
 import java.util.UUID;
-
-import org.tensorflow.Graph;
-import org.tensorflow.Session;
-import org.tensorflow.Tensor;
 
 public class ComputationActivity extends AppCompatActivity {
 
@@ -51,7 +34,6 @@ public class ComputationActivity extends AppCompatActivity {
         System.loadLibrary("tensorflow_inference");
     }
 
-    private Button sendButton;
     private Button trainButton;
     private TextView resultText;
     private EditText hostEdit;
@@ -60,6 +42,7 @@ public class ComputationActivity extends AppCompatActivity {
     private Spinner data;
     private static final String DATA_FILE = "file:///android_asset/bank_zhongyuan/test_data1.csv";
     private Context context;
+    private static String local_id = UUID.randomUUID().toString().replaceAll("-", "");
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -75,10 +58,30 @@ public class ComputationActivity extends AppCompatActivity {
         this.context = getApplicationContext();
     }
 
+    /**
+     *
+     * @param view
+     */
+    public void Training(View view) {
+        trainButton.setEnabled(false);
+        resultText.setText("");
+        new TrainingTask.LocalTrainingTask(this, this.context, this.resultText).execute(
+                local_id,
+                (String) data.getSelectedItem(),
+                epoch.getText().toString()
+                );
+    }
+
+
+    /**
+     * this is a test example of mul
+     * @param view
+     */
+    /*
     public void Mul(View view) {
         sendButton.setEnabled(false);
         resultText.setText("");
-        new MulTask(this)
+        new ArithmeticTask.MulTask(this)
                 .execute(
                         hostEdit.getText().toString(),
                         portEdit.getText().toString(),
@@ -86,75 +89,6 @@ public class ComputationActivity extends AppCompatActivity {
                         "10"
                 );
     }
-
-    public void Training(View view) {
-        trainButton.setEnabled(false);
-        resultText.setText("");
-        new TrainingTask.LocalTrainingTask(this, this.context, this.resultText).execute(
-                hostEdit.getText().toString(),
-                portEdit.getText().toString(),
-                (String) data.getSelectedItem(),
-                epoch.getText().toString()
-                );
-    }
-
-    private static class MulTask extends AsyncTask<String, Void, String> {
-        private final WeakReference<Activity> activityReference;
-        private ManagedChannel channel;
-
-        private MulTask(Activity activity) {
-            this.activityReference = new WeakReference<Activity>(activity);
-        }
-
-        @Override
-        protected String doInBackground(String... params) {
-            String host = params[0];
-            String portStr = params[1];
-            String xStr = params[2];
-            String yStr = params[3];
-            float x;
-            float y;
-            try {
-                x = Float.parseFloat(xStr);
-                y = Float.parseFloat(yStr);
-            } catch (Exception e) {
-                return String.format("Failed to convert string to float");
-            }
-
-            String local_id = UUID.randomUUID().toString().replaceAll("-", "");
-            int port = TextUtils.isEmpty(portStr) ? 0 : Integer.valueOf(portStr);
-            try {
-                channel = ManagedChannelBuilder.forAddress(host, port).usePlaintext().build();
-                ComputationGrpc.ComputationBlockingStub stub = ComputationGrpc.newBlockingStub(channel);
-                ComputationRequest request = ComputationRequest.newBuilder().setId(local_id).setNodeName("FloatMul").build();
-                ComputationReply reply = stub.call(request);
-                Graph graph = new Graph();
-                graph.importGraphDef(reply.getGraph().toByteArray());
-                Session session = new Session(graph);
-                Tensor tensor = session.runner().fetch("xy").feed("x", Tensor.create(x)).feed("y", Tensor.create(y)).run().get(0);
-                return String.valueOf(tensor.floatValue());
-            } catch (Exception e) {
-                StringWriter sw = new StringWriter();
-                PrintWriter pw = new PrintWriter(sw);
-                e.printStackTrace(pw);
-                pw.flush();
-                return String.format("Failed... : %n%s", sw);
-            }
-        }
-
-        @Override
-        protected void onPostExecute(String result) {
-            try {
-                channel.shutdown().awaitTermination(1, TimeUnit.SECONDS);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-            }
-            Activity activity = activityReference.get();
-            if (activity == null) {
-                return;
-            }
-            TextView resultText = (TextView) activity.findViewById(R.id.server_response_text);
-            resultText.setText(result);
-        }
-    }
+    *
+     */
 }

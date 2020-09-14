@@ -20,10 +20,15 @@ import io.grpc.Channel;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import io.grpc.StatusRuntimeException;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.UUID;
+
 import org.tensorflow.*;
 
 /**
@@ -44,7 +49,18 @@ public class ComputationClient {
 
   public void call(String id) {
     logger.info("Will try to call " + id + " ...");
-    ComputationRequest request = ComputationRequest.newBuilder().setId(id).build();
+    float [][] res = new float[10][2];
+    res[0][1] = 3;
+    List list = new ArrayList();
+    for(int i=0;i<res.length;i++)
+      for(int j=0;j<res[0].length;j++)
+        list.add(res[i][j]);
+    ComputationRequest request = ComputationRequest.newBuilder()
+            .setId(id)
+            .setNodeName("FloatMul")
+            .addAllListOfArray(list)
+            .build();
+
     ComputationReply response;
     try {
       response = blockingStub.call(request);

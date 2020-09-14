@@ -26,6 +26,7 @@ import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.util.Enumeration;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 
@@ -107,6 +108,7 @@ public class ComputationServer {
         public void call(ComputationRequest req, StreamObserver<ComputationReply> responseObserver) {
             String clientId = req.getId();
             String node_name = req.getNodeName();
+            List list = req.getListOfArrayList();
             Graph graph = new Graph();
             try {
                 logger.info("Server received request " + url + "." + node_name + " from " + clientId);

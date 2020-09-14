@@ -88,6 +88,8 @@ public class LogisticsRegressionTests {
                     .feed("y", Tensor.create(y))
                     .feed("batch_size",Tensor.create(batchSize)).run().get(0);
             tensor1.copyTo(copy);
+            byte [] tmp = Tensor.create(copy).bytesValue();
+            Tensor.create(b).bytesValue();
             System.out.println(copy[0][0]);
             System.out.println("cost:" + tensor.floatValue());
 
