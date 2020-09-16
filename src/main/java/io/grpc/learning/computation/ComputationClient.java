@@ -58,7 +58,6 @@ public class ComputationClient {
     ComputationRequest request = ComputationRequest.newBuilder()
             .setId(id)
             .setNodeName("FloatMul")
-            .addAllListOfArray(list)
             .build();
 
     ComputationReply response;

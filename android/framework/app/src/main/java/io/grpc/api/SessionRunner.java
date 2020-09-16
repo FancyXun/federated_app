@@ -12,6 +12,7 @@ import java.util.Set;
 
 import io.grpc.utils.LocalCSVReader;
 import io.grpc.vo.FeedDict;
+import io.grpc.vo.SequenceType;
 import io.grpc.vo.TrainableVariable;
 
 public class SessionRunner {
@@ -35,10 +36,15 @@ public class SessionRunner {
         this.feedTrainData();
     }
 
-    public SessionRunner(Graph graph, LocalCSVReader localCSVReader, int epoch){
+    public SessionRunner(Graph graph, SequenceType sequenceType,
+                         LocalCSVReader localCSVReader, int epoch) {
         this.graph = graph;
         this.epoch = epoch;
         this.localCSVReader = localCSVReader;
+        this.VariablesProducer(sequenceType.getTensorVar(), sequenceType.getTensorName(),
+                sequenceType.getTensorTargetName(), sequenceType.getTensorShape());
+        this.session = new Session(this.graph);
+        this.feedTrainData();
     }
 
     /**
@@ -74,8 +80,8 @@ public class SessionRunner {
         this.trainInitialize = new TrainInitialize(this.localCSVReader);
     }
 
-    private void feedVariable(List<List<Float>> trainableVar, List<String> trainableVarName,
-                              List<String> targetVarName, List<List<Integer>> listShape) {
+    private void VariablesProducer(List<List<Float>> trainableVar, List<String> trainableVarName,
+                                   List<String> targetVarName, List<List<Integer>> listShape) {
         assert this.trainInitialize != null;
         trainableVariable = this.trainInitialize.initVar(trainableVar, trainableVarName, targetVarName, listShape);
     }

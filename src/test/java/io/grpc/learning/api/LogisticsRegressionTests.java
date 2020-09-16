@@ -1,5 +1,9 @@
 package io.grpc.learning.api;
 
+import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONArray;
+import com.alibaba.fastjson.JSONObject;
+
 import org.junit.Test;
 import org.tensorflow.Graph;
 import org.tensorflow.Operation;
@@ -10,20 +14,26 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
+import io.grpc.learning.utils.JsonUtils;
 import io.grpc.learning.utils.LocalCSVReader;
+import io.grpc.learning.vo.TensorVarName;
 import sun.misc.IOUtils;
 
 public class LogisticsRegressionTests {
 
     @Test
-    public void LogisticsRegressionTest(){
+    public void LogisticsRegressionTest() {
         LogisticsRegression logisticsRegression = new LogisticsRegression(false);
-        float [][] x = {{1f,1f}, {2f, 2f}};
-        float [] y = {1f, 2f};
-        float [] b = new float[2];
-        float [][] w = new float[2][2];
+        float[][] x = {{1f, 1f}, {2f, 2f}};
+        float[] y = {1f, 2f};
+        float[] b = new float[2];
+        float[][] w = new float[2][2];
         Graph graph = new Graph();
         InputStream modelStream = null;
         try {
@@ -50,15 +60,12 @@ public class LogisticsRegressionTests {
     }
 
     @Test
-    public void LogisticsRegressionTrainingTest(){
+    public void LogisticsRegressionTrainingTest() {
         String dataPath = "src/main/resources/test_data/bank_zhongyuan/test_data1.csv";
-        LocalCSVReader localCSVReader = new LocalCSVReader(dataPath, 0,"target");
+        LocalCSVReader localCSVReader = new LocalCSVReader(dataPath, 0, "target");
         LogisticsRegression logisticsRegression = new LogisticsRegression(false);
-        float [][] x = localCSVReader.getX();
-        float [][] y = localCSVReader.getY_oneHot();
-        float [] b = new float[localCSVReader.getY_oneHot()[0].length];
-        float [][] w = new float[localCSVReader.getX()[0].length][localCSVReader.getY_oneHot()[0].length];
-        float [][] copy = new float[localCSVReader.getX()[0].length][localCSVReader.getY_oneHot()[0].length];
+        float[][] x = localCSVReader.getX();
+        float[][] y = localCSVReader.getY_oneHot();
         float batchSize = x.length;
         Graph graph = new Graph();
         InputStream modelStream = null;
@@ -71,26 +78,35 @@ public class LogisticsRegressionTests {
             e.printStackTrace();
         }
         Session session = new Session(graph);
-        Iterator<Operation> operationIterator = graph.operations();
-        session.runner().feed("w/init", Tensor.create(w)).addTarget("w/Assign").run();
-        session.runner().feed("b/init", Tensor.create(b)).addTarget("b/Assign").run();
-        for (int i = 0; i < 5; i++){
-            Tensor tensor = session.runner().fetch("cost").feed("x", Tensor.create(x))
-                    .feed("y", Tensor.create(y)).run().get(0);
-            session.runner().feed("x", Tensor.create(x))
-                    .feed("y", Tensor.create(y))
-                    .feed("batch_size",Tensor.create(batchSize)).addTarget("w_assign").run();
-            session.runner().feed("x", Tensor.create(x))
-                    .feed("y", Tensor.create(y))
-                    .feed("batch_size",Tensor.create(batchSize)).addTarget("b_assign").run();
-            Tensor tensor1 = session.runner().fetch("w_assign")
-                    .feed("x", Tensor.create(x))
-                    .feed("y", Tensor.create(y))
-                    .feed("batch_size",Tensor.create(batchSize)).run().get(0);
-            tensor1.copyTo(copy);
-            byte [] tmp = Tensor.create(copy).bytesValue();
-            Tensor.create(b).bytesValue();
-            System.out.println(copy[0][0]);
+        String s = JsonUtils.readJsonFile(logisticsRegression.pbPath.replace(".pb",".json"));
+        TensorVarName tensorVarName = JsonUtils.jsonToMap(JSON.parseObject(s));
+
+        for (int i = 0; i < tensorVarName.getTensorName().size(); i++) {
+            List<Integer> integerList = tensorVarName.getTensorShape().get(i);
+            Tensor tensor = null;
+            if (integerList.size() == 1) {
+                tensor = Tensor.create(new float[integerList.get(0)]);
+            }
+            if (integerList.size() == 2) {
+                tensor = Tensor.create(new float[integerList.get(0)][integerList.get(1)]);
+            }
+            session.runner()
+                    .feed(tensorVarName.getTensorName().get(i), tensor)
+                    .addTarget(tensorVarName.getTensorTargetName().get(i)).run();
+        }
+        for (int i = 0; i < 10; i++) {
+            Tensor tensor = session.runner()
+                    .fetch("loss")
+                    .feed(tensorVarName.getPlaceholder().get(1), Tensor.create(x))
+                    .feed(tensorVarName.getPlaceholder().get(2), Tensor.create(y)).run().get(0);
+
+            for (int j = 0; j < tensorVarName.getTensorAssignName().size(); j++) {
+                session.runner()
+                        .feed(tensorVarName.getPlaceholder().get(0), Tensor.create(batchSize))
+                        .feed(tensorVarName.getPlaceholder().get(1), Tensor.create(x))
+                        .feed(tensorVarName.getPlaceholder().get(2), Tensor.create(y))
+                        .addTarget(tensorVarName.getTensorAssignName().get(j)).run();
+            }
             System.out.println("cost:" + tensor.floatValue());
 
         }

@@ -19,14 +19,15 @@ package io.grpc.learning.computation;
 import io.grpc.Server;
 import io.grpc.ServerBuilder;
 import io.grpc.learning.api.BaseGraph;
+import io.grpc.learning.vo.GraphZoo;
+import io.grpc.learning.vo.ModelZooWeights;
+import io.grpc.learning.vo.SequenceData;
 import io.grpc.stub.StreamObserver;
 
 import java.io.IOException;
-import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.util.Enumeration;
-import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 
@@ -96,7 +97,7 @@ public class ComputationServer {
     /**
      * Main launches the server from the command line.
      */
-    public static void main(String[] args) throws IOException, InterruptedException, ClassNotFoundException, IllegalAccessException, InstantiationException {
+    public static void main(String[] args) throws IOException, InterruptedException {
         final ComputationServer server = new ComputationServer();
         server.start();
         server.blockUntilShutdown();
@@ -108,15 +109,17 @@ public class ComputationServer {
         public void call(ComputationRequest req, StreamObserver<ComputationReply> responseObserver) {
             String clientId = req.getId();
             String node_name = req.getNodeName();
-            List list = req.getListOfArrayList();
-            Graph graph = new Graph();
-            try {
-                logger.info("Server received request " + url + "." + node_name + " from " + clientId);
-                ClassLoader classLoader = Class.forName(url + "." + node_name).getClassLoader();
-                BaseGraph basegraph = (BaseGraph) classLoader.loadClass(url + "." + node_name).newInstance();
-                graph = basegraph.getGraph();
-            } catch (Exception ClassNotFoundException) {
-
+            logger.info("Server received request " + url + "." + node_name + " from " + clientId);
+            GraphZoo graphZoo = new GraphZoo();
+            Graph graph = graphZoo.getGraphZoo().get(node_name);
+            if (graph == null){
+                try {
+                    ClassLoader classLoader = Class.forName(url + "." + node_name).getClassLoader();
+                    BaseGraph basegraph = (BaseGraph) classLoader.loadClass(url + "." + node_name).newInstance();
+                    graph = basegraph.getGraph();
+                } catch (Exception ClassNotFoundException) {
+                    throw new RuntimeException();
+                }
             }
             byte[] byteGraph = graph.toGraphDef();
             ComputationReply.Builder reply = ComputationReply.newBuilder();
@@ -125,6 +128,25 @@ public class ComputationServer {
 
             responseObserver.onNext(reply.build());
             responseObserver.onCompleted();
+        }
+
+        @Override
+        public void callValue(ComputationRequest req, StreamObserver<TensorValue> responseObserver) {
+            String clientId = req.getId();
+            String node_name = req.getNodeName();
+            int offset = req.getOffset();
+            ModelZooWeights modelZooWeights = new ModelZooWeights();
+            SequenceData sequenceData = modelZooWeights.getModelZoo().get(node_name);
+            if (sequenceData == null){
+                GraphZoo graphZoo = new GraphZoo();
+                Graph graph = graphZoo.getGraphZoo().get(node_name);
+            }
+
+        }
+
+        @Override
+        public void sendValue(TensorValue request, StreamObserver<ValueReply> responseObserver) {
+            super.sendValue(request, responseObserver);
         }
     }
 }

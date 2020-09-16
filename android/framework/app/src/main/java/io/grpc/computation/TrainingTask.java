@@ -20,11 +20,13 @@ import io.grpc.api.SessionRunner;
 import io.grpc.learning.computation.ComputationGrpc;
 import io.grpc.learning.computation.ComputationReply;
 import io.grpc.learning.computation.ComputationRequest;
+import io.grpc.learning.computation.TensorValue;
 import io.grpc.utils.LocalCSVReader;
 import io.grpc.utils.StateInfo;
+import io.grpc.vo.SequenceType;
 
 public class TrainingTask {
-    static class LocalTrainingTask extends AsyncTask<String, Void, String> {
+    static class LocalTrainingTask extends StreamCallTask {
         private final WeakReference<Activity> activityReference;
         private ManagedChannel channel;
         @SuppressLint("StaticFieldLeak")
@@ -52,15 +54,20 @@ public class TrainingTask {
                 channel = ManagedChannelBuilder
                         .forAddress(this.host, this.port)
                         .usePlaintext().build();
-                ComputationRequest request = ComputationRequest.newBuilder().setId(local_id)
-                        .setNodeName("LogisticsRegression").build();
-                ComputationReply reply = ComputationGrpc.newBlockingStub(channel).call(request);
+                ComputationGrpc.ComputationBlockingStub stub = ComputationGrpc.newBlockingStub(channel);
+                ComputationRequest.Builder builder = ComputationRequest.newBuilder().setId(local_id)
+                        .setNodeName("LogisticsRegression");
+                ComputationReply reply = stub.call( builder.build());
                 Graph graph = new Graph();
-                // todo: implement bp in android device
+                // Get graph from server
+                // todo: implement bp in android device,
                 graph.importGraphDef(reply.getGraph().toByteArray());
+                // Get model weights from server
+                SequenceType sequenceType = this.SequenceCall(stub, builder);
+                // Load data
                 LocalCSVReader localCSVReader = new LocalCSVReader(
                         this.context, dataPath, 0, "target");
-                new SessionRunner(graph, localCSVReader, epoch)
+                new SessionRunner(graph, sequenceType, localCSVReader, epoch)
                         .invoke(this.textView);
                 this.stateInfo.setStateCode(1);
                 return "Training finished";
