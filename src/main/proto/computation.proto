@@ -25,6 +25,10 @@ package computation;
 service Computation {
   // Sends a computation
   rpc Call (ComputationRequest) returns (ComputationReply) {}
+
+  rpc CallValue (ComputationRequest) returns (TensorValue) {}
+
+  rpc SendValue(TensorValue) returns(ValueReply) {}
 }
 
 // The request message containing the user's id.
@@ -33,12 +37,36 @@ message ComputationRequest {
   string id = 1;
   // The request node name in AST
   string node_name = 2;
+
+  int32 offset = 3;
 }
+
 
 // The response message containing the computation graph
 message ComputationReply {
   string message = 1;
   // The Computation graph
   bytes graph = 2;
+}
+
+message TensorValue{
+  string id = 1;
+  string name = 2;
+  int32 value_size = 3;
+  int32 offset = 4;
+  repeated float list_array = 5;
+  repeated int32 shape_array = 6;
+  TrainableVarName trainable_name = 7;
+  repeated string assign_name = 8;
+  repeated string placeholder = 9;
+}
+
+message TrainableVarName{
+  string name = 1;
+  string target_name = 2;
+}
+
+message ValueReply{
+  bool message = 1;
 }
 

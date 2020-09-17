@@ -21,6 +21,7 @@ public abstract class BaseGraph {
     private String pythonExe = (String) rb.getObject("pythonExe");
     protected String pbDiskPath = (String) rb.getObject("pbDiskPath");
     protected String pbSuffix = ".pb";
+    public String pbPath;
 
     protected static File pbFile = Files.createTempDir();
 

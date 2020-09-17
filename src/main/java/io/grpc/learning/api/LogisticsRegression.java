@@ -9,11 +9,9 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 
-import sun.misc.IOUtils;
 
 public class LogisticsRegression extends BaseGraph {
 
-    public String pbPath;
     /**
      * @param loadPBFile load pb from disk or not
      * @param pyDir      to refer to the python script to create the graph.
@@ -39,7 +37,7 @@ public class LogisticsRegression extends BaseGraph {
     }
 
     public LogisticsRegression(){
-        this(true,"src/main/python/LogisticsRegression.py", true);
+        this(true,"src/main/python/LogisticsRegression.py", false);
     }
     public LogisticsRegression(Boolean pdDisk){
         this(true,"src/main/python/LogisticsRegression.py", pdDisk);

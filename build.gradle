@@ -45,6 +45,9 @@ dependencies {
     compile group: 'com.google.protobuf', name: 'protobuf-java', version: '3.12.2'
     // https://mvnrepository.com/artifact/com.opencsv/opencsv
     compile group: 'com.opencsv', name: 'opencsv', version: '5.2'
+    // https://mvnrepository.com/artifact/com.alibaba/fastjson
+    compile group: 'com.alibaba', name: 'fastjson', version: '1.2.68'
+
 
     compileOnly "org.apache.tomcat:annotations-api:6.0.53"
 
@@ -100,15 +103,15 @@ applicationDistribution.into('bin') {
     fileMode = 0755
 }
 
-jar {
-    manifest {
-        attributes(
-                "Manifest-Version": 1.0,
-                "Main-Class": "io.grpc.learning.computation.ComputationServer"   //主函数的名称
-        )
-    }
-    from { configurations.compile.collect { it.isDirectory() ? it : zipTree(it) } }
-    into('lib') {
-        from configurations.runtime
-    }
-}
+//jar {
+//    manifest {
+//        attributes(
+//                "Manifest-Version": 1.0,
+//                "Main-Class": "io.grpc.learning.computation.ComputationServer"   //主函数的名称
+//        )
+//    }
+//    from { configurations.compile.collect { it.isDirectory() ? it : zipTree(it) } }
+//    into('lib') {
+//        from configurations.runtime
+//    }
+//}

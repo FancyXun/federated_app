@@ -1,5 +1,5 @@
 package io.grpc.api;
 
-public interface GraphEntity {
+public interface GraphInitialize {
     void initVar();
 }
