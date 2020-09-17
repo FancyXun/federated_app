@@ -19,20 +19,26 @@ package io.grpc.learning.computation;
 import io.grpc.Server;
 import io.grpc.ServerBuilder;
 import io.grpc.learning.api.BaseGraph;
+import io.grpc.learning.utils.JsonUtils;
 import io.grpc.learning.vo.GraphZoo;
 import io.grpc.learning.vo.ModelZooWeights;
 import io.grpc.learning.vo.SequenceData;
+import io.grpc.learning.vo.TensorVarName;
 import io.grpc.stub.StreamObserver;
 
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
+import java.util.ArrayList;
 import java.util.Enumeration;
+import java.util.HashMap;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 
 import org.tensorflow.*;
 
+import com.alibaba.fastjson.JSON;
 import com.google.protobuf.ByteString;
 
 /**
@@ -45,7 +51,7 @@ public class ComputationServer {
 
     private void start() throws IOException {
         /* The port on which the server should run */
-        String localIP = "127.0.0.1";
+        String localIP;
         Enumeration<NetworkInterface> n = NetworkInterface.getNetworkInterfaces();
         try {
             NetworkInterface e = n.nextElement();
@@ -53,8 +59,7 @@ public class ComputationServer {
             a.nextElement();
             InetAddress addr = a.nextElement();
             localIP = addr.getHostAddress();
-        }
-        catch (Exception e1){
+        } catch (Exception e1) {
             localIP = "127.0.0.1";
         }
 
@@ -63,7 +68,7 @@ public class ComputationServer {
                 .addService(new ComputationImpl())
                 .build()
                 .start();
-        logger.info("Server started, ip is "+localIP + " listening on " + port);
+        logger.info("Server started, ip is " + localIP + " listening on " + port);
         Runtime.getRuntime().addShutdownHook(new Thread() {
             @Override
             public void run() {
@@ -110,26 +115,20 @@ public class ComputationServer {
             String clientId = req.getId();
             String node_name = req.getNodeName();
             logger.info("Server received request " + url + "." + node_name + " from " + clientId);
-            GraphZoo graphZoo = new GraphZoo();
-            Graph graph = graphZoo.getGraphZoo().get(node_name);
-            if (graph == null){
-                try {
-                    ClassLoader classLoader = Class.forName(url + "." + node_name).getClassLoader();
-                    BaseGraph basegraph = (BaseGraph) classLoader.loadClass(url + "." + node_name).newInstance();
-                    graph = basegraph.getGraph();
-                } catch (Exception ClassNotFoundException) {
-                    throw new RuntimeException();
-                }
-            }
+            Graph graph = getGraph(node_name);
             byte[] byteGraph = graph.toGraphDef();
             ComputationReply.Builder reply = ComputationReply.newBuilder();
             reply.setMessage("Received request from " + clientId);
             reply.setGraph(ByteString.copyFrom(byteGraph));
-
             responseObserver.onNext(reply.build());
             responseObserver.onCompleted();
         }
 
+        /**
+         *
+         * @param req
+         * @param responseObserver
+         */
         @Override
         public void callValue(ComputationRequest req, StreamObserver<TensorValue> responseObserver) {
             String clientId = req.getId();
@@ -137,16 +136,98 @@ public class ComputationServer {
             int offset = req.getOffset();
             ModelZooWeights modelZooWeights = new ModelZooWeights();
             SequenceData sequenceData = modelZooWeights.getModelZoo().get(node_name);
-            if (sequenceData == null){
-                GraphZoo graphZoo = new GraphZoo();
-                Graph graph = graphZoo.getGraphZoo().get(node_name);
+            GraphZoo graphZoo = new GraphZoo();
+            if (sequenceData == null) {
+                String s = JsonUtils.readJsonFile(graphZoo.getGraphZooPath().get(node_name)
+                        .replace(".pb", ".json"));
+                TensorVarName tensorVarName = JsonUtils.jsonToMap(JSON.parseObject(s));
+                sequenceData = this.initializerSequence(tensorVarName);
             }
-
+            TensorValue.Builder reply = this.offsetStreamReply(sequenceData, offset);
+            responseObserver.onNext(reply.build());
+            responseObserver.onCompleted();
         }
 
+        /**
+         *
+         * @param request
+         * @param responseObserver
+         */
         @Override
         public void sendValue(TensorValue request, StreamObserver<ValueReply> responseObserver) {
             super.sendValue(request, responseObserver);
+        }
+
+        private Graph getGraph(String node_name) {
+            GraphZoo graphZoo = new GraphZoo();
+            Graph graph = graphZoo.getGraphZoo().get(node_name);
+            if (graph == null) {
+                try {
+                    ClassLoader classLoader = Class.forName(url + "." + node_name).getClassLoader();
+                    BaseGraph basegraph = (BaseGraph) classLoader.loadClass(url + "." + node_name).newInstance();
+                    graph = basegraph.getGraph();
+                    graphZoo.getGraphZoo().put(node_name, graph);
+                    graphZoo.getGraphZooPath().put(node_name, basegraph.pbPath);
+                } catch (Exception ClassNotFoundException) {
+                    throw new RuntimeException();
+                }
+            }
+            return graph;
+        }
+
+        /**
+         * Initialize SequenceData from TensorVarName
+         * @param tensorVarName
+         * @return SequenceData
+         */
+        private SequenceData initializerSequence(TensorVarName tensorVarName) {
+            SequenceData sequenceData = new SequenceData();
+            for (int i = 0; i < tensorVarName.getTensorName().size(); i++) {
+                List<Integer> integerList = tensorVarName.getTensorShape().get(i);
+                String tensorName = tensorVarName.getTensorName().get(i);
+                String tensorTargetName = tensorVarName.getTensorTargetName().get(i);
+                String tensorAssignName = tensorVarName.getTensorAssignName().get(i);
+                sequenceData.getTensorName().add(tensorName);
+                sequenceData.getTensorAssignName().add(tensorAssignName);
+                sequenceData.getTensorTargetName().add(tensorTargetName);
+                sequenceData.getTensorShape().add(integerList);
+                int varSize = 0;
+                if (integerList.size() == 1) {
+                    varSize = integerList.get(0);
+                }
+                if (integerList.size() == 2) {
+                    varSize = integerList.get(0) * integerList.get(1);
+                }
+                List<Float> var = new ArrayList<>(varSize);
+                for (int ii = 0; ii < varSize; ii++) {
+                    var.add(0f);
+                }
+                sequenceData.getTensorVar().add(var);
+            }
+            for (int i = 0; i < tensorVarName.getPlaceholder().size(); i++) {
+                sequenceData.getPlaceholder().add(tensorVarName.getPlaceholder().get(i));
+            }
+            return sequenceData;
+        }
+
+        /**
+         *
+         * @param sequenceData
+         * @param offset
+         * @return
+         */
+        private TensorValue.Builder offsetStreamReply(SequenceData sequenceData, int offset) {
+            TensorValue.Builder reply = TensorValue.newBuilder();
+            TrainableVarName.Builder trainableVarName = TrainableVarName.newBuilder();
+            trainableVarName.setName(sequenceData.getTensorName().get(offset));
+            trainableVarName.setTargetName(sequenceData.getTensorTargetName().get(offset));
+            reply.setValueSize(sequenceData.getTensorVar().size());
+            reply.addAllShapeArray(sequenceData.getTensorShape().get(offset));
+            reply.addAllListArray(sequenceData.getTensorVar().get(offset));
+            reply.setTrainableName(trainableVarName);
+            reply.addAllAssignName(sequenceData.getTensorAssignName());
+            reply.addAllPlaceholder(sequenceData.getPlaceholder());
+            return reply;
         }
     }
 }

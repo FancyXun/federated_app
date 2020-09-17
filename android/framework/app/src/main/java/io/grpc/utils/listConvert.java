@@ -11,8 +11,8 @@ public class listConvert {
      * @param h         2d float array height
      * @return floats of 2d float array
      */
-    public static float[][] floatConvert2D(List<Float> floatList, int w, int h) {
-        float[][] floats = new float[w][h];
+    public static float[][] floatConvert2D(List<Float> floatList, int h, int w) {
+        float[][] floats = new float[h][w];
         for (int i = 0; i < h; i++) {
             for (int j = 0; j < w; j++) {
                 floats[i][j] = floatList.get(i * w + j);

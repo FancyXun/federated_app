@@ -26,5 +26,5 @@ public class ModelZooWeights {
         ModelZooWeights.modelZoo = modelZoo;
     }
 
-    private static HashMap<String, SequenceData> modelZoo;
+    private static HashMap<String, SequenceData> modelZoo = new HashMap<>();
 }

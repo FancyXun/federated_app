@@ -57,6 +57,8 @@ message TensorValue{
   repeated float list_array = 5;
   repeated int32 shape_array = 6;
   TrainableVarName trainable_name = 7;
+  repeated string assign_name = 8;
+  repeated string placeholder = 9;
 }
 
 message TrainableVarName{

@@ -7,6 +7,7 @@ import org.tensorflow.Session;
 import org.tensorflow.Tensor;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -24,8 +25,8 @@ public class SessionRunner {
     private LocalCSVReader localCSVReader;
     private TrainableVariable trainableVariable;
     private Tensor optimizer;
-    private String optimizerName;
-    private FeedDict feedDict;
+    private String optimizerName = "loss";
+    private FeedDict feedDict = new FeedDict();
 
     public SessionRunner(Graph graph, LocalCSVReader localCSVReader, int epoch, int batchSize) {
         this.graph = graph;
@@ -33,7 +34,6 @@ public class SessionRunner {
         this.batchSize = batchSize;
         this.localCSVReader = localCSVReader;
         this.session = new Session(this.graph);
-        this.feedTrainData();
     }
 
     public SessionRunner(Graph graph, SequenceType sequenceType,
@@ -41,10 +41,12 @@ public class SessionRunner {
         this.graph = graph;
         this.epoch = epoch;
         this.localCSVReader = localCSVReader;
+        this.trainInitialize = new TrainInitialize(this.localCSVReader);
         this.VariablesProducer(sequenceType.getTensorVar(), sequenceType.getTensorName(),
-                sequenceType.getTensorTargetName(), sequenceType.getTensorShape());
+                sequenceType.getTensorTargetName(), sequenceType.getTensorShape(),
+                sequenceType.getTensorAssignName());
+        this.feedTrainData(sequenceType.getPlaceholder());
         this.session = new Session(this.graph);
-        this.feedTrainData();
     }
 
     /**
@@ -58,32 +60,35 @@ public class SessionRunner {
     private void train(TextView textView) {
         int epoch = this.epoch;
         int batchSize = this.batchSize;
-        FeedDict feedDict = this.feedDict;
-        for (int i = 0; i < epoch; i++) {
-            Session.Runner runner = this.session.runner().fetch(this.optimizerName);
-            for (String s : feedDict.getStringList()) {
-                if (feedDict.getFeed2DData().containsKey(s)) {
-                    runner = runner.feed(s, Tensor.create(feedDict.getFeed2DData().get(s)));
-                } else if (feedDict.getFeed1DData().containsKey(s)) {
-                    runner = runner.feed(s, Tensor.create(feedDict.getFeed1DData().get(s)));
-                } else {
-                    runner = runner.feed(s, Tensor.create(feedDict.getFeedInt().get(s)));
-                }
+        Session.Runner runner = this.session.runner().fetch(this.optimizerName);
+        for (String s : feedDict.getStringList()) {
+            if (feedDict.getFeed2DData().containsKey(s)) {
+                runner = runner.feed(s, Tensor.create(feedDict.getFeed2DData().get(s)));
+            } else if (feedDict.getFeed1DData().containsKey(s)) {
+                runner = runner.feed(s, Tensor.create(feedDict.getFeed1DData().get(s)));
+            } else {
+                runner = runner.feed(s, Tensor.create(feedDict.getFeedFloat().get(s)));
             }
-            this.optimizer = runner.run().get(0);
-            this.updateVariables();
-            textView.setText(String.valueOf("the cost of epoch " + i + "/" + epoch + " is: " + this.optimizer.floatValue()));
         }
+        this.optimizer = runner.run().get(0);
+        this.updateVariables();
+        textView.setText(String.valueOf("Loss is: " + this.optimizer.floatValue()));
+
     }
 
-    private void feedTrainData() {
-        this.trainInitialize = new TrainInitialize(this.localCSVReader);
+    private void feedTrainData(List<String> stringList) {
+        feedDict.setStringList(stringList);
+        feedDict.getFeedFloat().put(stringList.get(0), (float) this.trainInitialize.getX().length);
+        feedDict.getFeed2DData().put(stringList.get(1), this.trainInitialize.getX());
+        feedDict.getFeed2DData().put(stringList.get(2), this.trainInitialize.getY_oneHot());
     }
 
     private void VariablesProducer(List<List<Float>> trainableVar, List<String> trainableVarName,
-                                   List<String> targetVarName, List<List<Integer>> listShape) {
+                                   List<String> targetVarName, List<List<Integer>> listShape,
+                                   List<String> assignVarName) {
         assert this.trainInitialize != null;
-        trainableVariable = this.trainInitialize.initVar(trainableVar, trainableVarName, targetVarName, listShape);
+        trainableVariable = this.trainInitialize.initVar(trainableVar, trainableVarName,
+                targetVarName, assignVarName, listShape);
     }
 
     /**
@@ -93,9 +98,11 @@ public class SessionRunner {
         HashMap<String, String> nameMap = trainableVariable.getNameMap();
         HashMap<String, float[][]> weight = trainableVariable.getWeight();
         HashMap<String, float[]> bias = trainableVariable.getBias();
-        Set<String> weightKeySet = weight.keySet();
-        for (String s : nameMap.keySet()) {
-            if (weightKeySet.contains(s)) {
+        Set<String> keySet = new HashSet<String>();
+        keySet.addAll(weight.keySet());
+        keySet.addAll(bias.keySet());
+        for (String s : keySet) {
+            if (weight.keySet().contains(s)) {
                 this.session.runner().feed(s, Tensor.create(weight.get(s)))
                         .addTarget(nameMap.get(s))
                         .run();
@@ -113,20 +120,21 @@ public class SessionRunner {
     private void updateVariables() {
         List<String> backPropagationList = trainableVariable.getBackPropagationList();
         FeedDict feedDict = this.feedDict;
-        Session.Runner runner = null;
+        Session.Runner runner = this.session.runner();
         for (String s : feedDict.getStringList()) {
             if (feedDict.getFeed2DData().containsKey(s)) {
-                runner = this.session.runner().feed(s, Tensor.create(feedDict.getFeed2DData().get(s)));
+                runner = runner.feed(s, Tensor.create(feedDict.getFeed2DData().get(s)));
             } else if (feedDict.getFeed1DData().containsKey(s)) {
-                runner = this.session.runner().feed(s, Tensor.create(feedDict.getFeed1DData().get(s)));
+                runner = runner.feed(s, Tensor.create(feedDict.getFeed1DData().get(s)));
             } else {
-                runner = this.session.runner().feed(s, Tensor.create(feedDict.getFeedInt().get(s)));
+                runner = runner.feed(s, Tensor.create(feedDict.getFeedFloat().get(s)));
             }
         }
-
-        for (String s : backPropagationList) {
-            assert runner != null;
-            runner.addTarget(s).run();
+        HashMap<String, String> nameMap = trainableVariable.getNameMap();
+        HashMap<String, float[][]> weight = trainableVariable.getWeight();
+        HashMap<String, float[]> bias = trainableVariable.getBias();
+        for (String assignVar : backPropagationList) {
+            Tensor tensor = runner.addTarget(assignVar).run().get(0);
         }
     }
 }

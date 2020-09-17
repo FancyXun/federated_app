@@ -1,12 +1,31 @@
 package io.grpc.vo;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class SequenceType {
-    private List<List<Float>> tensorVar;
-    private List<String> tensorName;
-    private List<String> tensorTargetName;
-    private List<List<Integer>> tensorShape;
+    private List<List<Float>> tensorVar = new ArrayList<>();
+    private List<String> tensorName = new ArrayList<>();
+    private List<String> tensorTargetName = new ArrayList<>();
+    private List<List<Integer>> tensorShape = new ArrayList<>();
+    private List<String> tensorAssignName = new ArrayList<>();
+    private List<String> placeholder = new ArrayList<>();
+
+    public List<String> getTensorAssignName() {
+        return tensorAssignName;
+    }
+
+    public void setTensorAssignName(List<String> tensorAssignName) {
+        this.tensorAssignName = tensorAssignName;
+    }
+
+    public List<String> getPlaceholder() {
+        return placeholder;
+    }
+
+    public void setPlaceholder(List<String> placeholder) {
+        this.placeholder = placeholder;
+    }
 
     public List<List<Float>> getTensorVar() {
         return tensorVar;

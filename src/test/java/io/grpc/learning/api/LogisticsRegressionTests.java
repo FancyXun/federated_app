@@ -107,7 +107,7 @@ public class LogisticsRegressionTests {
                         .feed(tensorVarName.getPlaceholder().get(2), Tensor.create(y))
                         .addTarget(tensorVarName.getTensorAssignName().get(j)).run();
             }
-            System.out.println("cost:" + tensor.floatValue());
+            System.out.println("loss:" + tensor.floatValue());
 
         }
 

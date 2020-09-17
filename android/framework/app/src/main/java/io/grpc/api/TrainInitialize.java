@@ -11,11 +11,36 @@ import io.grpc.vo.TrainableVariable;
 public class TrainInitialize implements GraphInitialize {
     private float[][] x;
     private float[][] y_oneHot;
+
+    public float[][] getX() {
+        return x;
+    }
+
+    public void setX(float[][] x) {
+        this.x = x;
+    }
+
+    public float[][] getY_oneHot() {
+        return y_oneHot;
+    }
+
+    public void setY_oneHot(float[][] y_oneHot) {
+        this.y_oneHot = y_oneHot;
+    }
+
+    public float[] getY() {
+        return y;
+    }
+
+    public void setY(float[] y) {
+        this.y = y;
+    }
+
     private float[] y;
     private TrainableVariable trainableVariable;
-    private HashMap<String, float[][]> weight;
-    private HashMap<String, float[]> bias;
-    private HashMap<String, String> nameMap;
+    private HashMap<String, float[][]> weight = new HashMap<>();
+    private HashMap<String, float[]> bias = new HashMap<>();
+    private HashMap<String, String> nameMap = new HashMap<>();
 
     public TrainInitialize(LocalCSVReader localCSVReader) {
         this.x = localCSVReader.getX();
@@ -34,7 +59,8 @@ public class TrainInitialize implements GraphInitialize {
      * @param listShape
      */
     public TrainableVariable initVar(List<List<Float>> trainableVar, List<String> trainableVarName,
-                        List<String> targetVarName, List<List<Integer>> listShape) {
+                        List<String> targetVarName, List<String> assignVarName,
+                                     List<List<Integer>> listShape) {
         TrainableVariable trainableVariable = new TrainableVariable();
         Iterator trainableVarIterator = trainableVar.iterator();
         Iterator trainableVarNameIterator = trainableVarName.iterator();
@@ -59,6 +85,7 @@ public class TrainInitialize implements GraphInitialize {
         trainableVariable.setWeight(this.weight);
         trainableVariable.setBias(this.bias);
         trainableVariable.setNameMap(nameMap);
+        trainableVariable.setBackPropagationList(assignVarName);
         return trainableVariable;
     }
 

@@ -1,12 +1,22 @@
 package io.grpc.vo;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
 public class FeedDict {
-    private HashMap<String, float[][]> feed2DData;
-    private HashMap<String, float[]> feed1DData;
-    private HashMap<String, Integer> feedInt;
+    private HashMap<String, float[][]> feed2DData = new HashMap<>();
+    private HashMap<String, float[]> feed1DData = new HashMap<>();
+
+    public HashMap<String, Float> getFeedFloat() {
+        return feedFloat;
+    }
+
+    public void setFeedFloat(HashMap<String, Float> feedFloat) {
+        this.feedFloat = feedFloat;
+    }
+
+    private HashMap<String, Float> feedFloat = new HashMap<>();
 
     public List<String> getStringList() {
         return stringList;
@@ -16,7 +26,7 @@ public class FeedDict {
         this.stringList = stringList;
     }
 
-    private List<String> stringList;
+    private List<String> stringList = new ArrayList<>();
 
     public HashMap<String, float[][]> getFeed2DData() {
         return feed2DData;
@@ -34,11 +44,5 @@ public class FeedDict {
         this.feed1DData = feed1DData;
     }
 
-    public HashMap<String, Integer> getFeedInt() {
-        return feedInt;
-    }
 
-    public void setFeedInt(HashMap<String, Integer> feedInt) {
-        this.feedInt = feedInt;
-    }
 }

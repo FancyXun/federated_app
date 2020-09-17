@@ -3,7 +3,6 @@ package io.grpc.computation;
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.Context;
-import android.os.AsyncTask;
 import android.widget.Button;
 import android.widget.TextView;
 
@@ -20,7 +19,6 @@ import io.grpc.api.SessionRunner;
 import io.grpc.learning.computation.ComputationGrpc;
 import io.grpc.learning.computation.ComputationReply;
 import io.grpc.learning.computation.ComputationRequest;
-import io.grpc.learning.computation.TensorValue;
 import io.grpc.utils.LocalCSVReader;
 import io.grpc.utils.StateInfo;
 import io.grpc.vo.SequenceType;
@@ -34,7 +32,7 @@ public class TrainingTask {
         @SuppressLint("StaticFieldLeak")
         private TextView textView;
         private StateInfo stateInfo;
-        private String host = "52.81.112.107";
+        private String host = "10.1.199.38";
         private int port = 50051;
 
         protected LocalTrainingTask(Activity activity, Context context, TextView textView) {

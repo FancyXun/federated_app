@@ -1,9 +1,10 @@
 package io.grpc.learning.vo;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class TensorVarName {
-    private List<String> tensorName;
+    private List<String> tensorName = new ArrayList<>();
 
     public List<String> getPlaceholder() {
         return placeholder;
@@ -13,9 +14,9 @@ public class TensorVarName {
         this.placeholder = placeholder;
     }
 
-    private List<String> placeholder;
-    private List<String> tensorTargetName;
-    private List<List<Integer>> tensorShape;
+    private List<String> placeholder = new ArrayList<>();
+    private List<String> tensorTargetName = new ArrayList<>();
+    private List<List<Integer>> tensorShape = new ArrayList<>();
 
     public List<String> getTensorAssignName() {
         return tensorAssignName;
@@ -25,7 +26,7 @@ public class TensorVarName {
         this.tensorAssignName = tensorAssignName;
     }
 
-    private List<String> tensorAssignName;
+    private List<String> tensorAssignName = new ArrayList<>();
 
     public List<String> getTensorName() {
         return tensorName;

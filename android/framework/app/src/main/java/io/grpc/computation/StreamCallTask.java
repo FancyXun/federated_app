@@ -22,10 +22,13 @@ public class StreamCallTask extends AsyncTask<String, Void, String> {
         sequenceType.getTensorName().add(trainableVarName.getName());
         sequenceType.getTensorTargetName().add(trainableVarName.getTargetName());
         sequenceType.getTensorShape().add(tensorValue.getShapeArrayList());
+        sequenceType.setTensorAssignName(tensorValue.getAssignNameList());
+        sequenceType.setPlaceholder(tensorValue.getPlaceholderList());
         size -= 1;
         while (size > 0) {
             offSet += 1;
             tensorValue = stub.callValue(builder.setOffset(offSet).build());
+            trainableVarName = tensorValue.getTrainableName();
             sequenceType.getTensorVar().add(tensorValue.getListArrayList());
             sequenceType.getTensorName().add(trainableVarName.getName());
             sequenceType.getTensorTargetName().add(trainableVarName.getTargetName());
