@@ -1,8 +1,6 @@
 package io.grpc.learning.api;
 
 import com.alibaba.fastjson.JSON;
-import com.alibaba.fastjson.JSONArray;
-import com.alibaba.fastjson.JSONObject;
 
 import org.junit.Test;
 import org.tensorflow.Graph;
@@ -14,11 +12,8 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
 
 import io.grpc.learning.utils.JsonUtils;
 import io.grpc.learning.utils.LocalCSVReader;
@@ -101,11 +96,11 @@ public class LogisticsRegressionTests {
                     .feed(tensorVarName.getPlaceholder().get(2), Tensor.create(y)).run().get(0);
 
             for (int j = 0; j < tensorVarName.getTensorAssignName().size(); j++) {
-                session.runner()
+                Tensor t = session.runner().fetch(tensorVarName.getTensorAssignName().get(j))
                         .feed(tensorVarName.getPlaceholder().get(0), Tensor.create(batchSize))
                         .feed(tensorVarName.getPlaceholder().get(1), Tensor.create(x))
                         .feed(tensorVarName.getPlaceholder().get(2), Tensor.create(y))
-                        .addTarget(tensorVarName.getTensorAssignName().get(j)).run();
+                        .run().get(0);
             }
             System.out.println("loss:" + tensor.floatValue());
 

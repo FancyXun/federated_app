@@ -52,18 +52,27 @@ public class JsonUtils {
         List<String> placeholderName = new ArrayList<>();
         List<String> tensorTargetName = new ArrayList<>();
         List<List<Integer>> tensorShape = new ArrayList<>();
+        List<List<Integer>> tensorAssignShape = new ArrayList<>();
         List<String> tensorAssignName = new ArrayList<>();
         TensorVarName tensorVarName = new TensorVarName();
-        JSONArray jsonArray = jsonObject.getJSONArray(assignTarget);
-        JSONArray jsonArray1 = jsonObject.getJSONArray(placeholder);
-        for (int i = 0; i < jsonArray1.size(); i++) {
-            placeholderName.add((String) jsonArray1.get(i));
+        Set<Map.Entry<String, Object>> assignTargetSet = jsonObject.getJSONObject(assignTarget).entrySet();
+        for (Iterator<Map.Entry<String, Object>> it = assignTargetSet.iterator(); it.hasNext(); ) {
+            Map.Entry<String, Object> var = it.next();
+            List<Integer> integerList = new ArrayList<>();
+            tensorAssignName.add(var.getKey());
+            JSONObject obj = (JSONObject) var.getValue();
+            JSONArray shapeList = obj.getJSONArray(shape);
+            for (int i = 0; i < shapeList.size(); i++) {
+                integerList.add(Integer.parseInt((String) shapeList.get(i)));
+            }
+            tensorAssignShape.add(integerList);
         }
+        JSONArray jsonArray = jsonObject.getJSONArray(placeholder);
         for (int i = 0; i < jsonArray.size(); i++) {
-            tensorAssignName.add((String) jsonArray.get(i));
+            placeholderName.add((String) jsonArray.get(i));
         }
-        Set<Map.Entry<String, Object>> entrySet = jsonObject.getJSONObject(varTarget).entrySet();
-        for (Iterator<Map.Entry<String, Object>> it = entrySet.iterator(); it.hasNext(); ) {
+        Set<Map.Entry<String, Object>> varTargetSet = jsonObject.getJSONObject(varTarget).entrySet();
+        for (Iterator<Map.Entry<String, Object>> it = varTargetSet.iterator(); it.hasNext(); ) {
             Map.Entry<String, Object> var = it.next();
             List<Integer> integerList = new ArrayList<>();
             tensorTargetName.add(var.getKey());

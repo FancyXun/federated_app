@@ -5,6 +5,19 @@ import java.util.List;
 
 public class TensorVarName {
     private List<String> tensorName = new ArrayList<>();
+    private List<String> placeholder = new ArrayList<>();
+    private List<String> tensorTargetName = new ArrayList<>();
+    private List<List<Integer>> tensorShape = new ArrayList<>();
+    private List<List<Integer>> tensorAssignShape = new ArrayList<>();
+    private List<String> tensorAssignName = new ArrayList<>();
+
+    public List<List<Integer>> getTensorAssignShape() {
+        return tensorAssignShape;
+    }
+
+    public void setTensorAssignShape(List<List<Integer>> tensorAssignShape) {
+        this.tensorAssignShape = tensorAssignShape;
+    }
 
     public List<String> getPlaceholder() {
         return placeholder;
@@ -14,9 +27,7 @@ public class TensorVarName {
         this.placeholder = placeholder;
     }
 
-    private List<String> placeholder = new ArrayList<>();
-    private List<String> tensorTargetName = new ArrayList<>();
-    private List<List<Integer>> tensorShape = new ArrayList<>();
+
 
     public List<String> getTensorAssignName() {
         return tensorAssignName;
@@ -26,7 +37,7 @@ public class TensorVarName {
         this.tensorAssignName = tensorAssignName;
     }
 
-    private List<String> tensorAssignName = new ArrayList<>();
+
 
     public List<String> getTensorName() {
         return tensorName;

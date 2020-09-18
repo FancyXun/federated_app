@@ -24,11 +24,12 @@ class Model(object):
     def assign_var(self, target_var):
         assert len(self.var) == len(target_var)
         assert self.graph is not None
-        bp_target = []
+        bp_target = {}
         for i, j in zip(self.var, target_var):
             name = i.op.name + "_" + str(time.time()).replace(".", "")
             i.assign(j, name=name)
-            bp_target.append(name)
+            bp_target[name] = {}
+            bp_target[name]['shape'] = [str(i.value) for i in list(i.shape)]
         self.write_json(bp_target)
         self.write_pb()
 
@@ -52,7 +53,7 @@ class Model(object):
                     init_var_target[key] = {"parentNode": v,
                                             "shape": [i['size'] for i in var[v]['dim']]}
                     break
-        for i in assign_target:
+        for i in assign_target.keys():
             init_var_target.pop(i)
         var_name = {
             "placeholder": self.placeholder_name,
