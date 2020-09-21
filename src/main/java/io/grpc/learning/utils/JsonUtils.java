@@ -89,6 +89,7 @@ public class JsonUtils {
         tensorVarName.setTensorShape(tensorShape);
         tensorVarName.setPlaceholder(placeholderName);
         tensorVarName.setTensorAssignName(tensorAssignName);
+        tensorVarName.setTensorAssignShape(tensorAssignShape);
         return tensorVarName;
     }
 }

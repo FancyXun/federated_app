@@ -2,10 +2,13 @@ package io.grpc.computation;
 
 import android.os.AsyncTask;
 
+import java.util.List;
+
 import io.grpc.learning.computation.ComputationGrpc;
 import io.grpc.learning.computation.ComputationRequest;
 import io.grpc.learning.computation.TensorValue;
 import io.grpc.learning.computation.TrainableVarName;
+import io.grpc.learning.computation.ValueReply;
 import io.grpc.vo.SequenceType;
 
 public class StreamCallTask extends AsyncTask<String, Void, String> {
@@ -22,6 +25,7 @@ public class StreamCallTask extends AsyncTask<String, Void, String> {
         sequenceType.getTensorName().add(trainableVarName.getName());
         sequenceType.getTensorTargetName().add(trainableVarName.getTargetName());
         sequenceType.getTensorShape().add(tensorValue.getShapeArrayList());
+        sequenceType.getTensorAssignShape().add(tensorValue.getAssignShapeArrayList());
         sequenceType.setTensorAssignName(tensorValue.getAssignNameList());
         sequenceType.setPlaceholder(tensorValue.getPlaceholderList());
         size -= 1;
@@ -33,9 +37,23 @@ public class StreamCallTask extends AsyncTask<String, Void, String> {
             sequenceType.getTensorName().add(trainableVarName.getName());
             sequenceType.getTensorTargetName().add(trainableVarName.getTargetName());
             sequenceType.getTensorShape().add(tensorValue.getShapeArrayList());
+            sequenceType.getTensorAssignShape().add(tensorValue.getAssignShapeArrayList());
             size -= 1;
         }
         return sequenceType;
+    }
+
+    public boolean upload(ComputationGrpc.ComputationBlockingStub stub,
+                          TensorValue.Builder tensorValueBuilder, List<List<Float>> lists){
+        boolean uploaded = false;
+        for (int i =0 ; i< lists.size(); i++){
+            tensorValueBuilder.setOffset(i)
+                    .setValueSize(lists.size());
+            tensorValueBuilder.addAllListArray(lists.get(i));
+            ValueReply valueReply = stub.sendValue(tensorValueBuilder.build());
+            uploaded = valueReply.getMessage();
+        }
+        return uploaded;
     }
 
     @Override

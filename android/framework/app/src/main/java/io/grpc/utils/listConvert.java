@@ -1,5 +1,6 @@
 package io.grpc.utils;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class listConvert {
@@ -24,8 +25,26 @@ public class listConvert {
     public static float[] floatConvert(List<Float> floatList, int listLen) {
         float[] floats = new float[listLen];
         for (int i = 0; i < listLen; i++) {
-                floats[i] = floatList.get(i);
+            floats[i] = floatList.get(i);
         }
         return floats;
+    }
+
+    public static List<Float> listConvert2D(float[][] floats) {
+        List<Float> floatList = new ArrayList<>();
+        for (int i = 0; i < floats.length; i++) {
+            for (int j = 0; j < floats[0].length; j++) {
+                floatList.add(floats[i][j]);
+            }
+        }
+        return floatList;
+    }
+
+    public static List<Float> listConvert(float[] floats) {
+        List<Float> floatList = new ArrayList<>();
+        for (int i = 0; i < floats.length; i++) {
+            floatList.add(floats[i]);
+        }
+        return floatList;
     }
 }

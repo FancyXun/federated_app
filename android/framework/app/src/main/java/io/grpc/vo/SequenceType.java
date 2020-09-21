@@ -8,6 +8,16 @@ public class SequenceType {
     private List<String> tensorName = new ArrayList<>();
     private List<String> tensorTargetName = new ArrayList<>();
     private List<List<Integer>> tensorShape = new ArrayList<>();
+
+    public List<List<Integer>> getTensorAssignShape() {
+        return tensorAssignShape;
+    }
+
+    public void setTensorAssignShape(List<List<Integer>> tensorAssignShape) {
+        this.tensorAssignShape = tensorAssignShape;
+    }
+
+    private List<List<Integer>> tensorAssignShape = new ArrayList<>();
     private List<String> tensorAssignName = new ArrayList<>();
     private List<String> placeholder = new ArrayList<>();
 

@@ -31,7 +31,6 @@ import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.util.ArrayList;
 import java.util.Enumeration;
-import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
@@ -132,30 +131,39 @@ public class ComputationServer {
         @Override
         public void callValue(ComputationRequest req, StreamObserver<TensorValue> responseObserver) {
             String clientId = req.getId();
-            String node_name = req.getNodeName();
+            String nodeName = req.getNodeName();
             int offset = req.getOffset();
             ModelZooWeights modelZooWeights = new ModelZooWeights();
-            SequenceData sequenceData = modelZooWeights.getModelZoo().get(node_name);
+            SequenceData sequenceData = modelZooWeights.getModelZoo().get(nodeName);
             GraphZoo graphZoo = new GraphZoo();
             if (sequenceData == null) {
-                String s = JsonUtils.readJsonFile(graphZoo.getGraphZooPath().get(node_name)
+                String s = JsonUtils.readJsonFile(graphZoo.getGraphZooPath().get(nodeName)
                         .replace(".pb", ".json"));
                 TensorVarName tensorVarName = JsonUtils.jsonToMap(JSON.parseObject(s));
                 sequenceData = this.initializerSequence(tensorVarName);
+                modelZooWeights.getModelZoo().put(nodeName, sequenceData);
             }
+
             TensorValue.Builder reply = this.offsetStreamReply(sequenceData, offset);
             responseObserver.onNext(reply.build());
             responseObserver.onCompleted();
         }
 
         /**
-         *
          * @param request
          * @param responseObserver
          */
         @Override
         public void sendValue(TensorValue request, StreamObserver<ValueReply> responseObserver) {
-            super.sendValue(request, responseObserver);
+            int offset = request.getOffset();
+            int valueSize = request.getValueSize();
+            ModelZooWeights modelZooWeights = new ModelZooWeights();
+            String nodeName = request.getNodeName();
+            SequenceData sequenceData = modelZooWeights.getModelZoo().get(nodeName);
+            sequenceData.getTensorVar().set(offset,request.getListArrayList());
+            ValueReply.Builder reply = ValueReply.newBuilder().setMessage(true);
+            responseObserver.onNext(reply.build());
+            responseObserver.onCompleted();
         }
 
         private Graph getGraph(String node_name) {
@@ -184,6 +192,7 @@ public class ComputationServer {
             SequenceData sequenceData = new SequenceData();
             for (int i = 0; i < tensorVarName.getTensorName().size(); i++) {
                 List<Integer> integerList = tensorVarName.getTensorShape().get(i);
+                List<Integer> integerList1 = tensorVarName.getTensorAssignShape().get(i);
                 String tensorName = tensorVarName.getTensorName().get(i);
                 String tensorTargetName = tensorVarName.getTensorTargetName().get(i);
                 String tensorAssignName = tensorVarName.getTensorAssignName().get(i);
@@ -191,6 +200,7 @@ public class ComputationServer {
                 sequenceData.getTensorAssignName().add(tensorAssignName);
                 sequenceData.getTensorTargetName().add(tensorTargetName);
                 sequenceData.getTensorShape().add(integerList);
+                sequenceData.getTensorAssignShape().add(integerList1);
                 int varSize = 0;
                 if (integerList.size() == 1) {
                     varSize = integerList.get(0);
@@ -227,6 +237,7 @@ public class ComputationServer {
             reply.setTrainableName(trainableVarName);
             reply.addAllAssignName(sequenceData.getTensorAssignName());
             reply.addAllPlaceholder(sequenceData.getPlaceholder());
+            reply.addAllAssignShapeArray(sequenceData.getTensorAssignShape().get(offset));
             return reply;
         }
     }

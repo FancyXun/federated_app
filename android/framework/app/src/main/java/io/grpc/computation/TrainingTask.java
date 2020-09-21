@@ -11,6 +11,7 @@ import org.tensorflow.Graph;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.lang.ref.WeakReference;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import io.grpc.ManagedChannel;
@@ -19,6 +20,7 @@ import io.grpc.api.SessionRunner;
 import io.grpc.learning.computation.ComputationGrpc;
 import io.grpc.learning.computation.ComputationReply;
 import io.grpc.learning.computation.ComputationRequest;
+import io.grpc.learning.computation.TensorValue;
 import io.grpc.utils.LocalCSVReader;
 import io.grpc.utils.StateInfo;
 import io.grpc.vo.SequenceType;
@@ -32,7 +34,7 @@ public class TrainingTask {
         @SuppressLint("StaticFieldLeak")
         private TextView textView;
         private StateInfo stateInfo;
-        private String host = "10.1.199.38";
+        private String host = "192.168.199.181";
         private int port = 50051;
 
         protected LocalTrainingTask(Activity activity, Context context, TextView textView) {
@@ -65,10 +67,13 @@ public class TrainingTask {
                 // Load data
                 LocalCSVReader localCSVReader = new LocalCSVReader(
                         this.context, dataPath, 0, "target");
-                new SessionRunner(graph, sequenceType, localCSVReader, epoch)
-                        .invoke(this.textView);
+                SessionRunner runner = new SessionRunner(graph, sequenceType, localCSVReader, epoch);
+                List<List<Float>> tensorVar = runner.invoke(this.textView);
+                TensorValue.Builder tensorValueBuilder = TensorValue.newBuilder()
+                        .setId(local_id).setNodeName("LogisticsRegression");
+                boolean uploaded = this.upload(stub, tensorValueBuilder, tensorVar);
                 this.stateInfo.setStateCode(1);
-                return "Training finished";
+                return "Loss is: " + runner.getLoss();
             } catch (Exception e) {
                 StringWriter sw = new StringWriter();
                 PrintWriter pw = new PrintWriter(sw);

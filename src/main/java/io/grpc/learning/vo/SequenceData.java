@@ -28,6 +28,16 @@ public class SequenceData {
 
     private List<List<Integer>> tensorShape = new ArrayList<>();
 
+    public List<List<Integer>> getTensorAssignShape() {
+        return tensorAssignShape;
+    }
+
+    public void setTensorAssignShape(List<List<Integer>> tensorAssignShape) {
+        this.tensorAssignShape = tensorAssignShape;
+    }
+
+    private List<List<Integer>> tensorAssignShape = new ArrayList<>();
+
     public List<List<Float>> getTensorVar() {
         return tensorVar;
     }

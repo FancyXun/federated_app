@@ -56,9 +56,11 @@ message TensorValue{
   int32 offset = 4;
   repeated float list_array = 5;
   repeated int32 shape_array = 6;
+  repeated int32 assign_shape_array = 10;
   TrainableVarName trainable_name = 7;
   repeated string assign_name = 8;
   repeated string placeholder = 9;
+  string node_name = 11;
 }
 
 message TrainableVarName{
