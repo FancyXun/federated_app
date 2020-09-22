@@ -2,15 +2,15 @@ package io.grpc.learning.vo;
 
 import java.util.HashMap;
 
-public class ModelZooWeights {
+public class ModelWeightsZoo {
 
-    private volatile static ModelZooWeights instance = null;
+    private volatile static ModelWeightsZoo instance = null;
 
-    public static ModelZooWeights getInstance() {
+    public static ModelWeightsZoo getInstance() {
         if (instance == null) {
-            synchronized (ModelZooWeights.class) {
+            synchronized (ModelWeightsZoo.class) {
                 if (instance == null) {
-                    instance = new ModelZooWeights();
+                    instance = new ModelWeightsZoo();
                 }
             }
 
@@ -23,7 +23,7 @@ public class ModelZooWeights {
     }
 
     public void setModelZoo(HashMap<String, SequenceData> modelZoo) {
-        ModelZooWeights.modelZoo = modelZoo;
+        ModelWeightsZoo.modelZoo = modelZoo;
     }
 
     private static HashMap<String, SequenceData> modelZoo = new HashMap<>();

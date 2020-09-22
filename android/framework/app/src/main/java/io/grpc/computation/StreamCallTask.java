@@ -40,6 +40,7 @@ public class StreamCallTask extends AsyncTask<String, Void, String> {
             sequenceType.getTensorAssignShape().add(tensorValue.getAssignShapeArrayList());
             size -= 1;
         }
+        offSet = 0;
         return sequenceType;
     }
 

@@ -36,10 +36,9 @@ public class ComputationActivity extends AppCompatActivity {
 
     private Button trainButton;
     private TextView resultText;
-    private EditText hostEdit;
-    private EditText portEdit;
     private EditText epoch;
     private Spinner data;
+    private Spinner model;
     private static final String DATA_FILE = "file:///android_asset/bank_zhongyuan/test_data1.csv";
     private Context context;
     private static String local_id = UUID.randomUUID().toString().replaceAll("-", "");
@@ -49,10 +48,9 @@ public class ComputationActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_computation);
         trainButton = (Button) findViewById(R.id.train_button);
-        hostEdit = (EditText) findViewById(R.id.host_edit_text);
-        portEdit = (EditText) findViewById(R.id.port_edit_text);
         epoch = (EditText) findViewById(R.id.epoch);
         data = (Spinner) findViewById(R.id.data);
+        model = (Spinner) findViewById(R.id.model);
         resultText = (TextView) findViewById(R.id.server_response_text);
         resultText.setMovementMethod(new ScrollingMovementMethod());
         this.context = getApplicationContext();
@@ -68,7 +66,8 @@ public class ComputationActivity extends AppCompatActivity {
         new TrainingTask.LocalTrainingTask(this, this.context, this.resultText).execute(
                 local_id,
                 (String) data.getSelectedItem(),
-                epoch.getText().toString()
+                epoch.getText().toString(),
+                (String) model.getSelectedItem()
                 );
     }
 

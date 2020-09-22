@@ -34,7 +34,7 @@ public class TrainingTask {
         @SuppressLint("StaticFieldLeak")
         private TextView textView;
         private StateInfo stateInfo;
-        private String host = "192.168.199.181";
+        private String host = "192.168.50.38";
         private int port = 50051;
 
         protected LocalTrainingTask(Activity activity, Context context, TextView textView) {
@@ -47,33 +47,14 @@ public class TrainingTask {
         @SuppressLint("WrongThread")
         @Override
         protected String doInBackground(String... params) {
-            String local_id = params[0];
-            String dataPath = params[1];
             int epoch = Integer.parseInt(params[2]);
+            float loss = 0;
             try {
-                channel = ManagedChannelBuilder
-                        .forAddress(this.host, this.port)
-                        .usePlaintext().build();
-                ComputationGrpc.ComputationBlockingStub stub = ComputationGrpc.newBlockingStub(channel);
-                ComputationRequest.Builder builder = ComputationRequest.newBuilder().setId(local_id)
-                        .setNodeName("LogisticsRegression");
-                ComputationReply reply = stub.call( builder.build());
-                Graph graph = new Graph();
-                // Get graph from server
-                // todo: implement bp in android device,
-                graph.importGraphDef(reply.getGraph().toByteArray());
-                // Get model weights from server
-                SequenceType sequenceType = this.SequenceCall(stub, builder);
-                // Load data
-                LocalCSVReader localCSVReader = new LocalCSVReader(
-                        this.context, dataPath, 0, "target");
-                SessionRunner runner = new SessionRunner(graph, sequenceType, localCSVReader, epoch);
-                List<List<Float>> tensorVar = runner.invoke(this.textView);
-                TensorValue.Builder tensorValueBuilder = TensorValue.newBuilder()
-                        .setId(local_id).setNodeName("LogisticsRegression");
-                boolean uploaded = this.upload(stub, tensorValueBuilder, tensorVar);
-                this.stateInfo.setStateCode(1);
-                return "Loss is: " + runner.getLoss();
+                while (epoch > 0) {
+                    loss = this.runOneRound(params);
+                    epoch -= 1;
+                }
+                return "Loss is: " + loss;
             } catch (Exception e) {
                 StringWriter sw = new StringWriter();
                 PrintWriter pw = new PrintWriter(sw);
@@ -98,6 +79,36 @@ public class TrainingTask {
             Button train_button = (Button) activity.findViewById(R.id.train_button);
             resultText.setText(result);
             train_button.setEnabled(true);
+        }
+
+        protected float runOneRound(String... params) {
+            String local_id = params[0];
+            String dataPath = params[1];
+            int epoch = Integer.parseInt(params[2]);
+            String modelName = params[3];
+            channel = ManagedChannelBuilder
+                    .forAddress(this.host, this.port)
+                    .usePlaintext().build();
+            ComputationGrpc.ComputationBlockingStub stub = ComputationGrpc.newBlockingStub(channel);
+            ComputationRequest.Builder builder = ComputationRequest.newBuilder().setId(local_id)
+                    .setNodeName(modelName);
+            ComputationReply reply = stub.call(builder.build());
+            Graph graph = new Graph();
+            // Get graph from server
+            // todo: implement bp in android device,
+            graph.importGraphDef(reply.getGraph().toByteArray());
+            // Get model weights from server
+            SequenceType sequenceType = this.SequenceCall(stub, builder);
+            // Load data
+            LocalCSVReader localCSVReader = new LocalCSVReader(
+                    this.context, dataPath, 0, "target");
+            SessionRunner runner = new SessionRunner(graph, sequenceType, localCSVReader, epoch);
+            List<List<Float>> tensorVar = runner.invoke(this.textView);
+            TensorValue.Builder tensorValueBuilder = TensorValue.newBuilder()
+                    .setId(local_id).setNodeName(modelName);
+            boolean uploaded = this.upload(stub, tensorValueBuilder, tensorVar);
+            this.stateInfo.setStateCode(1);
+            return runner.getLoss();
         }
     }
 }

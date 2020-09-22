@@ -7,31 +7,6 @@
 
     <LinearLayout
 
-        android:layout_marginTop="10dp"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal">
-
-        <EditText
-            android:id="@+id/host_edit_text"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="2"
-            android:hint="Enter Host"
-            android:text="52.81.112.107" />
-
-        <EditText
-            android:id="@+id/port_edit_text"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:hint="Enter Port"
-            android:inputType="numberDecimal"
-            android:text="50051" />
-    </LinearLayout>
-
-    <LinearLayout
-
         android:layout_marginTop="20dp"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -40,7 +15,7 @@
             android:layout_weight="1"
             android:layout_height="wrap_content"
             android:scrollbars="vertical"
-            android:text="Data URL:"
+            android:text="本地数据 "
             android:textSize="16sp"
             android:layout_width="0dp" />
         <Spinner
@@ -61,7 +36,7 @@
             android:layout_weight="1"
             android:layout_height="wrap_content"
             android:scrollbars="vertical"
-            android:text="Loacl Epoch:"
+            android:text="训练轮次"
             android:textSize="16sp"
             android:layout_width="0dp" />
         <EditText
@@ -75,6 +50,27 @@
 
     </LinearLayout>
 
+    <LinearLayout
+
+        android:layout_marginTop="20dp"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
+        <TextView
+            android:layout_weight="1"
+            android:layout_height="wrap_content"
+            android:scrollbars="vertical"
+            android:text="模型选择 "
+            android:textSize="16sp"
+            android:layout_width="0dp" />
+        <Spinner
+            android:layout_weight="2"
+            android:id="@+id/model"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:entries="@array/model" />
+
+    </LinearLayout>
 
     <Button
 
@@ -83,7 +79,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:onClick="Training"
-        android:text="Local Training" />
+        android:text="联邦训练" />
 
     <TextView
 

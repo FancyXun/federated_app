@@ -12,4 +12,8 @@
         <item>bank_zhongyuan/test_data9.csv</item>
         <item>bank_zhongyuan/test_data10.csv</item>
     </string-array>
+
+    <string-array name="model">
+        <item>LogisticsRegression</item>
+    </string-array>
 </resources>

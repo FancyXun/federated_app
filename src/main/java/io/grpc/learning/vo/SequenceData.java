@@ -14,9 +14,6 @@ public class SequenceData {
         return tensorAssignName;
     }
 
-    public void setTensorAssignName(List<String> tensorAssignName) {
-        this.tensorAssignName = tensorAssignName;
-    }
 
     public List<String> getPlaceholder() {
         return placeholder;
@@ -32,9 +29,6 @@ public class SequenceData {
         return tensorAssignShape;
     }
 
-    public void setTensorAssignShape(List<List<Integer>> tensorAssignShape) {
-        this.tensorAssignShape = tensorAssignShape;
-    }
 
     private List<List<Integer>> tensorAssignShape = new ArrayList<>();
 
@@ -42,33 +36,48 @@ public class SequenceData {
         return tensorVar;
     }
 
-    public void setTensorVar(List<List<Float>> tensorVar) {
-        this.tensorVar = tensorVar;
-    }
 
     public List<String> getTensorName() {
         return tensorName;
     }
 
-    public void setTensorName(List<String> tensorName) {
-        this.tensorName = tensorName;
-    }
 
     public List<String> getTensorTargetName() {
         return tensorTargetName;
     }
 
-    public void setTensorTargetName(List<String> tensorTargetName) {
-        this.tensorTargetName = tensorTargetName;
-    }
 
     public List<List<Integer>> getTensorShape() {
         return tensorShape;
     }
 
-    public void setTensorShape(List<List<Integer>> tensorShape) {
-        this.tensorShape = tensorShape;
+    public void assignTensorVar(TensorVarName tensorVarName){
+        for (int i = 0; i < tensorVarName.getTensorName().size(); i++) {
+            List<Integer> integerList = tensorVarName.getTensorShape().get(i);
+            List<Integer> integerList1 = tensorVarName.getTensorAssignShape().get(i);
+            this.getTensorName().add(tensorVarName.getTensorName().get(i));
+            this.getTensorAssignName().add(tensorVarName.getTensorAssignName().get(i));
+            this.getTensorTargetName().add(tensorVarName.getTensorTargetName().get(i));
+            this.getTensorShape().add(integerList);
+            this.getTensorAssignShape().add(integerList1);
+            int varSize = 0;
+            if (integerList.size() == 1) {
+                varSize = integerList.get(0);
+            }
+            if (integerList.size() == 2) {
+                varSize = integerList.get(0) * integerList.get(1);
+            }
+            List<Float> var = new ArrayList<>(varSize);
+            for (int ii = 0; ii < varSize; ii++) {
+                var.add(0f);
+            }
+            this.getTensorVar().add(var);
+        }
+        for (int i = 0; i < tensorVarName.getPlaceholder().size(); i++) {
+            this.getPlaceholder().add(tensorVarName.getPlaceholder().get(i));
+        }
     }
+
 
 
 }
