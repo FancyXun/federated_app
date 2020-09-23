@@ -44,10 +44,12 @@ public class StreamCallTask extends AsyncTask<String, Void, String> {
         return sequenceType;
     }
 
-    public boolean upload(ComputationGrpc.ComputationBlockingStub stub,
-                          TensorValue.Builder tensorValueBuilder, List<List<Float>> lists){
+    public boolean upload(ComputationGrpc.ComputationBlockingStub stub, String localId,
+                          String modelName, List<List<Float>> lists){
         boolean uploaded = false;
         for (int i =0 ; i< lists.size(); i++){
+            TensorValue.Builder tensorValueBuilder = TensorValue.newBuilder()
+                    .setId(localId).setNodeName(modelName);
             tensorValueBuilder.setOffset(i)
                     .setValueSize(lists.size());
             tensorValueBuilder.addAllListArray(lists.get(i));

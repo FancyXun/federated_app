@@ -82,7 +82,7 @@ public class TrainingTask {
         }
 
         protected float runOneRound(String... params) {
-            String local_id = params[0];
+            String localId = params[0];
             String dataPath = params[1];
             int epoch = Integer.parseInt(params[2]);
             String modelName = params[3];
@@ -90,7 +90,7 @@ public class TrainingTask {
                     .forAddress(this.host, this.port)
                     .usePlaintext().build();
             ComputationGrpc.ComputationBlockingStub stub = ComputationGrpc.newBlockingStub(channel);
-            ComputationRequest.Builder builder = ComputationRequest.newBuilder().setId(local_id)
+            ComputationRequest.Builder builder = ComputationRequest.newBuilder().setId(localId)
                     .setNodeName(modelName);
             ComputationReply reply = stub.call(builder.build());
             Graph graph = new Graph();
@@ -104,9 +104,7 @@ public class TrainingTask {
                     this.context, dataPath, 0, "target");
             SessionRunner runner = new SessionRunner(graph, sequenceType, localCSVReader, epoch);
             List<List<Float>> tensorVar = runner.invoke(this.textView);
-            TensorValue.Builder tensorValueBuilder = TensorValue.newBuilder()
-                    .setId(local_id).setNodeName(modelName);
-            boolean uploaded = this.upload(stub, tensorValueBuilder, tensorVar);
+            boolean uploaded = this.upload(stub, localId, modelName, tensorVar);
             this.stateInfo.setStateCode(1);
             return runner.getLoss();
         }

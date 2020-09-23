@@ -5,7 +5,6 @@ import org.tensorflow.Graph;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 
@@ -54,13 +53,10 @@ public class LogisticsRegression extends BaseGraph {
             while ((nRead = modelStream.read(data, 0, data.length)) != -1) {
                 buffer.write(data, 0, nRead);
             }
-
             buffer.flush();
             byte[] byteArray = buffer.toByteArray();
             graph.importGraphDef(byteArray);
             this.graph = graph;
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
         } catch (IOException e) {
             e.printStackTrace();
         }

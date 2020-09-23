@@ -18,11 +18,10 @@ package io.grpc.learning.computation;
 
 import io.grpc.Server;
 import io.grpc.ServerBuilder;
-import io.grpc.learning.api.BaseGraph;
 import io.grpc.learning.utils.JsonUtils;
 import io.grpc.learning.vo.GraphZoo;
-import io.grpc.learning.vo.ModelWeightsZoo;
 import io.grpc.learning.vo.SequenceData;
+import io.grpc.learning.vo.TaskState;
 import io.grpc.learning.vo.TaskZoo;
 import io.grpc.learning.vo.TensorVarName;
 import io.grpc.stub.StreamObserver;
@@ -30,19 +29,16 @@ import io.grpc.stub.StreamObserver;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
-import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.HashMap;
-import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
-
-import org.tensorflow.*;
 
 import com.alibaba.fastjson.JSON;
 import com.google.protobuf.ByteString;
 
-import static io.grpc.learning.computation.GraphComp.getGraph;
+import static io.grpc.learning.computation.FederatedComp.getGraph;
 import static io.grpc.learning.computation.SequenceComp.initializerSequence;
 import static io.grpc.learning.computation.SequenceComp.offsetStreamReply;
 
@@ -113,12 +109,18 @@ public class ComputationServer {
     }
 
     static class ComputationImpl extends ComputationGrpc.ComputationImplBase {
-        private int requestNum = 0;
-        private int minRequestNum = 10;
+        private Map<String, Integer> requestNum = new HashMap<String, Integer>();
+        private int minRequestNum = 3;
+        private Map<String, Integer> minRequestMap = new HashMap<String, Integer>();
+
 
         @Override
         public void call(ComputationRequest req, StreamObserver<ComputationReply> responseObserver) {
             String nodeName = req.getNodeName();
+            if (!minRequestMap.containsKey(nodeName)) {
+                minRequestMap.put(nodeName, minRequestNum);
+                requestNum.put(nodeName, 0);
+            }
             logger.info("Server received request " + nodeName + " from " + req.getId());
             byte[] byteGraph = getGraph(nodeName).toGraphDef();
             ComputationReply.Builder reply = ComputationReply.newBuilder();
@@ -137,7 +139,7 @@ public class ComputationServer {
             int offset = req.getOffset();
             HashMap<String, SequenceData> sequenceDataHashMap = TaskZoo
                     .getTaskQueue().get(req.getId());
-            SequenceData sequenceData = null;
+            SequenceData sequenceData;
             if (sequenceDataHashMap == null) {
                 String s = JsonUtils.readJsonFile(GraphZoo.getGraphZooPath().get(nodeName)
                         .replace(".pb", ".json"));
@@ -147,20 +149,20 @@ public class ComputationServer {
                 sequenceDataHashMap = new HashMap<>();
                 sequenceDataHashMap.put(nodeName, sequenceData);
                 TaskZoo.getTaskQueue().put(req.getId(), sequenceDataHashMap);
+                TaskZoo.getTask().put(req.getId() + nodeName, TaskState.callValue);
             } else {
-                if (null != TaskZoo.getTask().get(req.getId() + nodeName)) {
-                    while (requestNum < minRequestNum) {
+                if (TaskState.sendValue == TaskZoo.getTask().get(req.getId() + nodeName)) {
+                    while (requestNum.get(nodeName) < minRequestNum) {
                         System.out.println(requestNum);
                         try {
-                            Thread.sleep(1000);
+                            Thread.sleep(10000);
                         } catch (InterruptedException e) {
                             e.printStackTrace();
                         }
                     }
-                    ModelWeightsZoo modelWeightsZoo = new ModelWeightsZoo();
-                    sequenceData = modelWeightsZoo.getModelZoo().get(nodeName);
+                    sequenceData = FederatedComp.aggregation(nodeName);
                     assert sequenceData != null;
-                    TaskZoo.getTask().put(req.getId() + nodeName, 0);
+                    TaskZoo.getTask().put(req.getId() + nodeName, TaskState.callValue);
                 } else {
                     sequenceData = sequenceDataHashMap.get(nodeName);
                 }
@@ -180,15 +182,19 @@ public class ComputationServer {
             SequenceData sequenceData = TaskZoo.getTaskQueue().get(req.getId()).get(nodeName);
             sequenceData.getTensorVar().set(req.getOffset(), req.getListArrayList());
             TaskZoo.getTaskQueue().get(req.getId()).put(nodeName, sequenceData);
-            TaskZoo.getTaskInt().put(req.getId(),
-                    TaskZoo.getTaskInt().get(req.getId()) + 1);
+            if (TaskZoo.getTaskInt().get(req.getId()) == null) {
+                TaskZoo.getTaskInt().put(req.getId(), 1);
+            } else {
+                TaskZoo.getTaskInt().put(req.getId(),
+                        TaskZoo.getTaskInt().get(req.getId()) + 1);
+            }
             if (TaskZoo.getTaskInt().get(req.getId()) == req.getValueSize()) {
-                requestNum += 1;
+                requestNum.put(nodeName, requestNum.get(nodeName) + 1);
             }
             ValueReply.Builder reply = ValueReply.newBuilder().setMessage(true);
             responseObserver.onNext(reply.build());
             responseObserver.onCompleted();
-            TaskZoo.getTask().put(req.getId() + nodeName, 1);
+            TaskZoo.getTask().put(req.getId() + nodeName, TaskState.sendValue);
         }
     }
 }
