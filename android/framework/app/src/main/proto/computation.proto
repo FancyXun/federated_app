@@ -43,6 +43,7 @@ message ComputationRequest {
   string node_name = 2;
 
   int32 offset = 3;
+
 }
 
 
@@ -51,6 +52,8 @@ message ComputationReply {
   string message = 1;
   // The Computation graph
   bytes graph = 2;
+
+  int32 round = 3;
 }
 
 message TensorValue{
@@ -93,4 +96,7 @@ message PreSendValueMeta {
 message PreSendValueMetaReply {
   bool send_value = 1;
 }
+
+
+
 

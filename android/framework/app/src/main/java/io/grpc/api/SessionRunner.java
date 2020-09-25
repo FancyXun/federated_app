@@ -19,9 +19,9 @@ import io.grpc.vo.SequenceType;
 import io.grpc.vo.TrainableVariable;
 
 public class SessionRunner {
-    private String localId;
+    private int roundNum;
     private Graph graph;
-    private int epoch;
+    private int round;
     private int batchSize;
     private Session session;
     private TrainInitialize trainInitialize;
@@ -38,19 +38,19 @@ public class SessionRunner {
 
     private float loss;
 
-    public SessionRunner(Graph graph, LocalCSVReader localCSVReader, int epoch, int batchSize) {
+    public SessionRunner(Graph graph, LocalCSVReader localCSVReader, int round, int batchSize) {
         this.graph = graph;
-        this.epoch = epoch;
+        this.round = round;
         this.batchSize = batchSize;
         this.localCSVReader = localCSVReader;
         this.session = new Session(this.graph);
     }
 
     public SessionRunner(Graph graph, SequenceType sequenceType,
-                         LocalCSVReader localCSVReader, int epoch, String localId) {
-        this.localId = localId;
+                         LocalCSVReader localCSVReader, int round, int roundNum) {
+        this.roundNum = roundNum;
         this.graph = graph;
-        this.epoch = epoch;
+        this.round = round;
         this.localCSVReader = localCSVReader;
         this.trainInitialize = new TrainInitialize(this.localCSVReader);
         this.tensorAssignShape = sequenceType.getTensorAssignShape();
@@ -70,7 +70,7 @@ public class SessionRunner {
     }
 
     private List<List<Float>> train(TextView textView) {
-        int epoch = this.epoch;
+        int round = this.round;
         int batchSize = this.batchSize;
         Session.Runner runner = this.session.runner().fetch(this.optimizerName);
         for (String s : feedDict.getStringList()) {
@@ -84,9 +84,8 @@ public class SessionRunner {
         }
         this.optimizer = runner.run().get(0);
         List<List<Float>> tensorVar = this.updateVariables();
-        String i = this.localId.substring(0,6);
-        textView.setText(String.valueOf("Loss is: " + this.optimizer.floatValue()
-                +" " +this.epoch+ " "+i)) ;
+        textView.setText(String.valueOf("Loss " + this.round + "/" + this.roundNum  +
+                ": " + this.optimizer.floatValue())) ;
         loss = this.optimizer.floatValue();
         return tensorVar;
     }

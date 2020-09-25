@@ -47,13 +47,14 @@ public class TrainingTask {
         @SuppressLint("WrongThread")
         @Override
         protected String doInBackground(String... params) {
-            int epoch = Integer.parseInt(params[2]);
             float loss = 0;
             try {
-                while (epoch > 0) {
-                    params[2] = String.valueOf(epoch);
+//                ComputationReply reply = this.callRound(params);
+                int round = Integer.parseInt(params[4]);
+                while (round > 0) {
+                    params[3] = String.valueOf(round);
                     loss = this.runOneRound(params);
-                    epoch -= 1;
+                    round -= 1;
                 }
                 return "Loss is: " + loss;
             } catch (Exception e) {
@@ -82,11 +83,25 @@ public class TrainingTask {
             train_button.setEnabled(true);
         }
 
+        protected ComputationReply callRound(String... params) {
+            String localId = params[0];
+            String modelName = params[2];
+            channel = ManagedChannelBuilder
+                    .forAddress(this.host, this.port)
+                    .usePlaintext().build();
+            ComputationGrpc.ComputationBlockingStub stub = ComputationGrpc.newBlockingStub(channel);
+            ComputationRequest.Builder builder = ComputationRequest.newBuilder().setId(localId)
+                    .setNodeName(modelName);
+            ComputationReply reply = stub.call(builder.build());
+            return reply;
+        }
+
         protected float runOneRound(String... params) {
             String localId = params[0];
             String dataPath = params[1];
-            int epoch = Integer.parseInt(params[2]);
-            String modelName = params[3];
+            String modelName = params[2];
+            int round = Integer.parseInt(params[3]);
+            int roundNum = Integer.parseInt(params[4]);
             channel = ManagedChannelBuilder
                     .forAddress(this.host, this.port)
                     .usePlaintext().build();
@@ -103,11 +118,13 @@ public class TrainingTask {
             // Load data
             LocalCSVReader localCSVReader = new LocalCSVReader(
                     this.context, dataPath, 0, "target");
-            SessionRunner runner = new SessionRunner(graph, sequenceType, localCSVReader, epoch, localId);
+            SessionRunner runner = new SessionRunner(graph, sequenceType, localCSVReader, round, roundNum);
             List<List<Float>> tensorVar = runner.invoke(this.textView);
             boolean uploaded = this.upload(stub, localId, modelName, tensorVar);
             this.stateInfo.setStateCode(1);
             return runner.getLoss();
         }
+
+
     }
 }
