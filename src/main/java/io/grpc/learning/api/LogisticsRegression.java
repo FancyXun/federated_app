@@ -11,6 +11,9 @@ import java.io.InputStream;
 
 public class LogisticsRegression extends BaseGraph {
 
+    public static String metaJson = "src/main/python/LogisticRegression.json";
+    public static String metaPy = "src/main/python/LogisticRegression.py";
+
     /**
      * @param loadPBFile load pb from disk or not
      * @param pyDir      to refer to the python script to create the graph.
@@ -26,6 +29,7 @@ public class LogisticsRegression extends BaseGraph {
                 sBuffer.append(pbSuffix);
                 this.buildGraph(pyDir, sBuffer.toString());
                 this.pbPath = String.format("%s/%s", pbFile.getAbsolutePath(), sBuffer.toString());
+                this.pbJson = metaJson;
             }
             this.loadGraph();
         } else {
@@ -36,10 +40,10 @@ public class LogisticsRegression extends BaseGraph {
     }
 
     public LogisticsRegression(){
-        this(true,"src/main/python/LogisticsRegression.py", false);
+        this(true,metaPy, false);
     }
     public LogisticsRegression(Boolean pdDisk){
-        this(true,"src/main/python/LogisticsRegression.py", pdDisk);
+        this(true,metaPy, pdDisk);
     }
 
     private void loadGraph() {

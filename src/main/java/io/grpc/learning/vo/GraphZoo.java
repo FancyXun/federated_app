@@ -39,4 +39,14 @@ public class GraphZoo {
     }
 
     private static HashMap<String, String> graphZooPath = new HashMap<>();
+
+    public static HashMap<String, String> getGraphJsonZooPath() {
+        return graphJsonZooPath;
+    }
+
+    public static void setGraphJsonZooPath(HashMap<String, String> graphJsonZooPath) {
+        GraphZoo.graphJsonZooPath = graphJsonZooPath;
+    }
+
+    private static HashMap<String, String> graphJsonZooPath = new HashMap<>();
 }

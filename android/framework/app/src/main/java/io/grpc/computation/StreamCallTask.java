@@ -48,6 +48,7 @@ public class StreamCallTask extends AsyncTask<String, Void, String> {
                           String modelName, List<List<Float>> lists){
         boolean uploaded = false;
         for (int i =0 ; i< lists.size(); i++){
+            System.out.println("*******"+lists.size() + lists.get(i).size());
             TensorValue.Builder tensorValueBuilder = TensorValue.newBuilder()
                     .setId(localId).setNodeName(modelName);
             tensorValueBuilder.setOffset(i)

@@ -22,6 +22,7 @@ public abstract class BaseGraph {
     protected String pbDiskPath = (String) rb.getObject("pbDiskPath");
     protected String pbSuffix = ".pb";
     public String pbPath;
+    public String pbJson;
 
     protected static File pbFile = Files.createTempDir();
 

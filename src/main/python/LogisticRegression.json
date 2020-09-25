@@ -1,0 +1,41 @@
+{
+  "assignTarget": {
+    "w/Assign": {
+      "parentNode": [
+        "w/Variable/Assign"
+      ],
+      "shape": [
+        "141",
+        "2"
+      ]
+    },
+    "b/Assign": {
+      "parentNode": [
+        "b/Variable/Assign"
+      ],
+      "shape": [
+        "2"
+      ]
+    }
+  },
+  "placeholder": [
+    "batch_size",
+    "x",
+    "y"
+  ],
+  "varTarget": {
+    "w/Variable/Assign": {
+      "parentNode": "w/zero",
+      "shape": [
+        "141",
+        "2"
+      ]
+    },
+    "b/Variable/Assign": {
+      "parentNode": "b/zero",
+      "shape": [
+        "2"
+      ]
+    }
+  }
+}

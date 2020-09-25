@@ -14,6 +14,7 @@ public class listConvert {
      */
     public static float[][] floatConvert2D(List<Float> floatList, int h, int w) {
         float[][] floats = new float[h][w];
+        System.out.println(floatList.size() + "," + h + "," + w);
         for (int i = 0; i < h; i++) {
             for (int j = 0; j < w; j++) {
                 floats[i][j] = floatList.get(i * w + j);

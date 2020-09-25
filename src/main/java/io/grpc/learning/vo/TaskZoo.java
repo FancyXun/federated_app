@@ -6,6 +6,17 @@ public class TaskZoo {
     private volatile static TaskZoo instance = null;
     private static HashMap<String, Integer> TaskInt = new HashMap<>();
 
+
+    public static HashMap<String, Boolean> getUpdate() {
+        return update;
+    }
+
+    public static void setUpdate(HashMap<String, Boolean> update) {
+        TaskZoo.update = update;
+    }
+
+    private static  HashMap<String, Boolean> update= new HashMap<>();
+
     public static TaskZoo getInstance() {
         if (instance == null) {
             synchronized (TaskZoo.class) {

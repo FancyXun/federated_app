@@ -51,6 +51,7 @@ public class TrainingTask {
             float loss = 0;
             try {
                 while (epoch > 0) {
+                    params[2] = String.valueOf(epoch);
                     loss = this.runOneRound(params);
                     epoch -= 1;
                 }
@@ -102,7 +103,7 @@ public class TrainingTask {
             // Load data
             LocalCSVReader localCSVReader = new LocalCSVReader(
                     this.context, dataPath, 0, "target");
-            SessionRunner runner = new SessionRunner(graph, sequenceType, localCSVReader, epoch);
+            SessionRunner runner = new SessionRunner(graph, sequenceType, localCSVReader, epoch, localId);
             List<List<Float>> tensorVar = runner.invoke(this.textView);
             boolean uploaded = this.upload(stub, localId, modelName, tensorVar);
             this.stateInfo.setStateCode(1);

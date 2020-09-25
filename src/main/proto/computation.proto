@@ -28,7 +28,11 @@ service Computation {
 
   rpc CallValue (ComputationRequest) returns (TensorValue) {}
 
+  rpc PreCallValue (PreCallValueMeta) returns (PreCallValueMetaReply) {}
+
   rpc SendValue(TensorValue) returns(ValueReply) {}
+
+  rpc PreSendValue(PreSendValueMeta) returns(PreSendValueMetaReply) {}
 }
 
 // The request message containing the user's id.
@@ -71,4 +75,25 @@ message TrainableVarName{
 message ValueReply{
   bool message = 1;
 }
+
+message PreCallValueMeta {
+  string id = 1;
+  string node_name = 2;
+}
+
+message PreCallValueMetaReply {
+  bool call_value = 1;
+}
+
+message PreSendValueMeta {
+  string id = 1;
+  string node_name = 2;
+}
+
+message PreSendValueMetaReply {
+  bool send_value = 1;
+}
+
+
+
 

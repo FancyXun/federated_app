@@ -1,8 +1,9 @@
 package io.grpc.learning.computation;
 
+import com.alibaba.fastjson.JSON;
+
 import org.tensorflow.Graph;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -11,28 +12,34 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import io.grpc.learning.api.BaseGraph;
+import io.grpc.learning.utils.JsonUtils;
 import io.grpc.learning.vo.GraphZoo;
 import io.grpc.learning.vo.SequenceData;
 import io.grpc.learning.vo.TaskZoo;
+import io.grpc.learning.vo.TensorVarName;
 
-public class FederatedComp {
+import static io.grpc.learning.computation.SequenceComp.initializerSequence;
+
+public class FederatedComp implements Runnable {
 
     private static final String url = "io.grpc.learning.api";
+    private static  HashMap<String, SequenceData> weight;
 
     /**
-     * @param node_name
+     * @param nodeName
      * @return
      */
-    public static Graph getGraph(String node_name) {
+    public synchronized static Graph getGraph(String nodeName) {
         GraphZoo graphZoo = new GraphZoo();
-        Graph graph = graphZoo.getGraphZoo().get(node_name);
+        Graph graph = graphZoo.getGraphZoo().get(nodeName);
         if (graph == null) {
             try {
-                ClassLoader classLoader = Class.forName(url + "." + node_name).getClassLoader();
-                BaseGraph basegraph = (BaseGraph) classLoader.loadClass(url + "." + node_name).newInstance();
+                ClassLoader classLoader = Class.forName(url + "." + nodeName).getClassLoader();
+                BaseGraph basegraph = (BaseGraph) classLoader.loadClass(url + "." + nodeName).newInstance();
                 graph = basegraph.getGraph();
-                graphZoo.getGraphZoo().put(node_name, graph);
-                GraphZoo.getGraphZooPath().put(node_name, basegraph.pbPath);
+                graphZoo.getGraphZoo().put(nodeName, graph);
+                GraphZoo.getGraphZooPath().put(nodeName, basegraph.pbPath);
+                GraphZoo.getGraphJsonZooPath().put(nodeName, basegraph.pbJson);
             } catch (Exception ClassNotFoundException) {
                 throw new RuntimeException();
             }
@@ -40,22 +47,32 @@ public class FederatedComp {
         return graph;
     }
 
+    public synchronized static SequenceData aggregation(String nodeName){
+        if (TaskZoo.getUpdate().get(nodeName)){
+            return weight.get(nodeName);
+        }
+        else{
+            return aggregationInner(nodeName);
+        }
+    }
+
     /**
-     *
      * @param nodeName
      * @return
      */
-    public static SequenceData aggregation(String nodeName){
+
+    public static SequenceData aggregationInner(String nodeName) {
         HashMap<String, HashMap<String, SequenceData>> weightAll = TaskZoo.getTaskQueue();
-        List<List<Float>> weightFloat ;
-        List<List<Float>> weightFloat1 ;
+        int numWeights = weightAll.size();
+        List<List<Float>> weightFloat;
+        List<List<Float>> weightFloat1;
         Iterator<Map.Entry<String, HashMap<String, SequenceData>>> iterator = weightAll.entrySet().iterator();
         Map.Entry<String, HashMap<String, SequenceData>> firstEle = iterator.next();
         HashMap<String, SequenceData> weightAgg = firstEle.getValue();
-        weightFloat = weightAgg.get(nodeName).getTensorVar();;
-        for (; iterator.hasNext();){
+        weightFloat = weightAgg.get(nodeName).getTensorVar();
+        for (; iterator.hasNext(); ) {
             weightFloat1 = iterator.next().getValue().get(nodeName).getTensorVar();
-            for (int i =0 ; i< weightFloat1.size(); i++){
+            for (int i = 0; i < weightFloat1.size(); i++) {
                 List<Float> List = weightFloat.get(i);
                 List<Float> List1 = weightFloat1.get(i);
                 List<Float> finalList = IntStream.range(0, List.size())
@@ -64,8 +81,38 @@ public class FederatedComp {
                 weightFloat.set(i, finalList);
             }
         }
+        for (int i = 0; i < weightFloat.size(); i++) {
+            for (int j = 0; j < weightFloat.get(i).size(); j++) {
+                weightFloat.get(i).set(j, weightFloat.get(i).get(j) / numWeights);
+            }
+        }
+        weight = weightAgg;
+        TaskZoo.getUpdate().put(nodeName, true);
         return weightAgg.get(nodeName);
     }
 
+    /**
+     * Initialize weights for one client
+     * @param nodeName
+     * @param clientId
+     * @return
+     */
+    public static SequenceData weightsInitializer(String nodeName, String clientId) {
+        String s = JsonUtils.readJsonFile(GraphZoo.getGraphJsonZooPath().get(nodeName));
+        TensorVarName tensorVarName = JsonUtils.jsonToMap(JSON.parseObject(s));
+        SequenceData sequenceData = initializerSequence(tensorVarName);
+        HashMap<String, SequenceData> sequenceDataHashMap = new HashMap<>();
+        sequenceDataHashMap.put(nodeName, sequenceData);
+        TaskZoo.getTaskQueue().put(clientId, sequenceDataHashMap);
+        return sequenceData;
+    }
 
+    public synchronized static void updataWeights(){
+
+    }
+
+    @Override
+    public void run() {
+
+    }
 }
