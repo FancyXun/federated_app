@@ -30,9 +30,11 @@ import io.grpc.stub.StreamObserver;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
+import java.util.Collections;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 
@@ -120,27 +122,27 @@ public class ComputationServer {
         public void call(ComputationRequest request, StreamObserver<ComputationReply> responseObserver) {
             String nodeName = request.getNodeName();
             String clientId = request.getId();
-            if (RoundStateInfo.callRequest.get(nodeName) != null &&
-                    RoundStateInfo.callRequest.get(nodeName).contains(clientId)) {
+            Set<String> waitQueue = RoundStateInfo.waitRequest.get(nodeName);
+            if (waitQueue != null
+                    && waitQueue.contains(clientId)) {
                 while (RoundStateInfo.roundState.get(nodeName) == StateMachine.wait) {
-                    try {
-                        RoundStateInfo.waitRequest.get(nodeName).add(clientId);
-                        System.out.println(clientId +" " +StateMachine.wait + "...");
-                        Thread.sleep(10);
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
-                    }
+                    System.out.println(clientId + " " + StateMachine.wait + "...");
+                    FederatedComp.timeWait(1000);
                 }
-                RoundStateInfo.waitRequest.get(nodeName).remove(clientId);
-                RoundStateInfo.collectValueRequest.clear();
-                RoundStateInfo.roundState.put(nodeName, StateMachine.start);
+                waitQueue.remove(clientId);
+                // wait client delete self from queue
+//                while (!RoundStateInfo.waitRequest.get(nodeName).isEmpty()){
+//                    FederatedComp.timeWait(1000);
+//                    System.out.println(RoundStateInfo.roundState.get(nodeName));
+//                    System.out.println(RoundStateInfo.waitRequest.get(nodeName));
+//                }
             }
             RoundStateInfo.callUpdate(nodeName, clientId);
             Graph graph = new GraphZoo().getGraphZoo().get(nodeName);
             byte[] byteGraph = graph == null ? getGraph(nodeName).toGraphDef() : graph.toGraphDef();
             ComputationReply.Builder reply = ComputationReply.newBuilder();
             reply.setGraph(ByteString.copyFrom(byteGraph));
-            reply.setRound(RoundStateInfo.epochMap.get(nodeName));
+            reply.setRound(RoundStateInfo.epochMap.get(clientId));
             responseObserver.onNext(reply.build());
             responseObserver.onCompleted();
         }
@@ -153,13 +155,16 @@ public class ComputationServer {
         public void callValue(ComputationRequest request, StreamObserver<TensorValue> responseObserver) {
             String nodeName = request.getNodeName();
             String clientId = request.getId();
+            SequenceData weight = ModelWeights.weightsAggregation.get(nodeName);
             HashMap<String, SequenceData> weightMap =
                     ModelWeights.weightsCollector.get(clientId);
-            SequenceData weight;
             if (weightMap == null) {
-                FederatedComp.weightsInitializer(nodeName, clientId);
+                SequenceData sequenceData = FederatedComp.weightsInitializer(nodeName, clientId);
+                if (weight == null) {
+                    ModelWeights.weightsAggregation.put(nodeName, sequenceData);
+                }
+                weight = ModelWeights.weightsAggregation.get(nodeName);
             }
-            weight = ModelWeights.weightsAggregation.get(nodeName);
             TensorValue.Builder reply = offsetStreamReply(weight, request.getOffset());
             responseObserver.onNext(reply.build());
             responseObserver.onCompleted();
@@ -172,14 +177,14 @@ public class ComputationServer {
         @Override
         public void sendValue(TensorValue request, StreamObserver<ValueReply> responseObserver) {
             ValueReply.Builder reply;
-            StateMachine currentState = RoundStateInfo.roundState.get(request.getNodeName());
+            String nodeName = request.getNodeName();
+            StateMachine currentState = RoundStateInfo.roundState.get(nodeName);
             if (StateMachine.end != currentState) {
                 RoundStateInfo.collectValueUpdate(request);
-                if (RoundStateInfo.collectValueRequest
-                        .get(request.getNodeName()).size() == minRequestNum) {
+                int collectClients = RoundStateInfo.waitRequest.get(nodeName).size();
+                if (collectClients == minRequestNum) {
                     // update weights
                     FederatedComp.aggregationInner(request);
-                    RoundStateInfo.roundState.put(request.getNodeName(), StateMachine.end);
                     FederatedComp.update = false;
                 }
             }

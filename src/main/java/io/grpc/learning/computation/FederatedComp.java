@@ -17,6 +17,7 @@ import io.grpc.learning.vo.GraphZoo;
 import io.grpc.learning.vo.ModelWeights;
 import io.grpc.learning.vo.RoundStateInfo;
 import io.grpc.learning.vo.SequenceData;
+import io.grpc.learning.vo.StateMachine;
 import io.grpc.learning.vo.TaskZoo;
 import io.grpc.learning.vo.TensorVarName;
 
@@ -66,6 +67,9 @@ public class FederatedComp implements Runnable {
 
     public synchronized static boolean aggregationInner(TensorValue request) {
         if (update) {
+            return true;
+        }
+        if (RoundStateInfo.roundState.get(request.getNodeName()) == StateMachine.start) {
             return update;
         }
         String nodeName = request.getNodeName();
@@ -94,6 +98,8 @@ public class FederatedComp implements Runnable {
             }
         }
         update = true;
+        RoundStateInfo.round -= 1;
+        RoundStateInfo.roundState.put(nodeName, StateMachine.start);
         return update;
     }
 
@@ -104,14 +110,14 @@ public class FederatedComp implements Runnable {
      * @param clientId
      * @return
      */
-    public static void weightsInitializer(String nodeName, String clientId) {
+    public static SequenceData weightsInitializer(String nodeName, String clientId) {
         String s = JsonUtils.readJsonFile(GraphZoo.getGraphJsonZooPath().get(nodeName));
         TensorVarName tensorVarName = JsonUtils.jsonToMap(JSON.parseObject(s));
         SequenceData sequenceData = initializerSequence(tensorVarName);
         HashMap<String, SequenceData> sequenceDataHashMap = new HashMap<>();
         sequenceDataHashMap.put(nodeName, sequenceData);
         ModelWeights.weightsCollector.put(clientId, sequenceDataHashMap);
-        ModelWeights.weightsAggregation.put(nodeName, sequenceData);
+        return sequenceData;
     }
 
     public synchronized static void updataWeights() {
@@ -121,5 +127,13 @@ public class FederatedComp implements Runnable {
     @Override
     public void run() {
 
+    }
+
+    public static void timeWait(int second){
+        try {
+            Thread.sleep(second);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
     }
 }
