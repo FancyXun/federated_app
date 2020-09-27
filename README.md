@@ -37,7 +37,7 @@ $ cd android/framework; ../../gradlew installDebug
 Launch the client app from your device.
 
 
-Input server ip and local epoch number, Click “LocalTraining” . You’ll see the loss of Logistic regression
+Input server ip and local epoch number, Click “联邦训练” . You’ll see the loss of Logistic regression
 
 That's it!
 

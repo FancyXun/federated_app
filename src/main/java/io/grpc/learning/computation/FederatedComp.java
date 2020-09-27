@@ -14,7 +14,10 @@ import java.util.stream.IntStream;
 import io.grpc.learning.api.BaseGraph;
 import io.grpc.learning.utils.JsonUtils;
 import io.grpc.learning.vo.GraphZoo;
+import io.grpc.learning.vo.ModelWeights;
+import io.grpc.learning.vo.RoundStateInfo;
 import io.grpc.learning.vo.SequenceData;
+import io.grpc.learning.vo.StateMachine;
 import io.grpc.learning.vo.TaskZoo;
 import io.grpc.learning.vo.TensorVarName;
 
@@ -23,7 +26,8 @@ import static io.grpc.learning.computation.SequenceComp.initializerSequence;
 public class FederatedComp implements Runnable {
 
     private static final String url = "io.grpc.learning.api";
-    private static  HashMap<String, SequenceData> weight;
+    private static HashMap<String, SequenceData> weight;
+    public static boolean update = false;
 
     /**
      * @param nodeName
@@ -47,22 +51,29 @@ public class FederatedComp implements Runnable {
         return graph;
     }
 
-    public synchronized static SequenceData aggregation(String nodeName){
-        if (TaskZoo.getUpdate().get(nodeName)){
-            return weight.get(nodeName);
-        }
-        else{
-            return aggregationInner(nodeName);
-        }
-    }
+//    public synchronized static SequenceData aggregation(String nodeName){
+//        if (TaskZoo.getUpdate().get(nodeName)){
+//            return weight.get(nodeName);
+//        }
+//        else{
+//            return aggregationInner(nodeName);
+//        }
+//    }
 
     /**
-     * @param nodeName
+     * @param request
      * @return
      */
 
-    public static SequenceData aggregationInner(String nodeName) {
-        HashMap<String, HashMap<String, SequenceData>> weightAll = TaskZoo.getTaskQueue();
+    public synchronized static boolean aggregationInner(TensorValue request) {
+        if (update) {
+            return true;
+        }
+        if (RoundStateInfo.roundState.get(request.getNodeName()) == StateMachine.start) {
+            return update;
+        }
+        String nodeName = request.getNodeName();
+        HashMap<String, HashMap<String, SequenceData>> weightAll = ModelWeights.weightsCollector;
         int numWeights = weightAll.size();
         List<List<Float>> weightFloat;
         List<List<Float>> weightFloat1;
@@ -86,13 +97,15 @@ public class FederatedComp implements Runnable {
                 weightFloat.get(i).set(j, weightFloat.get(i).get(j) / numWeights);
             }
         }
-        weight = weightAgg;
-        TaskZoo.getUpdate().put(nodeName, true);
-        return weightAgg.get(nodeName);
+        update = true;
+        RoundStateInfo.round -= 1;
+        RoundStateInfo.roundState.put(nodeName, StateMachine.start);
+        return update;
     }
 
     /**
      * Initialize weights for one client
+     *
      * @param nodeName
      * @param clientId
      * @return
@@ -103,16 +116,24 @@ public class FederatedComp implements Runnable {
         SequenceData sequenceData = initializerSequence(tensorVarName);
         HashMap<String, SequenceData> sequenceDataHashMap = new HashMap<>();
         sequenceDataHashMap.put(nodeName, sequenceData);
-        TaskZoo.getTaskQueue().put(clientId, sequenceDataHashMap);
+        ModelWeights.weightsCollector.put(clientId, sequenceDataHashMap);
         return sequenceData;
     }
 
-    public synchronized static void updataWeights(){
+    public synchronized static void updataWeights() {
 
     }
 
     @Override
     public void run() {
 
+    }
+
+    public static void timeWait(int second){
+        try {
+            Thread.sleep(second);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
     }
 }

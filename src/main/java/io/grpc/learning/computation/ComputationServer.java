@@ -19,6 +19,7 @@ package io.grpc.learning.computation;
 import io.grpc.Server;
 import io.grpc.ServerBuilder;
 import io.grpc.learning.vo.GraphZoo;
+import io.grpc.learning.vo.ModelWeights;
 import io.grpc.learning.vo.RoundStateInfo;
 import io.grpc.learning.vo.SequenceData;
 import io.grpc.learning.vo.StateMachine;
@@ -29,9 +30,11 @@ import io.grpc.stub.StreamObserver;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
+import java.util.Collections;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 
@@ -109,112 +112,80 @@ public class ComputationServer {
     }
 
     static class ComputationImpl extends ComputationGrpc.ComputationImplBase {
-        private Map<String, Integer> requestNum = new HashMap<String, Integer>();
-        private Map<String, Integer> roundNum = new HashMap<String, Integer>();
-        private int minRequestNum = 2;
-        private int round = 10;
-        private Map<String, Integer> minRequestMap = new HashMap<String, Integer>();
-        private Map<String, Integer> globalState = new HashMap<>();
+        public int minRequestNum = 2;
 
-
+        /**
+         * @param request
+         * @param responseObserver
+         */
         @Override
-        public void call(ComputationRequest req, StreamObserver<ComputationReply> responseObserver) {
-            String nodeName = req.getNodeName();
-            String clientId = req.getId();
-            RoundStateInfo.callRequest.get(nodeName).add(clientId);
-            if (!RoundStateInfo.RoundState.containsKey(nodeName)){
-                RoundStateInfo.RoundState.put(nodeName, StateMachine.start);
+        public void call(ComputationRequest request, StreamObserver<ComputationReply> responseObserver) {
+            String nodeName = request.getNodeName();
+            String clientId = request.getId();
+            Set<String> waitQueue = RoundStateInfo.waitRequest.get(nodeName);
+            if (waitQueue != null
+                    && waitQueue.contains(clientId)) {
+                while (RoundStateInfo.roundState.get(nodeName) == StateMachine.wait) {
+                    System.out.println(clientId + " " + StateMachine.wait + "...");
+                    FederatedComp.timeWait(1000);
+                }
+                waitQueue.remove(clientId);
+                // wait client delete self from queue
+//                while (!RoundStateInfo.waitRequest.get(nodeName).isEmpty()){
+//                    FederatedComp.timeWait(1000);
+//                    System.out.println(RoundStateInfo.roundState.get(nodeName));
+//                    System.out.println(RoundStateInfo.waitRequest.get(nodeName));
+//                }
             }
-            if (!minRequestMap.containsKey(nodeName)) {
-                minRequestMap.put(nodeName, minRequestNum);
-                requestNum.put(nodeName, 0);
-                roundNum.put(nodeName, round);
-                globalState.put(nodeName, 0);
-            }
-            logger.info("Server received request " + nodeName + " from " + req.getId());
+            RoundStateInfo.callUpdate(nodeName, clientId);
             Graph graph = new GraphZoo().getGraphZoo().get(nodeName);
             byte[] byteGraph = graph == null ? getGraph(nodeName).toGraphDef() : graph.toGraphDef();
             ComputationReply.Builder reply = ComputationReply.newBuilder();
             reply.setGraph(ByteString.copyFrom(byteGraph));
-            responseObserver.onNext(reply.build());
-            responseObserver.onCompleted();
-        }
-
-        @Override
-        public void preCallValue(PreCallValueMeta req, StreamObserver<PreCallValueMetaReply> responseObserver) {
-            PreCallValueMetaReply.Builder reply = PreCallValueMetaReply.newBuilder();
-            reply.setCallValue(TaskState.callValue.isState());
+            reply.setRound(RoundStateInfo.epochMap.get(clientId));
             responseObserver.onNext(reply.build());
             responseObserver.onCompleted();
         }
 
         /**
-         * @param req
+         * @param request
          * @param responseObserver
          */
         @Override
-        public void callValue(ComputationRequest req, StreamObserver<TensorValue> responseObserver) {
-            String nodeName = req.getNodeName();
-            HashMap<String, SequenceData> sequenceDataHashMap = TaskZoo
-                    .getTaskQueue().get(req.getId());
-            SequenceData sequenceData;
-            if (sequenceDataHashMap == null) {
-                sequenceData = FederatedComp.weightsInitializer(nodeName, req.getId());
-            } else {
-                sequenceData = sequenceDataHashMap.get(nodeName);
-                if (!TaskZoo.getTaskInt().isEmpty() && roundNum.get(nodeName) != round) {
-                    // Not the first round
-                    if (!TaskZoo.getUpdate().get(nodeName)) {
-                        while (requestNum.get(nodeName) < minRequestNum) {
-                            System.out.println(requestNum);
-                            try {
-                                Thread.sleep(5000);
-                            } catch (InterruptedException e) {
-                                e.printStackTrace();
-                            }
-                        }
-                        sequenceData = FederatedComp.aggregation(nodeName);
-                        assert sequenceData != null;
-                        requestNum.put(nodeName, 0);
-                        TaskZoo.getTaskInt().clear();
-                        globalState.put(nodeName, 0);
-                    }
+        public void callValue(ComputationRequest request, StreamObserver<TensorValue> responseObserver) {
+            String nodeName = request.getNodeName();
+            String clientId = request.getId();
+            SequenceData weight = ModelWeights.weightsAggregation.get(nodeName);
+            HashMap<String, SequenceData> weightMap =
+                    ModelWeights.weightsCollector.get(clientId);
+            if (weightMap == null) {
+                SequenceData sequenceData = FederatedComp.weightsInitializer(nodeName, clientId);
+                if (weight == null) {
+                    ModelWeights.weightsAggregation.put(nodeName, sequenceData);
                 }
-
-                System.out.println(TaskZoo.getTask().get(req.getId() + nodeName));
+                weight = ModelWeights.weightsAggregation.get(nodeName);
             }
-
-            TensorValue.Builder reply = offsetStreamReply(sequenceData, req.getOffset());
+            TensorValue.Builder reply = offsetStreamReply(weight, request.getOffset());
             responseObserver.onNext(reply.build());
             responseObserver.onCompleted();
         }
 
         /**
-         * @param req
+         * @param request
          * @param responseObserver
          */
         @Override
-        public void sendValue(TensorValue req, StreamObserver<ValueReply> responseObserver) {
-            String nodeName = req.getNodeName();
+        public void sendValue(TensorValue request, StreamObserver<ValueReply> responseObserver) {
             ValueReply.Builder reply;
-            if (globalState.get(nodeName) != 1) {
-                SequenceData sequenceData = TaskZoo.getTaskQueue().get(req.getId()).get(nodeName);
-                sequenceData.getTensorVar().set(req.getOffset(), req.getListArrayList());
-                TaskZoo.getTaskQueue().get(req.getId()).put(nodeName, sequenceData);
-                if (TaskZoo.getTaskInt().get(req.getId()) == null) {
-                    TaskZoo.getTaskInt().put(req.getId(), 1);
-                } else {
-                    TaskZoo.getTaskInt().put(req.getId(),
-                            TaskZoo.getTaskInt().get(req.getId()) + 1);
-                }
-                if (TaskZoo.getTaskInt().get(req.getId()) == req.getValueSize()) {
-                    requestNum.put(nodeName, requestNum.get(nodeName) + 1);
-                }
-                if (requestNum.get(nodeName) == minRequestNum) {
-                    //    next round
-                    roundNum.put(nodeName, roundNum.get(nodeName) - 1);
-                    globalState.put(nodeName, 1);
-                    TaskZoo.getUpdate().put(nodeName, true);
+            String nodeName = request.getNodeName();
+            StateMachine currentState = RoundStateInfo.roundState.get(nodeName);
+            if (StateMachine.end != currentState) {
+                RoundStateInfo.collectValueUpdate(request);
+                int collectClients = RoundStateInfo.waitRequest.get(nodeName).size();
+                if (collectClients == minRequestNum) {
+                    // update weights
+                    FederatedComp.aggregationInner(request);
+                    FederatedComp.update = false;
                 }
             }
             reply = ValueReply.newBuilder().setMessage(true);
