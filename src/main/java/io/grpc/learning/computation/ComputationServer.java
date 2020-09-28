@@ -18,24 +18,21 @@ package io.grpc.learning.computation;
 
 import io.grpc.Server;
 import io.grpc.ServerBuilder;
+import io.grpc.learning.storage.MapQueue;
 import io.grpc.learning.vo.GraphZoo;
-import io.grpc.learning.vo.ModelWeights;
-import io.grpc.learning.vo.RoundStateInfo;
+import io.grpc.learning.storage.ModelWeights;
+import io.grpc.learning.storage.RoundStateInfo;
 import io.grpc.learning.vo.SequenceData;
 import io.grpc.learning.vo.StateMachine;
-import io.grpc.learning.vo.TaskState;
-import io.grpc.learning.vo.TaskZoo;
 import io.grpc.stub.StreamObserver;
 
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
-import java.util.Collections;
 import java.util.Enumeration;
 import java.util.HashMap;
-import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import com.google.protobuf.ByteString;
@@ -56,6 +53,7 @@ public class ComputationServer {
         /* The port on which the server should run */
         String localIP;
         Enumeration<NetworkInterface> n = NetworkInterface.getNetworkInterfaces();
+        Logger.getLogger("io.netty").setLevel(Level.OFF);
         try {
             NetworkInterface e = n.nextElement();
             Enumeration<InetAddress> a = e.getInetAddresses();
@@ -112,7 +110,7 @@ public class ComputationServer {
     }
 
     static class ComputationImpl extends ComputationGrpc.ComputationImplBase {
-        public int minRequestNum = 2;
+        public int minRequestNum = 3;
 
         /**
          * @param request
@@ -122,21 +120,7 @@ public class ComputationServer {
         public void call(ComputationRequest request, StreamObserver<ComputationReply> responseObserver) {
             String nodeName = request.getNodeName();
             String clientId = request.getId();
-            Set<String> waitQueue = RoundStateInfo.waitRequest.get(nodeName);
-            if (waitQueue != null
-                    && waitQueue.contains(clientId)) {
-                while (RoundStateInfo.roundState.get(nodeName) == StateMachine.wait) {
-                    System.out.println(clientId + " " + StateMachine.wait + "...");
-                    FederatedComp.timeWait(1000);
-                }
-                waitQueue.remove(clientId);
-                // wait client delete self from queue
-//                while (!RoundStateInfo.waitRequest.get(nodeName).isEmpty()){
-//                    FederatedComp.timeWait(1000);
-//                    System.out.println(RoundStateInfo.roundState.get(nodeName));
-//                    System.out.println(RoundStateInfo.waitRequest.get(nodeName));
-//                }
-            }
+            MapQueue.queueChecker(nodeName, clientId);
             RoundStateInfo.callUpdate(nodeName, clientId);
             Graph graph = new GraphZoo().getGraphZoo().get(nodeName);
             byte[] byteGraph = graph == null ? getGraph(nodeName).toGraphDef() : graph.toGraphDef();
@@ -175,7 +159,7 @@ public class ComputationServer {
          * @param responseObserver
          */
         @Override
-        public void sendValue(TensorValue request, StreamObserver<ValueReply> responseObserver) {
+        public void compute(TensorValue request, StreamObserver<ValueReply> responseObserver) {
             ValueReply.Builder reply;
             String nodeName = request.getNodeName();
             StateMachine currentState = RoundStateInfo.roundState.get(nodeName);
@@ -192,6 +176,5 @@ public class ComputationServer {
             responseObserver.onNext(reply.build());
             responseObserver.onCompleted();
         }
-
     }
 }

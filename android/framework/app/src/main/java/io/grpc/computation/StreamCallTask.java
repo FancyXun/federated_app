@@ -9,6 +9,7 @@ import io.grpc.learning.computation.ComputationRequest;
 import io.grpc.learning.computation.TensorValue;
 import io.grpc.learning.computation.TrainableVarName;
 import io.grpc.learning.computation.ValueReply;
+import io.grpc.vo.Metrics;
 import io.grpc.vo.SequenceType;
 
 public class StreamCallTask extends AsyncTask<String, Void, String> {
@@ -16,6 +17,11 @@ public class StreamCallTask extends AsyncTask<String, Void, String> {
     protected int offSet = 0;
     protected SequenceType sequenceType;
 
+    /**
+     * @param stub
+     * @param builder
+     * @return
+     */
     public SequenceType SequenceCall(ComputationGrpc.ComputationBlockingStub stub, ComputationRequest.Builder builder) {
         SequenceType sequenceType = new SequenceType();
         TensorValue tensorValue = stub.callValue(builder.setOffset(offSet).build());
@@ -44,16 +50,31 @@ public class StreamCallTask extends AsyncTask<String, Void, String> {
         return sequenceType;
     }
 
+    /**
+     * @param stub
+     * @param localId
+     * @param modelName
+     * @param lists
+     * @return
+     */
     public boolean upload(ComputationGrpc.ComputationBlockingStub stub, String localId,
-                          String modelName, List<List<Float>> lists){
+                          String modelName, List<List<Float>> lists, Metrics metrics) {
         boolean uploaded = false;
-        for (int i =0 ; i< lists.size(); i++){
+        io.grpc.learning.computation.Metrics.Builder metricsBuilder =
+                io.grpc.learning.computation.Metrics.newBuilder();
+        metricsBuilder.addAllName(metrics.metricsName);
+        metricsBuilder.addAllValue(metrics.metrics);
+        metricsBuilder.setWeights(metrics.weights);
+        for (int i = 0; i < lists.size(); i++) {
             TensorValue.Builder tensorValueBuilder = TensorValue.newBuilder()
                     .setId(localId).setNodeName(modelName);
             tensorValueBuilder.setOffset(i)
                     .setValueSize(lists.size());
             tensorValueBuilder.addAllListArray(lists.get(i));
-            ValueReply valueReply = stub.sendValue(tensorValueBuilder.build());
+            if (i == lists.size() - 1) {
+                tensorValueBuilder.setMetrics(metricsBuilder);
+            }
+            ValueReply valueReply = stub.compute(tensorValueBuilder.build());
             uploaded = valueReply.getMessage();
         }
         return uploaded;
@@ -63,4 +84,5 @@ public class StreamCallTask extends AsyncTask<String, Void, String> {
     protected String doInBackground(String... strings) {
         return null;
     }
+
 }

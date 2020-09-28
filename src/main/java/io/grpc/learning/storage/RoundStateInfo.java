@@ -1,4 +1,4 @@
-package io.grpc.learning.vo;
+package io.grpc.learning.storage;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -7,10 +7,13 @@ import java.util.List;
 import java.util.Set;
 
 import io.grpc.learning.computation.TensorValue;
+import io.grpc.learning.vo.SequenceData;
+import io.grpc.learning.vo.StateMachine;
 
 public class RoundStateInfo {
 
-    public static int round = 10;
+    public static int round = 100;
+    public static int maxRound = 100;
     public static HashMap<String, List<String>> callRequest = new HashMap<>();
     public static HashMap<String, Set<String>> waitRequest = new HashMap<>();
     public static HashMap<String, StateMachine> roundState = new HashMap<>();
@@ -24,6 +27,7 @@ public class RoundStateInfo {
         if (callRequest.get(node) == null) {
             callRequest.put(node, new ArrayList<>());
             waitRequest.put(node, new HashSet<>());
+            MetricsContainer.MetricsCollector.put(node, new HashMap<>());
         }
         callRequest.get(node).add(clientId);
         epochMap.put(clientId, round);
@@ -54,6 +58,7 @@ public class RoundStateInfo {
         ModelWeights.weightsCollector.get(req.getId()).put(node, sequenceData);
         if (req.getOffset() == req.getValueSize() - 1) {
             waitRequest.get(node).add(clientId);
+            MetricsContainer.MetricsCollector.get(node).put(clientId,req.getMetrics());
         }
     }
 

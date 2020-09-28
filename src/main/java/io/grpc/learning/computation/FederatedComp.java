@@ -4,6 +4,7 @@ import com.alibaba.fastjson.JSON;
 
 import org.tensorflow.Graph;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -12,13 +13,14 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import io.grpc.learning.api.BaseGraph;
+import io.grpc.learning.logging.SystemOut;
+import io.grpc.learning.storage.MetricsContainer;
 import io.grpc.learning.utils.JsonUtils;
 import io.grpc.learning.vo.GraphZoo;
-import io.grpc.learning.vo.ModelWeights;
-import io.grpc.learning.vo.RoundStateInfo;
+import io.grpc.learning.storage.ModelWeights;
+import io.grpc.learning.storage.RoundStateInfo;
 import io.grpc.learning.vo.SequenceData;
 import io.grpc.learning.vo.StateMachine;
-import io.grpc.learning.vo.TaskZoo;
 import io.grpc.learning.vo.TensorVarName;
 
 import static io.grpc.learning.computation.SequenceComp.initializerSequence;
@@ -81,6 +83,7 @@ public class FederatedComp implements Runnable {
         Map.Entry<String, HashMap<String, SequenceData>> firstEle = iterator.next();
         HashMap<String, SequenceData> weightAgg = firstEle.getValue();
         weightFloat = weightAgg.get(nodeName).getTensorVar();
+        // weights aggregation
         for (; iterator.hasNext(); ) {
             weightFloat1 = iterator.next().getValue().get(nodeName).getTensorVar();
             for (int i = 0; i < weightFloat1.size(); i++) {
@@ -92,11 +95,19 @@ public class FederatedComp implements Runnable {
                 weightFloat.set(i, finalList);
             }
         }
+        List<List<Float>> averageWeights = new ArrayList<>();
         for (int i = 0; i < weightFloat.size(); i++) {
+            List<Float> floatList = new ArrayList<>();
             for (int j = 0; j < weightFloat.get(i).size(); j++) {
-                weightFloat.get(i).set(j, weightFloat.get(i).get(j) / numWeights);
+                floatList.add(weightFloat.get(i).get(j) / numWeights);
+                // java.lang.UnsupportedOperationException
+                // immutable list, can't modify it
+                // weightFloat.get(i).set(j, weightFloat.get(i).get(j) / numWeights);
             }
+            averageWeights.add(floatList);
         }
+        weightAgg.get(nodeName).setTensorVar(averageWeights);
+        updateMetrics(nodeName);
         update = true;
         RoundStateInfo.round -= 1;
         RoundStateInfo.roundState.put(nodeName, StateMachine.start);
@@ -129,11 +140,42 @@ public class FederatedComp implements Runnable {
 
     }
 
-    public static void timeWait(int second){
+    public static void timeWait(int second) {
         try {
             Thread.sleep(second);
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
+    }
+
+    public static void updateMetrics(String nodeName) {
+        // metrics aggregation
+        HashMap<String, Metrics> metricsHashMap = MetricsContainer.MetricsCollector.get(nodeName);
+        HashMap<String, Float> metricAgg = new HashMap<>();
+        Iterator iterator1 = metricsHashMap.entrySet().iterator();
+        Map.Entry entry = (Map.Entry) iterator1.next();
+        Metrics metrics = (Metrics) entry.getValue();
+        List<String> stringList = metrics.getNameList();
+        List<Float> floatList = metrics.getValueList();
+        float weightSum = metrics.getWeights();
+        for (int i = 0; i < stringList.size(); i++) {
+            metricAgg.put(stringList.get(i), floatList.get(i) * weightSum);
+        }
+        while (iterator1.hasNext()) {
+            entry = (Map.Entry) iterator1.next();
+            metrics = (Metrics) entry.getValue();
+            for (int i = 0; i < stringList.size(); i++) {
+                float currentVal = metricAgg.get(stringList.get(i));
+                metricAgg.put(stringList.get(i), currentVal +
+                        metrics.getValueList().get(i) * metrics.getWeights());
+            }
+            weightSum += metrics.getWeights();
+        }
+
+        for (String key : metricAgg.keySet()) {
+            metricAgg.put(key, metricAgg.get(key) / weightSum);
+        }
+        new SystemOut().output("round " + String.valueOf(
+                RoundStateInfo.maxRound - RoundStateInfo.round) + ": " + metricAgg, System.out);
     }
 }

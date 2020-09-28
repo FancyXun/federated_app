@@ -1,6 +1,8 @@
-package io.grpc.learning.vo;
+package io.grpc.learning.storage;
 
 import java.util.HashMap;
+
+import io.grpc.learning.vo.SequenceData;
 
 public class ModelWeights {
 

@@ -23,6 +23,7 @@ import io.grpc.learning.computation.ComputationRequest;
 import io.grpc.learning.computation.TensorValue;
 import io.grpc.utils.LocalCSVReader;
 import io.grpc.utils.StateInfo;
+import io.grpc.vo.Metrics;
 import io.grpc.vo.SequenceType;
 
 public class TrainingTask {
@@ -34,8 +35,12 @@ public class TrainingTask {
         @SuppressLint("StaticFieldLeak")
         private TextView textView;
         private StateInfo stateInfo;
+        // server IP and port
         private String host = "192.168.50.38";
         private int port = 50051;
+        // the round of federated training
+        private int round = 0;
+
 
         protected LocalTrainingTask(Activity activity, Context context, TextView textView) {
             this.activityReference = new WeakReference<Activity>(activity);
@@ -47,14 +52,12 @@ public class TrainingTask {
         @SuppressLint("WrongThread")
         @Override
         protected String doInBackground(String... params) {
-            float loss = 0;
+            float loss;
             try {
-//                ComputationReply reply = this.callRound(params);
-                int round = Integer.parseInt(params[4]);
+                loss = this.runOneRound(params);;
                 while (round > 0) {
                     params[3] = String.valueOf(round);
                     loss = this.runOneRound(params);
-                    round -= 1;
                 }
                 return "Loss is: " + loss;
             } catch (Exception e) {
@@ -100,8 +103,6 @@ public class TrainingTask {
             String localId = params[0];
             String dataPath = params[1];
             String modelName = params[2];
-            int round = Integer.parseInt(params[3]);
-            int roundNum = Integer.parseInt(params[4]);
             channel = ManagedChannelBuilder
                     .forAddress(this.host, this.port)
                     .usePlaintext().build();
@@ -109,6 +110,7 @@ public class TrainingTask {
             ComputationRequest.Builder builder = ComputationRequest.newBuilder().setId(localId)
                     .setNodeName(modelName);
             ComputationReply reply = stub.call(builder.build());
+            round = reply.getRound();
             Graph graph = new Graph();
             // Get graph from server
             // todo: implement bp in android device,
@@ -118,13 +120,22 @@ public class TrainingTask {
             // Load data
             LocalCSVReader localCSVReader = new LocalCSVReader(
                     this.context, dataPath, 0, "target");
-            SessionRunner runner = new SessionRunner(graph, sequenceType, localCSVReader, round, roundNum);
+            SessionRunner runner = new SessionRunner(graph, sequenceType, localCSVReader, round);
             List<List<Float>> tensorVar = runner.invoke(this.textView);
-            boolean uploaded = this.upload(stub, localId, modelName, tensorVar);
+            // Set metrics
+            Metrics metrics = this.setMetrics(runner);
+            metrics.weights = localCSVReader.getHeight();
+            this.upload(stub, localId, modelName, tensorVar, metrics);
             this.stateInfo.setStateCode(1);
             return runner.getLoss();
         }
 
+        public Metrics setMetrics(SessionRunner runner){
+            Metrics metrics = new Metrics();
+            metrics.metricsName.add("loss");
+            metrics.metrics.add(runner.getLoss());
+            return metrics;
+        }
 
     }
 }

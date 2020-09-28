@@ -28,11 +28,8 @@ service Computation {
 
   rpc CallValue (ComputationRequest) returns (TensorValue) {}
 
-  rpc PreCallValue (PreCallValueMeta) returns (PreCallValueMetaReply) {}
+  rpc Compute(TensorValue) returns(ValueReply) {}
 
-  rpc SendValue(TensorValue) returns(ValueReply) {}
-
-  rpc PreSendValue(PreSendValueMeta) returns(PreSendValueMetaReply) {}
 }
 
 // The request message containing the user's id.
@@ -46,57 +43,67 @@ message ComputationRequest {
 
 }
 
-
-// The response message containing the computation graph
 message ComputationReply {
+  // The response message containing the computation graph
+  // The compomnents of the result will then all be simultaneously evaluated in
+  // what corresponds to a single Session.run() in non-eager mode.
+
+  // NOTE: Currently, there is no way to represent any higher-level scripting
+  // over the graph. We require that all control flow logic be expressed using
+  // control dependencies and other TensorFlow constructs and triggered by the
+  // evaluation of outputs within a single Session.run()
+
+  // A serialized representation of a TensorFlow graph to execute.
+  //
   string message = 1;
   // The Computation graph
+  // Stores a bytes message.
   bytes graph = 2;
-
+  // Each client should
   int32 round = 3;
 }
 
+// This is for training
 message TensorValue{
+
   string id = 1;
+
   string name = 2;
+
   int32 value_size = 3;
+
   int32 offset = 4;
+
   repeated float list_array = 5;
+
   repeated int32 shape_array = 6;
+
   repeated int32 assign_shape_array = 10;
+
   TrainableVarName trainable_name = 7;
+
   repeated string assign_name = 8;
+
   repeated string placeholder = 9;
+
   string node_name = 11;
+
+  Metrics metrics = 12;
 }
 
+//
 message TrainableVarName{
   string name = 1;
   string target_name = 2;
 }
 
+//
 message ValueReply{
   bool message = 1;
 }
 
-message PreCallValueMeta {
-  string id = 1;
-  string node_name = 2;
+message Metrics{
+  repeated string name = 1;
+  repeated float value = 2;
+  float weights = 3;
 }
-
-message PreCallValueMetaReply {
-  bool call_value = 1;
-}
-
-message PreSendValueMeta {
-  string id = 1;
-  string node_name = 2;
-}
-
-message PreSendValueMetaReply {
-  bool send_value = 1;
-}
-
-
-
-

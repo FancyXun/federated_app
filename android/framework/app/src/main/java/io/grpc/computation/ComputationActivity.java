@@ -36,7 +36,6 @@ public class ComputationActivity extends AppCompatActivity {
 
     private Button trainButton;
     private TextView resultText;
-    private EditText round;
     private Spinner data;
     private Spinner model;
     private static final String DATA_FILE = "file:///android_asset/bank_zhongyuan/test_data1.csv";
@@ -49,7 +48,6 @@ public class ComputationActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_computation);
         trainButton = (Button) findViewById(R.id.train_button);
-        round = (EditText) findViewById(R.id.round);
         data = (Spinner) findViewById(R.id.data);
         model = (Spinner) findViewById(R.id.model);
         resultText = (TextView) findViewById(R.id.server_response_text);
@@ -68,8 +66,7 @@ public class ComputationActivity extends AppCompatActivity {
                 local_id,
                 (String) data.getSelectedItem(),
                 (String) model.getSelectedItem(),
-                placeholder,
-                round.getText().toString()
+                placeholder
                 );
     }
 

@@ -4,6 +4,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class SequenceData {
+    public void setTensorVar(List<List<Float>> tensorVar) {
+        this.tensorVar = tensorVar;
+    }
+
     private List<List<Float>> tensorVar = new ArrayList<>();
     private List<String> tensorName = new ArrayList<>();
     private List<String> tensorTargetName = new ArrayList<>();

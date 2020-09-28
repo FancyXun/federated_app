@@ -23,6 +23,11 @@ public class LocalCSVReader {
     private float[][] y_oneHot;
     private String target;
     private int yIndex;
+
+    public int getHeight() {
+        return height;
+    }
+
     private int height, width;
 
     public float[][] getX() {

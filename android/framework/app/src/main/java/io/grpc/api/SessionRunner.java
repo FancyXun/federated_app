@@ -19,7 +19,6 @@ import io.grpc.vo.SequenceType;
 import io.grpc.vo.TrainableVariable;
 
 public class SessionRunner {
-    private int roundNum;
     private Graph graph;
     private int round;
     private int batchSize;
@@ -46,9 +45,15 @@ public class SessionRunner {
         this.session = new Session(this.graph);
     }
 
+    /**
+     *
+     * @param graph
+     * @param sequenceType
+     * @param localCSVReader
+     * @param round
+     */
     public SessionRunner(Graph graph, SequenceType sequenceType,
-                         LocalCSVReader localCSVReader, int round, int roundNum) {
-        this.roundNum = roundNum;
+                         LocalCSVReader localCSVReader, int round) {
         this.graph = graph;
         this.round = round;
         this.localCSVReader = localCSVReader;
@@ -84,7 +89,7 @@ public class SessionRunner {
         }
         this.optimizer = runner.run().get(0);
         List<List<Float>> tensorVar = this.updateVariables();
-        textView.setText(String.valueOf("Loss " + this.round + "/" + this.roundNum  +
+        textView.setText(String.valueOf("Loss " + this.round  +
                 ": " + this.optimizer.floatValue())) ;
         loss = this.optimizer.floatValue();
         return tensorVar;
@@ -129,7 +134,7 @@ public class SessionRunner {
     }
 
     /**
-     * When run this function, remember epoch -1
+     * sgd
      */
     private List<List<Float>> updateVariables() {
         List<List<Float>> tensorVar = new ArrayList<>();
