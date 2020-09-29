@@ -40,6 +40,7 @@ public class TrainingTask {
         private int port = 50051;
         // the round of federated training
         private int round = 0;
+        private String dataSplit = "train@0-8";
 
 
         protected LocalTrainingTask(Activity activity, Context context, TextView textView) {
@@ -111,6 +112,7 @@ public class TrainingTask {
                     .setNodeName(modelName);
             ComputationReply reply = stub.call(builder.build());
             round = reply.getRound();
+            dataSplit = reply.getMessage();
             Graph graph = new Graph();
             // Get graph from server
             // todo: implement bp in android device,
@@ -119,9 +121,10 @@ public class TrainingTask {
             SequenceType sequenceType = this.SequenceCall(stub, builder);
             // Load data
             LocalCSVReader localCSVReader = new LocalCSVReader(
-                    this.context, dataPath, 0, "target");
+                    this.context, dataPath, 0, "target", dataSplit);
             SessionRunner runner = new SessionRunner(graph, sequenceType, localCSVReader, round);
             List<List<Float>> tensorVar = runner.invoke(this.textView);
+            runner.eval(this.textView);
             // Set metrics
             Metrics metrics = this.setMetrics(runner);
             metrics.weights = localCSVReader.getHeight();
@@ -132,8 +135,10 @@ public class TrainingTask {
 
         public Metrics setMetrics(SessionRunner runner){
             Metrics metrics = new Metrics();
-            metrics.metricsName.add("loss");
+            metrics.metricsName.add("train_loss");
             metrics.metrics.add(runner.getLoss());
+            metrics.metricsName.add("eval_loss");
+            metrics.metrics.add(runner.getEval_loss());
             return metrics;
         }
 

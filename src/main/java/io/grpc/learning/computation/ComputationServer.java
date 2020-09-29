@@ -110,7 +110,7 @@ public class ComputationServer {
     }
 
     static class ComputationImpl extends ComputationGrpc.ComputationImplBase {
-        public int minRequestNum = 3;
+        public int minRequestNum = 1;
 
         /**
          * @param request
@@ -127,6 +127,7 @@ public class ComputationServer {
             ComputationReply.Builder reply = ComputationReply.newBuilder();
             reply.setGraph(ByteString.copyFrom(byteGraph));
             reply.setRound(RoundStateInfo.epochMap.get(clientId));
+            reply.setMessage(RoundStateInfo.dataSplit);
             responseObserver.onNext(reply.build());
             responseObserver.onCompleted();
         }

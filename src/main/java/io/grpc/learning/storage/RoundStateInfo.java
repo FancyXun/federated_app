@@ -14,6 +14,7 @@ public class RoundStateInfo {
 
     public static int round = 100;
     public static int maxRound = 100;
+    public static String dataSplit = "train@0-8";
     public static HashMap<String, List<String>> callRequest = new HashMap<>();
     public static HashMap<String, Set<String>> waitRequest = new HashMap<>();
     public static HashMap<String, StateMachine> roundState = new HashMap<>();

@@ -20,7 +20,7 @@ import io.grpc.learning.utils.LocalCSVReader;
 import io.grpc.learning.vo.TensorVarName;
 import sun.misc.IOUtils;
 
-public class LogisticsRegressionTests {
+public class LogisticsRegressionTest {
 
     @Test
     public void LogisticsRegressionTest() {
@@ -28,28 +28,32 @@ public class LogisticsRegressionTests {
         float[][] x = {{1f, 1f}, {2f, 2f}};
         float[] y = {1f, 2f};
         float[] b = new float[2];
-        float[][] w = new float[2][2];
+        float[][] w = new float[141][2];
+        float batchSize = 10f;
         Graph graph = new Graph();
         InputStream modelStream = null;
         try {
             modelStream = new FileInputStream(logisticsRegression.pbPath);
             graph.importGraphDef(IOUtils.readAllBytes(modelStream));
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
         } catch (IOException e) {
             e.printStackTrace();
         }
         Session session = new Session(graph);
         Iterator<Operation> operationIterator = graph.operations();
+        while (operationIterator.hasNext()){
+            Operation op = operationIterator.next();
+            System.out.println(op);
+        }
         session.runner()
-                .feed("w/init", Tensor.create(w))
-                .addTarget("w/Assign")
+                .feed("w/zero", Tensor.create(w))
+                .addTarget("w/Variable/Assign")
                 .run();
         session.runner()
-                .feed("b/init", Tensor.create(b))
-                .addTarget("b/Assign")
+                .feed("b/zero", Tensor.create(b))
+                .addTarget("b/Variable/Assign")
                 .run();
-        Tensor tensor = session.runner().fetch("cost").feed("x", Tensor.create(x)).feed("y", Tensor.create(y)).run().get(0);
+        Tensor tensor = session.runner().fetch("loss").feed("x", Tensor.create(x)).feed("y", Tensor.create(y))
+                .feed("batch_size", Tensor.create(batchSize)).run().get(0);
         System.out.println(tensor.floatValue());
         logisticsRegression.deletePBFile();
     }

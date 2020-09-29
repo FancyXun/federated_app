@@ -29,6 +29,7 @@ public class SessionRunner {
     private Tensor optimizer;
     private String optimizerName = "loss";
     private FeedDict feedDict = new FeedDict();
+    private FeedDict feedDictVal = new FeedDict();
     private List<List<Integer>> tensorAssignShape;
 
     public float getLoss() {
@@ -36,6 +37,16 @@ public class SessionRunner {
     }
 
     private float loss;
+
+    public float getEval_loss() {
+        return eval_loss;
+    }
+
+    public void setEval_loss(float eval_loss) {
+        this.eval_loss = eval_loss;
+    }
+
+    private float eval_loss;
 
     public SessionRunner(Graph graph, LocalCSVReader localCSVReader, int round, int batchSize) {
         this.graph = graph;
@@ -46,7 +57,6 @@ public class SessionRunner {
     }
 
     /**
-     *
      * @param graph
      * @param sequenceType
      * @param localCSVReader
@@ -63,6 +73,7 @@ public class SessionRunner {
                 sequenceType.getTensorTargetName(), sequenceType.getTensorShape(),
                 sequenceType.getTensorAssignName());
         this.feedTrainData(sequenceType.getPlaceholder());
+        this.feedValData(sequenceType.getPlaceholder());
         this.session = new Session(this.graph);
     }
 
@@ -72,6 +83,10 @@ public class SessionRunner {
     public List<List<Float>> invoke(TextView textView) {
         this.globalVariablesInitializer();
         return this.train(textView);
+    }
+
+    public float eval(TextView textView) {
+        return this.evaluateLoss(textView);
     }
 
     private List<List<Float>> train(TextView textView) {
@@ -89,17 +104,39 @@ public class SessionRunner {
         }
         this.optimizer = runner.run().get(0);
         List<List<Float>> tensorVar = this.updateVariables();
-        textView.setText(String.valueOf("Loss " + this.round  +
-                ": " + this.optimizer.floatValue())) ;
+        textView.setText(String.valueOf("Loss " + this.round +
+                ": " + this.optimizer.floatValue()));
         loss = this.optimizer.floatValue();
         return tensorVar;
     }
 
+    private float evaluateLoss(TextView textView) {
+        Session.Runner runner = this.session.runner().fetch(this.optimizerName);
+        for (String s : feedDictVal.getStringList()) {
+            if (feedDictVal.getFeed2DData().containsKey(s)) {
+                runner = runner.feed(s, Tensor.create(feedDictVal.getFeed2DData().get(s)));
+            } else if (feedDictVal.getFeed1DData().containsKey(s)) {
+                runner = runner.feed(s, Tensor.create(feedDictVal.getFeed1DData().get(s)));
+            } else {
+                runner = runner.feed(s, Tensor.create(feedDictVal.getFeedFloat().get(s)));
+            }
+        }
+        eval_loss = runner.run().get(0).floatValue();
+        return eval_loss;
+    }
+
     private void feedTrainData(List<String> stringList) {
         feedDict.setStringList(stringList);
-        feedDict.getFeedFloat().put(stringList.get(0), (float) this.trainInitialize.getX().length);
-        feedDict.getFeed2DData().put(stringList.get(1), this.trainInitialize.getX());
-        feedDict.getFeed2DData().put(stringList.get(2), this.trainInitialize.getY_oneHot());
+        feedDict.getFeedFloat().put(stringList.get(0), (float) this.trainInitialize.getX_train().length);
+        feedDict.getFeed2DData().put(stringList.get(1), this.trainInitialize.getX_train());
+        feedDict.getFeed2DData().put(stringList.get(2), this.trainInitialize.getY_oneHot_train());
+    }
+
+    private void feedValData(List<String> stringList) {
+        feedDictVal.setStringList(stringList);
+        feedDictVal.getFeedFloat().put(stringList.get(0), (float) this.trainInitialize.getX_val().length);
+        feedDictVal.getFeed2DData().put(stringList.get(1), this.trainInitialize.getX_val());
+        feedDictVal.getFeed2DData().put(stringList.get(2), this.trainInitialize.getY_oneHot_val());
     }
 
     private void VariablesProducer(List<List<Float>> trainableVar, List<String> trainableVarName,
@@ -143,7 +180,7 @@ public class SessionRunner {
         HashMap<String, String> nameMap = trainableVariable.getNameMap();
         HashMap<String, float[][]> weight = trainableVariable.getWeight();
         HashMap<String, float[]> bias = trainableVariable.getBias();
-        for (int i= 0; i<backPropagationList.size();i++) {
+        for (int i = 0; i < backPropagationList.size(); i++) {
             Session.Runner runner = this.session.runner();
             for (String s : feedDict.getStringList()) {
                 if (feedDict.getFeed2DData().containsKey(s)) {
@@ -157,13 +194,13 @@ public class SessionRunner {
             Tensor tensor = runner.fetch(backPropagationList.get(i)).run().get(0);
             List<Integer> shapeList = this.tensorAssignShape.get(i);
             if (shapeList.size() == 1) {
-                float [] var = new float[shapeList.get(0)];
+                float[] var = new float[shapeList.get(0)];
                 tensor.copyTo(var);
                 tensorVar.add(listConvert.listConvert(var));
 
             }
             if (shapeList.size() == 2) {
-                float [][] var = new float[shapeList.get(0)][shapeList.get(1)];
+                float[][] var = new float[shapeList.get(0)][shapeList.get(1)];
                 tensor.copyTo(var);
                 tensorVar.add(listConvert.listConvert2D(var));
             }
@@ -171,7 +208,7 @@ public class SessionRunner {
         return tensorVar;
     }
 
-    private void initVarAssign(){
+    private void initVarAssign() {
 
     }
 }

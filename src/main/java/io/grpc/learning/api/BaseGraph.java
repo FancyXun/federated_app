@@ -48,9 +48,7 @@ public abstract class BaseGraph {
             in.close();
             process.waitFor();
             process.destroy();
-        } catch (IOException e) {
-            e.printStackTrace();
-        } catch (InterruptedException e) {
+        } catch (IOException | InterruptedException e) {
             e.printStackTrace();
         }
     }
