@@ -20,7 +20,6 @@ import io.grpc.api.SessionRunner;
 import io.grpc.learning.computation.ComputationGrpc;
 import io.grpc.learning.computation.ComputationReply;
 import io.grpc.learning.computation.ComputationRequest;
-import io.grpc.learning.computation.TensorValue;
 import io.grpc.utils.LocalCSVReader;
 import io.grpc.utils.StateInfo;
 import io.grpc.vo.Metrics;
@@ -130,15 +129,15 @@ public class TrainingTask {
             metrics.weights = localCSVReader.getHeight();
             this.upload(stub, localId, modelName, tensorVar, metrics);
             this.stateInfo.setStateCode(1);
-            return runner.getLoss();
+            return runner.graphMetrics.getLoss();
         }
 
         public Metrics setMetrics(SessionRunner runner){
             Metrics metrics = new Metrics();
             metrics.metricsName.add("train_loss");
-            metrics.metrics.add(runner.getLoss());
+            metrics.metrics.add(runner.graphMetrics.getLoss());
             metrics.metricsName.add("eval_loss");
-            metrics.metrics.add(runner.getEval_loss());
+            metrics.metrics.add(runner.graphMetrics.getEval_loss());
             return metrics;
         }
 

@@ -26,27 +26,10 @@ public class SessionRunner {
     private TrainInitialize trainInitialize;
     private LocalCSVReader localCSVReader;
     private TrainableVariable trainableVariable;
-    private Tensor optimizer;
-    private String optimizerName = "loss";
+    public GraphMetrics graphMetrics = new GraphMetrics();
     private FeedDict feedDict = new FeedDict();
     private FeedDict feedDictVal = new FeedDict();
     private List<List<Integer>> tensorAssignShape;
-
-    public float getLoss() {
-        return loss;
-    }
-
-    private float loss;
-
-    public float getEval_loss() {
-        return eval_loss;
-    }
-
-    public void setEval_loss(float eval_loss) {
-        this.eval_loss = eval_loss;
-    }
-
-    private float eval_loss;
 
     public SessionRunner(Graph graph, LocalCSVReader localCSVReader, int round, int batchSize) {
         this.graph = graph;
@@ -85,14 +68,14 @@ public class SessionRunner {
         return this.train(textView);
     }
 
-    public float eval(TextView textView) {
-        return this.evaluateLoss(textView);
+    public void eval(TextView textView) {
+        this.evaluateLoss(textView);
     }
 
     private List<List<Float>> train(TextView textView) {
         int round = this.round;
         int batchSize = this.batchSize;
-        Session.Runner runner = this.session.runner().fetch(this.optimizerName);
+        Session.Runner runner = this.session.runner().fetch(graphMetrics.lossName);
         for (String s : feedDict.getStringList()) {
             if (feedDict.getFeed2DData().containsKey(s)) {
                 runner = runner.feed(s, Tensor.create(feedDict.getFeed2DData().get(s)));
@@ -102,16 +85,14 @@ public class SessionRunner {
                 runner = runner.feed(s, Tensor.create(feedDict.getFeedFloat().get(s)));
             }
         }
-        this.optimizer = runner.run().get(0);
-        List<List<Float>> tensorVar = this.updateVariables();
-        textView.setText(String.valueOf("Loss " + this.round +
-                ": " + this.optimizer.floatValue()));
-        loss = this.optimizer.floatValue();
-        return tensorVar;
+        float loss = runner.run().get(0).floatValue();
+        graphMetrics.setLoss(loss);
+        textView.setText(String.valueOf("Loss " + this.round + ": " + loss));
+        return this.updateVariables();
     }
 
-    private float evaluateLoss(TextView textView) {
-        Session.Runner runner = this.session.runner().fetch(this.optimizerName);
+    private void evaluateLoss(TextView textView) {
+        Session.Runner runner = this.session.runner().fetch(graphMetrics.lossName);
         for (String s : feedDictVal.getStringList()) {
             if (feedDictVal.getFeed2DData().containsKey(s)) {
                 runner = runner.feed(s, Tensor.create(feedDictVal.getFeed2DData().get(s)));
@@ -121,8 +102,8 @@ public class SessionRunner {
                 runner = runner.feed(s, Tensor.create(feedDictVal.getFeedFloat().get(s)));
             }
         }
-        eval_loss = runner.run().get(0).floatValue();
-        return eval_loss;
+        float eval_loss = runner.run().get(0).floatValue();
+        graphMetrics.setEval_loss(eval_loss);
     }
 
     private void feedTrainData(List<String> stringList) {
