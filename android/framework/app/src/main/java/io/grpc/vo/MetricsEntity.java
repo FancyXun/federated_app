@@ -1,7 +1,8 @@
-package io.grpc.api;
+package io.grpc.vo;
 
-public class GraphMetrics {
+public class MetricsEntity {
 
+    public String preName = "pre/Variable";
     public String lossName = "loss";
     public String AUCName = "";
 

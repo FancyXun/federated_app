@@ -1,5 +1,6 @@
 package io.grpc.api;
 
+import android.content.Context;
 import android.widget.TextView;
 
 import org.tensorflow.Graph;
@@ -15,10 +16,12 @@ import java.util.Set;
 import io.grpc.utils.LocalCSVReader;
 import io.grpc.utils.listConvert;
 import io.grpc.vo.FeedDict;
+import io.grpc.vo.MetricsEntity;
 import io.grpc.vo.SequenceType;
 import io.grpc.vo.TrainableVariable;
 
 public class SessionRunner {
+    private Context context;
     private Graph graph;
     private int round;
     private int batchSize;
@@ -26,7 +29,7 @@ public class SessionRunner {
     private TrainInitialize trainInitialize;
     private LocalCSVReader localCSVReader;
     private TrainableVariable trainableVariable;
-    public GraphMetrics graphMetrics = new GraphMetrics();
+    public MetricsEntity metricsEntity = new MetricsEntity();
     private FeedDict feedDict = new FeedDict();
     private FeedDict feedDictVal = new FeedDict();
     private List<List<Integer>> tensorAssignShape;
@@ -45,8 +48,9 @@ public class SessionRunner {
      * @param localCSVReader
      * @param round
      */
-    public SessionRunner(Graph graph, SequenceType sequenceType,
+    public SessionRunner(Context context, Graph graph, SequenceType sequenceType,
                          LocalCSVReader localCSVReader, int round) {
+        this.context = context;
         this.graph = graph;
         this.round = round;
         this.localCSVReader = localCSVReader;
@@ -75,7 +79,7 @@ public class SessionRunner {
     private List<List<Float>> train(TextView textView) {
         int round = this.round;
         int batchSize = this.batchSize;
-        Session.Runner runner = this.session.runner().fetch(graphMetrics.lossName);
+        Session.Runner runner = this.session.runner().fetch(metricsEntity.lossName);
         for (String s : feedDict.getStringList()) {
             if (feedDict.getFeed2DData().containsKey(s)) {
                 runner = runner.feed(s, Tensor.create(feedDict.getFeed2DData().get(s)));
@@ -86,13 +90,55 @@ public class SessionRunner {
             }
         }
         float loss = runner.run().get(0).floatValue();
-        graphMetrics.setLoss(loss);
+        metricsEntity.setLoss(loss);
         textView.setText(String.valueOf("Loss " + this.round + ": " + loss));
-        return this.updateVariables();
+        List<List<Float>> tensorVar = this.updateVariables();
+        this.trainAUC();
+        return tensorVar;
+    }
+
+    private void trainAUC() {
+        Session.Runner runner = this.session.runner();
+        for (String s : feedDict.getStringList()) {
+            if (feedDict.getFeed2DData().containsKey(s)) {
+                runner = runner.feed(s, Tensor.create(feedDict.getFeed2DData().get(s)));
+            } else if (feedDict.getFeed1DData().containsKey(s)) {
+                runner = runner.feed(s, Tensor.create(feedDict.getFeed1DData().get(s)));
+            } else {
+                runner = runner.feed(s, Tensor.create(feedDict.getFeedFloat().get(s)));
+            }
+        }
+        // calculate auc
+        Tensor pre = runner.fetch(metricsEntity.preName).run().get(0);
+        SessionMetrics sessionMetrics = new SessionMetrics(this.context);
+        Float auc = sessionMetrics.session.runner()
+                .feed("labels", Tensor.create(this.localCSVReader.getY_train()))
+                .feed("predictions", pre)
+                .fetch("auc_pair/update_op").run().get(0).floatValue();
+    }
+
+    private void evalAUC() {
+        Session.Runner runner = this.session.runner();
+        for (String s : feedDictVal.getStringList()) {
+            if (feedDictVal.getFeed2DData().containsKey(s)) {
+                runner = runner.feed(s, Tensor.create(feedDictVal.getFeed2DData().get(s)));
+            } else if (feedDictVal.getFeed1DData().containsKey(s)) {
+                runner = runner.feed(s, Tensor.create(feedDictVal.getFeed1DData().get(s)));
+            } else {
+                runner = runner.feed(s, Tensor.create(feedDictVal.getFeedFloat().get(s)));
+            }
+        }
+        // calculate auc
+        Tensor pre = runner.fetch(metricsEntity.preName).run().get(0);
+        SessionMetrics sessionMetrics = new SessionMetrics(this.context);
+        Float auc = sessionMetrics.session.runner()
+                .feed("labels", Tensor.create(this.localCSVReader.getY_val()))
+                .feed("predictions", pre)
+                .fetch("auc_pair/update_op").run().get(0).floatValue();
     }
 
     private void evaluateLoss(TextView textView) {
-        Session.Runner runner = this.session.runner().fetch(graphMetrics.lossName);
+        Session.Runner runner = this.session.runner().fetch(metricsEntity.lossName);
         for (String s : feedDictVal.getStringList()) {
             if (feedDictVal.getFeed2DData().containsKey(s)) {
                 runner = runner.feed(s, Tensor.create(feedDictVal.getFeed2DData().get(s)));
@@ -103,8 +149,9 @@ public class SessionRunner {
             }
         }
         float eval_loss = runner.run().get(0).floatValue();
-        graphMetrics.setEval_loss(eval_loss);
+        metricsEntity.setEval_loss(eval_loss);
     }
+
 
     private void feedTrainData(List<String> stringList) {
         feedDict.setStringList(stringList);
@@ -172,7 +219,9 @@ public class SessionRunner {
                     runner = runner.feed(s, Tensor.create(feedDict.getFeedFloat().get(s)));
                 }
             }
+            // bp: update model weights
             Tensor tensor = runner.fetch(backPropagationList.get(i)).run().get(0);
+            // set model weights to list for sending to sever
             List<Integer> shapeList = this.tensorAssignShape.get(i);
             if (shapeList.size() == 1) {
                 float[] var = new float[shapeList.get(0)];

@@ -15,7 +15,7 @@ with graph.as_default():
     local_var = tf.local_variables()
     init_new_vars_op = tf.initialize_variables(local_var)
 
-tf.compat.v1.train.write_graph(graph,'./','getauc.pb',as_text=False)
+tf.compat.v1.train.write_graph(graph,'./','auc.pb',as_text=False)
 
 """ java code for calculating auc with a given labels_predictions pair
         float labarr [] = {0,0,0,0,0,0,1,1,1,1,1,1};

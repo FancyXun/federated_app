@@ -121,7 +121,8 @@ public class TrainingTask {
             // Load data
             LocalCSVReader localCSVReader = new LocalCSVReader(
                     this.context, dataPath, 0, "target", dataSplit);
-            SessionRunner runner = new SessionRunner(graph, sequenceType, localCSVReader, round);
+            SessionRunner runner = new SessionRunner(this.context, graph, sequenceType,
+                    localCSVReader, round);
             List<List<Float>> tensorVar = runner.invoke(this.textView);
             runner.eval(this.textView);
             // Set metrics
@@ -129,15 +130,15 @@ public class TrainingTask {
             metrics.weights = localCSVReader.getHeight();
             this.upload(stub, localId, modelName, tensorVar, metrics);
             this.stateInfo.setStateCode(1);
-            return runner.graphMetrics.getLoss();
+            return runner.metricsEntity.getLoss();
         }
 
         public Metrics setMetrics(SessionRunner runner){
             Metrics metrics = new Metrics();
             metrics.metricsName.add("train_loss");
-            metrics.metrics.add(runner.graphMetrics.getLoss());
+            metrics.metrics.add(runner.metricsEntity.getLoss());
             metrics.metricsName.add("eval_loss");
-            metrics.metrics.add(runner.graphMetrics.getEval_loss());
+            metrics.metrics.add(runner.metricsEntity.getEval_loss());
             return metrics;
         }
 

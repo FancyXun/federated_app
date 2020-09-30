@@ -82,7 +82,7 @@ def graph_generator():
         y = tf.placeholder(tf.float32, [None, 2], name='y')
         w = tf.Variable(tf.zeros([141, 2], name="w/zero"), validate_shape=False, name='w/Variable')
         b = tf.Variable(tf.zeros([2], name="b/zero"), validate_shape=False, name='b/Variable')
-        y_pre = tf.nn.softmax(tf.matmul(x, w) + b)
+        y_pre = tf.nn.softmax(tf.matmul(x, w) + b, name="pre/Variable")
         tf.reduce_mean(-tf.reduce_sum(y * tf.log(y_pre), axis=1), name="loss")
         learning_rate = 0.001
         w_update, b_update = optimizer(x, y, y_pre, w, b, learning_rate, batch_size)
