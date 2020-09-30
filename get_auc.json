@@ -1,0 +1,51 @@
+{
+  "assignTarget": {
+    "Variable_16014303017166612": {
+      "shape": [
+        "141",
+        "2"
+      ]
+    },
+    "Variable_1_1601430301717658": {
+      "shape": [
+        "2"
+      ]
+    }
+  },
+  "placeholder": [
+    "batch_size",
+    "x",
+    "y"
+  ],
+  "varTarget": {
+    "Variable/Assign": {
+      "parentNode": "zeros",
+      "shape": [
+        "141",
+        "2"
+      ]
+    },
+    "Variable_1/Assign": {
+      "parentNode": "zeros_1",
+      "shape": [
+        "2"
+      ]
+    },
+    "auc_pair/false_negatives/Assign": [
+      "auc_pair/false_negatives",
+      "auc_pair/false_negatives/Initializer/zeros"
+    ],
+    "auc_pair/false_positives/Assign": [
+      "auc_pair/false_positives",
+      "auc_pair/false_positives/Initializer/zeros"
+    ],
+    "auc_pair/true_negatives/Assign": [
+      "auc_pair/true_negatives",
+      "auc_pair/true_negatives/Initializer/zeros"
+    ],
+    "auc_pair/true_positives/Assign": [
+      "auc_pair/true_positives",
+      "auc_pair/true_positives/Initializer/zeros"
+    ]
+  }
+}
