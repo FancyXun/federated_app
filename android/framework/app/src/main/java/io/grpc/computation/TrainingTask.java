@@ -16,6 +16,7 @@ import java.util.concurrent.TimeUnit;
 
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
+import io.grpc.api.SessionMetrics;
 import io.grpc.api.SessionRunner;
 import io.grpc.learning.computation.ComputationGrpc;
 import io.grpc.learning.computation.ComputationReply;
@@ -54,6 +55,7 @@ public class TrainingTask {
         protected String doInBackground(String... params) {
             float loss;
             try {
+                new SessionMetrics(this.context);
                 loss = this.runOneRound(params);;
                 while (round > 0) {
                     params[3] = String.valueOf(round);
@@ -99,6 +101,11 @@ public class TrainingTask {
             return reply;
         }
 
+        /**
+         * Orchestration logic for one round of optimization.
+         * @param params
+         * @return
+         */
         protected float runOneRound(String... params) {
             String localId = params[0];
             String dataPath = params[1];
@@ -139,6 +146,10 @@ public class TrainingTask {
             metrics.metrics.add(runner.metricsEntity.getLoss());
             metrics.metricsName.add("eval_loss");
             metrics.metrics.add(runner.metricsEntity.getEval_loss());
+            metrics.metricsName.add("train_auc");
+            metrics.metrics.add(runner.metricsEntity.getAUC());
+            metrics.metricsName.add("eval_auc");
+            metrics.metrics.add(runner.metricsEntity.getEval_AUC());
             return metrics;
         }
 

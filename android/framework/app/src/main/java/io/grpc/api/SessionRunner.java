@@ -26,6 +26,7 @@ public class SessionRunner {
     private int round;
     private int batchSize;
     private Session session;
+    private Session aucSession;
     private TrainInitialize trainInitialize;
     private LocalCSVReader localCSVReader;
     private TrainableVariable trainableVariable;
@@ -62,6 +63,7 @@ public class SessionRunner {
         this.feedTrainData(sequenceType.getPlaceholder());
         this.feedValData(sequenceType.getPlaceholder());
         this.session = new Session(this.graph);
+        this.aucSession = new SessionMetrics(context).session;
     }
 
     /**
@@ -74,6 +76,7 @@ public class SessionRunner {
 
     public void eval(TextView textView) {
         this.evaluateLoss(textView);
+        this.evalAUC();
     }
 
     private List<List<Float>> train(TextView textView) {
@@ -98,7 +101,7 @@ public class SessionRunner {
     }
 
     private void trainAUC() {
-        Session.Runner runner = this.session.runner();
+        Session.Runner runner = this.aucSession.runner();
         for (String s : feedDict.getStringList()) {
             if (feedDict.getFeed2DData().containsKey(s)) {
                 runner = runner.feed(s, Tensor.create(feedDict.getFeed2DData().get(s)));
@@ -118,7 +121,7 @@ public class SessionRunner {
     }
 
     private void evalAUC() {
-        Session.Runner runner = this.session.runner();
+        Session.Runner runner = this.aucSession.runner();
         for (String s : feedDictVal.getStringList()) {
             if (feedDictVal.getFeed2DData().containsKey(s)) {
                 runner = runner.feed(s, Tensor.create(feedDictVal.getFeed2DData().get(s)));
