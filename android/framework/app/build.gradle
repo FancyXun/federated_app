@@ -22,12 +22,13 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
     }
-    
-    sourceSets {
-        main {
-            jniLibs.srcDirs = ['libs']
-        }
-    }
+
+// Do not add this line which may cause conflicts with dependence
+//    sourceSets {
+//        main {
+//            jniLibs.srcDirs = ['libs']
+//        }
+//    }
 
     lintOptions {
         disable 'GoogleAppIndexingWarning', 'HardcodedText', 'InvalidPackage'

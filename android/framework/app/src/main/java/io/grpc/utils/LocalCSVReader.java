@@ -220,7 +220,7 @@ public class LocalCSVReader {
             int end = Integer.parseInt(m.group(4));
             int trainSize = this.height * (end - start) / 10;
             this.x_train = Arrays.copyOfRange(this.x, 0, trainSize);
-            this.y = Arrays.copyOfRange(this.y, 0, trainSize);
+            this.y_train = Arrays.copyOfRange(this.y, 0, trainSize);
             this.y_oneHot_train = Arrays.copyOfRange(this.y_oneHot, 0, trainSize);
             this.x_val = Arrays.copyOfRange(this.x, trainSize, this.height);
             this.y_val = Arrays.copyOfRange(this.y, trainSize, this.height);

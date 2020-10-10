@@ -26,7 +26,6 @@ public class SessionRunner {
     private int round;
     private int batchSize;
     private Session session;
-    private Session aucSession;
     private TrainInitialize trainInitialize;
     private LocalCSVReader localCSVReader;
     private TrainableVariable trainableVariable;
@@ -63,7 +62,6 @@ public class SessionRunner {
         this.feedTrainData(sequenceType.getPlaceholder());
         this.feedValData(sequenceType.getPlaceholder());
         this.session = new Session(this.graph);
-        this.aucSession = new SessionMetrics(context).session;
     }
 
     /**
@@ -101,7 +99,7 @@ public class SessionRunner {
     }
 
     private void trainAUC() {
-        Session.Runner runner = this.aucSession.runner();
+        Session.Runner runner = this.session.runner();
         for (String s : feedDict.getStringList()) {
             if (feedDict.getFeed2DData().containsKey(s)) {
                 runner = runner.feed(s, Tensor.create(feedDict.getFeed2DData().get(s)));
@@ -113,15 +111,23 @@ public class SessionRunner {
         }
         // calculate auc
         Tensor pre = runner.fetch(metricsEntity.preName).run().get(0);
+        int size = this.localCSVReader.getY_oneHot_train().length;
+        float[][] train_y_oneHot_pre = new float[size][2];
+        pre.copyTo(train_y_oneHot_pre);
+        float[] float_pre = new float[size];
+        for (int i = 0; i < size; i++) {
+            float_pre[i] = train_y_oneHot_pre[i][1];
+        }
         SessionMetrics sessionMetrics = new SessionMetrics(this.context);
         Float auc = sessionMetrics.session.runner()
                 .feed("labels", Tensor.create(this.localCSVReader.getY_train()))
-                .feed("predictions", pre)
+                .feed("predictions", Tensor.create(float_pre))
                 .fetch("auc_pair/update_op").run().get(0).floatValue();
+        metricsEntity.setAUC(auc);
     }
 
     private void evalAUC() {
-        Session.Runner runner = this.aucSession.runner();
+        Session.Runner runner = this.session.runner();
         for (String s : feedDictVal.getStringList()) {
             if (feedDictVal.getFeed2DData().containsKey(s)) {
                 runner = runner.feed(s, Tensor.create(feedDictVal.getFeed2DData().get(s)));
@@ -133,11 +139,19 @@ public class SessionRunner {
         }
         // calculate auc
         Tensor pre = runner.fetch(metricsEntity.preName).run().get(0);
+        int size = this.localCSVReader.getY_oneHot_val().length;
+        float[][] val_y_oneHot_pre = new float[size][2];
+        pre.copyTo(val_y_oneHot_pre);
+        float[] float_pre = new float[size];
+        for (int i = 0; i < size; i++) {
+            float_pre[i] = val_y_oneHot_pre[i][1];
+        }
         SessionMetrics sessionMetrics = new SessionMetrics(this.context);
         Float auc = sessionMetrics.session.runner()
                 .feed("labels", Tensor.create(this.localCSVReader.getY_val()))
-                .feed("predictions", pre)
+                .feed("predictions", Tensor.create(float_pre))
                 .fetch("auc_pair/update_op").run().get(0).floatValue();
+        metricsEntity.setEval_AUC(auc);
     }
 
     private void evaluateLoss(TextView textView) {

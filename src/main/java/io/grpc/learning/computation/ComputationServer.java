@@ -110,7 +110,7 @@ public class ComputationServer {
     }
 
     static class ComputationImpl extends ComputationGrpc.ComputationImplBase {
-        public int minRequestNum = 1;
+        public int minRequestNum = 3;
 
         /**
          * @param request
