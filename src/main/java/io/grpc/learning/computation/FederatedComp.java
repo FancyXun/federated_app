@@ -131,7 +131,7 @@ public class FederatedComp implements Runnable {
         return sequenceData;
     }
 
-    public synchronized static void updataWeights() {
+    public synchronized static void updateWeights() {
 
     }
 

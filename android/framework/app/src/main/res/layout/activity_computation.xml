@@ -50,7 +50,7 @@
     </LinearLayout>
 
     <Button
-
+        android:background="@drawable/bt_shape"
         android:layout_marginTop="20dp"
         android:id="@+id/train_button"
         android:layout_width="match_parent"
