@@ -16,4 +16,9 @@
     <string-array name="model">
         <item>LogisticsRegression</item>
     </string-array>
+
+    <string-array name="action">
+        <item>training</item>
+        <item>inference</item>
+    </string-array>
 </resources>

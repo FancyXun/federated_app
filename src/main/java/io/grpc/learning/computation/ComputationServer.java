@@ -120,13 +120,19 @@ public class ComputationServer {
         public void call(ComputationRequest request, StreamObserver<ComputationReply> responseObserver) {
             String nodeName = request.getNodeName();
             String clientId = request.getId();
-            MapQueue.queueChecker(nodeName, clientId);
-            RoundStateInfo.callUpdate(nodeName, clientId);
+            String action = request.getAction();
+            // Update server state if call is a training request.
+            if (action.equals("training")){
+                MapQueue.queueChecker(nodeName, clientId);
+                RoundStateInfo.callUpdate(nodeName, clientId);
+            }
             Graph graph = new GraphZoo().getGraphZoo().get(nodeName);
             byte[] byteGraph = graph == null ? getGraph(nodeName).toGraphDef() : graph.toGraphDef();
             ComputationReply.Builder reply = ComputationReply.newBuilder();
             reply.setGraph(ByteString.copyFrom(byteGraph));
-            reply.setRound(RoundStateInfo.epochMap.get(clientId));
+            if (action.equals("training")){
+                reply.setRound(RoundStateInfo.epochMap.get(clientId));
+            }
             reply.setMessage(RoundStateInfo.dataSplit);
             responseObserver.onNext(reply.build());
             responseObserver.onCompleted();

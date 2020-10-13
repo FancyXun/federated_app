@@ -53,30 +53,38 @@ public class TrainingTask {
         @SuppressLint("WrongThread")
         @Override
         protected String doInBackground(String... params) {
-            float loss;
-            try {
-                new SessionMetrics(this.context);
-                loss = this.runOneRound(params);;
-                while (round > 0) {
-                    params[3] = String.valueOf(round);
-                    loss = this.runOneRound(params);
+            String action = params[4];
+            if (action.equals("training")){
+                float loss;
+                try {
+                    loss = this.runOneRound(params);;
+                    while (round > 0) {
+                        params[3] = String.valueOf(round);
+                        loss = this.runOneRound(params);
+                    }
+                    return "Loss is: " + loss;
+                } catch (Exception e) {
+                    StringWriter sw = new StringWriter();
+                    PrintWriter pw = new PrintWriter(sw);
+                    e.printStackTrace(pw);
+                    pw.flush();
+                    return String.format("Failed... : %n%s", sw);
                 }
-                return "Loss is: " + loss;
-            } catch (Exception e) {
-                StringWriter sw = new StringWriter();
-                PrintWriter pw = new PrintWriter(sw);
-                e.printStackTrace(pw);
-                pw.flush();
-                return String.format("Failed... : %n%s", sw);
             }
+            else{
+                return this.inference(params);
+            }
+
         }
 
         @Override
         protected void onPostExecute(String result) {
-            try {
-                channel.shutdown().awaitTermination(1, TimeUnit.SECONDS);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
+            if (channel != null){
+                try {
+                    channel.shutdown().awaitTermination(1, TimeUnit.SECONDS);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
             }
             Activity activity = activityReference.get();
             if (activity == null) {
@@ -115,7 +123,7 @@ public class TrainingTask {
                     .usePlaintext().build();
             ComputationGrpc.ComputationBlockingStub stub = ComputationGrpc.newBlockingStub(channel);
             ComputationRequest.Builder builder = ComputationRequest.newBuilder().setId(localId)
-                    .setNodeName(modelName);
+                    .setNodeName(modelName).setAction("training");
             ComputationReply reply = stub.call(builder.build());
             round = reply.getRound();
             dataSplit = reply.getMessage();
@@ -127,7 +135,7 @@ public class TrainingTask {
             SequenceType sequenceType = this.SequenceCall(stub, builder);
             // Load data
             LocalCSVReader localCSVReader = new LocalCSVReader(
-                    this.context, dataPath, 0, "target", dataSplit);
+                    this.context, dataPath, 0, "target", dataSplit, "training");
             SessionRunner runner = new SessionRunner(this.context, graph, sequenceType,
                     localCSVReader, round);
             List<List<Float>> tensorVar = runner.invoke(this.textView);
@@ -138,6 +146,31 @@ public class TrainingTask {
             this.upload(stub, localId, modelName, tensorVar, metrics);
             this.stateInfo.setStateCode(1);
             return runner.metricsEntity.getLoss();
+        }
+
+        protected String inference(String... params){
+            String localId = params[0];
+            String dataPath = params[1];
+            String modelName = params[2];
+            channel = ManagedChannelBuilder
+                    .forAddress(this.host, this.port)
+                    .usePlaintext().build();
+            ComputationGrpc.ComputationBlockingStub stub = ComputationGrpc.newBlockingStub(channel);
+            ComputationRequest.Builder builder = ComputationRequest.newBuilder().setId(localId)
+                    .setNodeName(modelName).setAction("inference");
+            ComputationReply reply = stub.call(builder.build());
+            dataSplit = reply.getMessage();
+            Graph graph = new Graph();
+            // Get graph from server
+            graph.importGraphDef(reply.getGraph().toByteArray());
+            // Get model weights from server
+            SequenceType sequenceType = this.SequenceCall(stub, builder);
+            // Load data
+            LocalCSVReader localCSVReader = new LocalCSVReader(
+                    this.context, dataPath, 0, "target", dataSplit, "inference");
+            SessionRunner runner = new SessionRunner(this.context, graph, sequenceType,
+                    localCSVReader, round);
+            return runner.inference(this.textView);
         }
 
         public Metrics setMetrics(SessionRunner runner){

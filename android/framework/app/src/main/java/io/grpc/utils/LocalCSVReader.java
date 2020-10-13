@@ -36,6 +36,8 @@ public class LocalCSVReader {
     private float[][] y_oneHot_train;
     private float[][] y_oneHot_val;
 
+    private String dataType;
+
     private String target;
     private int yIndex;
     private String dataSplit;
@@ -138,9 +140,10 @@ public class LocalCSVReader {
      * @param dataSplit
      */
     public LocalCSVReader(Context context, String CSVPath, int header,
-                          String target, String dataSplit) {
+                          String target, String dataSplit, String dataType) {
         this.target = target;
         this.dataSplit = dataSplit;
+        this.dataType = dataType;
         List<List<String>> records = new ArrayList<List<String>>();
         String var = CSVPath;
         boolean var1 = var.startsWith("file:///android_asset/");
@@ -210,7 +213,12 @@ public class LocalCSVReader {
             y_oneHot[i] = a;
         }
         this.y_oneHot = y_oneHot;
+        // todo: don't split train and test when predict action
+//        if (this.dataType.equals("training")){
+//            this.train_test_split();
+//        }
         this.train_test_split();
+
     }
 
     public void train_test_split() {

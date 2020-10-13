@@ -8,6 +8,7 @@ import org.tensorflow.Session;
 import org.tensorflow.Tensor;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -32,6 +33,7 @@ public class SessionRunner {
     public MetricsEntity metricsEntity = new MetricsEntity();
     private FeedDict feedDict = new FeedDict();
     private FeedDict feedDictVal = new FeedDict();
+    private FeedDict feedDictPre = new FeedDict();
     private List<List<Integer>> tensorAssignShape;
 
     public SessionRunner(Graph graph, LocalCSVReader localCSVReader, int round, int batchSize) {
@@ -61,6 +63,7 @@ public class SessionRunner {
                 sequenceType.getTensorAssignName());
         this.feedTrainData(sequenceType.getPlaceholder());
         this.feedValData(sequenceType.getPlaceholder());
+        this.feedPredictData(sequenceType.getPlaceholder());
         this.session = new Session(this.graph);
     }
 
@@ -70,6 +73,11 @@ public class SessionRunner {
     public List<List<Float>> invoke(TextView textView) {
         this.globalVariablesInitializer();
         return this.train(textView);
+    }
+
+    public String inference(TextView textView) {
+        this.globalVariablesInitializer();
+        return this.predict();
     }
 
     public void eval(TextView textView) {
@@ -154,6 +162,33 @@ public class SessionRunner {
         metricsEntity.setEval_AUC(auc);
     }
 
+    private String predict(){
+        Session.Runner runner = this.session.runner();
+        for (String s : feedDictPre.getStringList()) {
+            if (feedDict.getFeed2DData().containsKey(s)) {
+                runner = runner.feed(s, Tensor.create(feedDictPre.getFeed2DData().get(s)));
+            } else if (feedDict.getFeed1DData().containsKey(s)) {
+                runner = runner.feed(s, Tensor.create(feedDictPre.getFeed1DData().get(s)));
+            } else {
+                runner = runner.feed(s, Tensor.create(feedDictPre.getFeedFloat().get(s)));
+            }
+        }
+        Tensor pre = runner.fetch(metricsEntity.preName).run().get(0);
+        int size = this.localCSVReader.getY_oneHot().length;
+        float[][] y_pre_oneHot = new float[size][2];
+        pre.copyTo(y_pre_oneHot);
+        float[] y_pre = new float[size];
+        for (int i=0 ; i< size; i++){
+            if (y_pre_oneHot[i][0] < y_pre_oneHot[i][1]){
+                y_pre[i] = 1;
+            }
+            else{
+                y_pre[i] = 0;
+            }
+        }
+          return Arrays.toString(y_pre);
+    }
+
     private void evaluateLoss(TextView textView) {
         Session.Runner runner = this.session.runner().fetch(metricsEntity.lossName);
         for (String s : feedDictVal.getStringList()) {
@@ -175,6 +210,13 @@ public class SessionRunner {
         feedDict.getFeedFloat().put(stringList.get(0), (float) this.trainInitialize.getX_train().length);
         feedDict.getFeed2DData().put(stringList.get(1), this.trainInitialize.getX_train());
         feedDict.getFeed2DData().put(stringList.get(2), this.trainInitialize.getY_oneHot_train());
+    }
+
+    private void feedPredictData(List<String> stringList){
+        feedDictPre.setStringList(stringList);
+        feedDictPre.getFeedFloat().put(stringList.get(0), (float) this.localCSVReader.getX().length);
+        feedDictPre.getFeed2DData().put(stringList.get(1), this.localCSVReader.getX());
+        feedDictPre.getFeed2DData().put(stringList.get(2), this.localCSVReader.getY_oneHot());
     }
 
     private void feedValData(List<String> stringList) {

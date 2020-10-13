@@ -38,6 +38,7 @@ public class ComputationActivity extends AppCompatActivity {
     private TextView resultText;
     private Spinner data;
     private Spinner model;
+    private Spinner action;
     private static final String DATA_FILE = "file:///android_asset/bank_zhongyuan/test_data1.csv";
     private Context context;
     private static String local_id = UUID.randomUUID().toString().replaceAll("-", "");
@@ -50,6 +51,7 @@ public class ComputationActivity extends AppCompatActivity {
         trainButton = (Button) findViewById(R.id.train_button);
         data = (Spinner) findViewById(R.id.data);
         model = (Spinner) findViewById(R.id.model);
+        action = (Spinner) findViewById(R.id.action);
         resultText = (TextView) findViewById(R.id.server_response_text);
         resultText.setMovementMethod(new ScrollingMovementMethod());
         this.context = getApplicationContext();
@@ -66,7 +68,8 @@ public class ComputationActivity extends AppCompatActivity {
                 local_id,
                 (String) data.getSelectedItem(),
                 (String) model.getSelectedItem(),
-                placeholder
+                placeholder,
+                (String) action.getSelectedItem()
                 );
     }
 

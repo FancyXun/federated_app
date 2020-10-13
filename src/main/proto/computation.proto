@@ -41,6 +41,8 @@ message ComputationRequest {
 
   int32 offset = 3;
 
+  string action = 4;
+
 }
 
 message ComputationReply {
