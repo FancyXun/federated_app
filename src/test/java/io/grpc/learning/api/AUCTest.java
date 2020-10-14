@@ -75,8 +75,7 @@ public class AUCTest {
 
 
         try {
-            String var2 = "/home/zhangxun/code/android_demo/federated_app/" +
-                    "android/framework/app/src/main/assets/metrics/auc.pb";
+            String var2 = "./android/framework/app/src/main/assets/metrics/auc.pb";
             modelStream = new FileInputStream(var2);
             ByteArrayOutputStream buffer = new ByteArrayOutputStream();
             int nRead;

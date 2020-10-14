@@ -4,6 +4,9 @@ import com.alibaba.fastjson.JSON;
 
 import org.tensorflow.Graph;
 
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileWriter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -11,6 +14,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+
+import javax.swing.JOptionPane;
 
 import io.grpc.learning.api.BaseGraph;
 import io.grpc.learning.logging.SystemOut;
@@ -107,11 +112,45 @@ public class FederatedComp implements Runnable {
             averageWeights.add(floatList);
         }
         weightAgg.get(nodeName).setTensorVar(averageWeights);
+        saveModel(weightAgg.get(nodeName).getTensorVar(), nodeName + ".txt");
+        saveModelShape(weightAgg.get(nodeName).getTensorShape(), nodeName +"_shape"+ ".txt");
         updateMetrics(nodeName);
         update = true;
         RoundStateInfo.round -= 1;
         RoundStateInfo.roundState.put(nodeName, StateMachine.start);
         return update;
+    }
+
+    private static void saveModel(List<List<Float>> model, String fileName) {
+        File file = new File(fileName);
+        try {
+            FileWriter fw = new FileWriter(file);
+            BufferedWriter output = new BufferedWriter(fw);
+            for (int i = 0; i < model.size(); i++) {
+                output.write(model.get(i).toString());
+                output.newLine();
+            }
+            output.close();
+
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(null, "I cannot create that file");
+        }
+    }
+
+    private static void saveModelShape(List<List<Integer>> model, String fileName) {
+        File file = new File(fileName);
+        try {
+            FileWriter fw = new FileWriter(file);
+            BufferedWriter output = new BufferedWriter(fw);
+            for (int i = 0; i < model.size(); i++) {
+                output.write(model.get(i).toString());
+                output.newLine();
+            }
+            output.close();
+
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(null, "I cannot create that file");
+        }
     }
 
     /**
