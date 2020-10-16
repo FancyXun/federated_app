@@ -71,8 +71,6 @@ public class LogisticsRegressionTest {
         try {
             modelStream = new FileInputStream(logisticsRegression.pbPath);
             graph.importGraphDef(IOUtils.readAllBytes(modelStream));
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
         } catch (IOException e) {
             e.printStackTrace();
         }

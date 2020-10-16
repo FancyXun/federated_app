@@ -36,7 +36,7 @@ public class TrainingTask {
         private TextView textView;
         private StateInfo stateInfo;
         // server IP and port
-        private String host = "192.168.50.38";
+        private String host = "192.168.89.138";
         private int port = 50051;
         // the round of federated training
         private int round = 0;
