@@ -8,21 +8,23 @@ import numpy as np
 
 class CenterLossLayer(keras.layers.Layer):
 
-    def __init__(self, alpha=0.5, **kwargs):
+    def __init__(self, alpha=0.5, nb_classes=10, embed_dim=128, **kwargs):
         super().__init__(**kwargs)
         self.alpha = alpha
+        self.nb_classes = nb_classes
+        self.embed_dim = embed_dim
 
     def build(self, input_shape):
         self.centers = self.add_weight(name='centers',
-                                       shape=(10, 2),
+                                       shape=(self.nb_classes, self.embed_dim),
                                        initializer='uniform',
                                        trainable=False)
         super().build(input_shape)
 
     def call(self, x, mask=None):
-        # x[0] is Nx2, x[1] is Nx10 onehot, self.centers is 10x2
-        delta_centers = K.dot(K.transpose(x[1]), (K.dot(x[1], self.centers) - x[0]))  # 10x2
-        center_counts = K.sum(K.transpose(x[1]), axis=1, keepdims=True) + 1  # 10x1
+        # x[0] is N x embed_dim, x[1] is N x nb_classes onehot, self.centers is nb_classes x embed_dim
+        delta_centers = K.dot(K.transpose(x[1]), (K.dot(x[1], self.centers) - x[0]))  # nb_classes x embed_dim
+        center_counts = K.sum(K.transpose(x[1]), axis=1, keepdims=True) + 1  # nb_classes x 1
         delta_centers /= center_counts
         new_centers = self.centers - self.alpha * delta_centers
         self.add_update((self.centers, new_centers), x)
@@ -224,7 +226,7 @@ def create_inception_resnet_v1(nb_classes=10, scale=True):
 
     # Output
     out = layers.Dense(nb_classes, activation='softmax', name='main_out')(x)
-    side_out = CenterLossLayer(alpha=0.5, name='centerlosslayer')([x, input_label])
+    side_out = CenterLossLayer(alpha=0.5, nb_classes=nb_classes, embed_dim=1792, name='centerlosslayer')([x, input_label])
 
     model = keras.Model(inputs=[init, input_label], outputs=[out, side_out], name='Inception-Resnet-v1')
 
@@ -240,3 +242,8 @@ def get_inception_resnet_centerloss_model(nb_classes):
                   loss_weights=[1, lambda_centerloss],
                   metrics={'main_out': tf.keras.metrics.AUC()})
     return model
+
+
+if __name__ == '__main__':
+    model = get_inception_resnet_centerloss_model(10)
+    model.summary()
