@@ -30,7 +30,7 @@ public class ResNetTest {
     public void readPB() {
         Graph graph = new Graph();
         InputStream modelStream = null;
-        String path = "/home/zhangxun/data/cifar10_png/train/";
+        String path = "/Users/voyager/code/issues_test/tf_android/cifar10_data/cifar10_png/train/";
         String[] LabelList = new String[]{
                 "airplane", "automobile", "bird", "cat", "deer",
                 "dog", "frog", "horse", "ship", "truck"

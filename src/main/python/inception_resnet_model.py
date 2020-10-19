@@ -4,6 +4,9 @@ from tensorflow.keras.utils import to_categorical
 from tensorflow.keras import layers
 from tensorflow.keras import backend as K
 import numpy as np
+import json
+from google.protobuf import json_format
+from tensorflow.python.keras.backend import get_graph
 
 
 class CenterLossLayer(keras.layers.Layer):
@@ -232,6 +235,7 @@ def create_inception_resnet_v1(nb_classes=10, scale=True):
 
     return model
 
+
 def get_inception_resnet_centerloss_model(nb_classes):
     lambda_centerloss = 0.1
     initial_learning_rate = 1e-3
@@ -244,6 +248,45 @@ def get_inception_resnet_centerloss_model(nb_classes):
     return model
 
 
+def freeze_session(session, keep_var_names=None, output_names=None, clear_devices=True):
+    """
+    Freezes the state of a session into a pruned computation graph.
+
+    Creates a new computation graph where variable nodes are replaced by
+    constants taking their current value in the session. The new graph will be
+    pruned so subgraphs that are not necessary to compute the requested
+    outputs are removed.
+    @param session The TensorFlow session to be frozen.
+    @param keep_var_names A list of variable names that should not be frozen,
+                          or None to freeze all the variables in the graph.
+    @param output_names Names of the relevant graph outputs.
+    @param clear_devices Remove the device directives from the graph for better portability.
+    @return The frozen graph definition.
+    """
+    graph = session.graph
+    with graph.as_default():
+        freeze_var_names = list(set(v.op.name for v in
+                                    tf.compat.v1.global_variables()).difference(keep_var_names or []))
+        output_names = output_names or []
+        output_names += [v.op.name for v in tf.compat.v1.global_variables()]
+        input_graph_def = graph.as_graph_def()
+        if clear_devices:
+            for node in input_graph_def.node:
+                node.device = ""
+        frozen_graph = tf.compat.v1.graph_util.convert_variables_to_constants(
+            session, input_graph_def, output_names, freeze_var_names)
+        return frozen_graph
+
+
 if __name__ == '__main__':
     model = get_inception_resnet_centerloss_model(10)
     model.summary()
+    graph = get_graph()
+    # sess = tf.compat.v1.keras.backend.get_session(model.output)
+    # graph = freeze_session(tf.compat.v1.keras.backend.get_session(),
+    #                               output_names=[out.op.name for out in model.outputs])
+    tf.compat.v1.train.write_graph(graph, "./", "inception_resnet.pb", as_text=False)
+    graph_def = graph.as_graph_def()
+    json_string = json_format.MessageToJson(graph_def)
+    obj = json.loads(json_string)
+    print(obj)
