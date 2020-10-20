@@ -239,7 +239,7 @@ def create_inception_resnet_v1(nb_classes=10, scale=True, use_centerloss=True):
 
     return model
 
-def get_mini_inception_resnet_centerloss_model(nb_classes, use_centerloss):
+def get_mini_inception_resnet_centerloss_model(nb_classes, use_centerloss=True):
     lambda_centerloss = 0.1
     initial_learning_rate = 1e-3
     model = create_inception_resnet_v1(nb_classes, use_centerloss=use_centerloss)
