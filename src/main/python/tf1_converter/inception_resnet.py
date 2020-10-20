@@ -32,75 +32,92 @@ def batch_normalization_layer(input_layer, dimension, base_name):
 
 
 def inception_resnet_stem(x):
+    """
+
+    :param x:
+    :return:
+    """
     out_channel = 256
-    c = tf.nn.conv2d(x,
-                     create_variables(name='stem/conv0', shape=(3, 3, 3, 32)),
-                     strides=[1, 2, 2, 1], padding='VALID')
-    c = tf.nn.relu(c)
-    c = tf.nn.conv2d(c,
-                     create_variables(name='stem/conv1', shape=(3, 3, 32, 32)),
-                     strides=[1, 1, 1, 1], padding='VALID')
-    c = tf.nn.relu(c)
-    c = tf.nn.conv2d(c,
-                     create_variables(name='stem/conv2', shape=(3, 3, 32, 64)),
-                     strides=[1, 1, 1, 1], padding='VALID')
-    c = tf.nn.relu(c)
+    c = tf.nn.relu(tf.nn.conv2d(x,
+                                create_variables(name='stem/conv0', shape=(3, 3, 3, 32)),
+                                strides=[1, 2, 2, 1], padding='VALID'))
+
+    c = tf.nn.relu(tf.nn.conv2d(c,
+                                create_variables(name='stem/conv1', shape=(3, 3, 32, 32)),
+                                strides=[1, 1, 1, 1], padding='VALID'))
+    c = tf.nn.relu(tf.nn.conv2d(c,
+                                create_variables(name='stem/conv2', shape=(3, 3, 32, 64)),
+                                strides=[1, 1, 1, 1], padding='VALID'))
     c = tf.nn.max_pool(c,
                        ksize=[1, 3, 3, 1], strides=[1, 2, 2, 1], padding='VALID')
-    c = tf.nn.conv2d(c,
-                     create_variables(name='stem/conv3', shape=(1, 1, 64, 80)),
-                     strides=[1, 1, 1, 1], padding='SAME')
-    c = tf.nn.relu(c)
-    c = tf.nn.conv2d(c,
-                     create_variables(name='stem/conv4', shape=(3, 3, 80, 192)),
-                     strides=[1, 1, 1, 1], padding='VALID')
-    c = tf.nn.relu(c)
-    c = tf.nn.conv2d(c,
-                     create_variables(name='stem/conv5', shape=(3, 3, 192, out_channel)),
-                     strides=[1, 2, 2, 1], padding='SAME')
-    c = tf.nn.relu(c)
+
+    c = tf.nn.relu(tf.nn.conv2d(c,
+                                create_variables(name='stem/conv3', shape=(1, 1, 64, 80)),
+                                strides=[1, 1, 1, 1], padding='SAME'))
+    c = tf.nn.relu(tf.nn.conv2d(c,
+                                create_variables(name='stem/conv4', shape=(3, 3, 80, 192)),
+                                strides=[1, 1, 1, 1], padding='VALID'))
+    c = tf.nn.relu(tf.nn.conv2d(c,
+                                create_variables(name='stem/conv5', shape=(3, 3, 192, out_channel)),
+                                strides=[1, 2, 2, 1], padding='SAME'))
     b = batch_normalization_layer(c, out_channel, 'stem')
     b = tf.nn.relu(b)
     return b, out_channel
 
 
 def inception_resnet_A(x, input_channel, block, scale_residual=True):
+    """
+
+    :param x:
+    :param input_channel:
+    :param block:
+    :param scale_residual:
+    :return:
+    """
     out_channel = 256
     init = x
-    ir1 = tf.nn.conv2d(x,
-                       create_variables(name='resnet_A{}/conv0'.format(block).format(block), shape=(1, 1, input_channel, 32)),
-                       strides=[1, 1, 1, 1], padding='SAME')
-    ir1 = tf.nn.relu(ir1)
+    ir1 = tf.nn.relu(tf.nn.conv2d(x,
+                                  create_variables(
+                                      name='resnet_A{}/conv0'.format(block).format(block),
+                                      shape=(1, 1, input_channel, 32)),
+                                  strides=[1, 1, 1, 1], padding='SAME'))
 
-    ir2 = tf.nn.conv2d(x,
-                       create_variables(name='resnet_A{}/conv1'.format(block), shape=(1, 1, input_channel, 32)),
-                       strides=[1, 1, 1, 1], padding='SAME')
-    ir2 = tf.nn.relu(ir2)
+    ir2 = tf.nn.relu(tf.nn.conv2d(x,
+                                  create_variables(
+                                      name='resnet_A{}/conv1'.format(block),
+                                      shape=(1, 1, input_channel, 32)),
+                                  strides=[1, 1, 1, 1], padding='SAME'))
 
-    ir2 = tf.nn.conv2d(ir2,
-                       create_variables(name='resnet_A{}/conv2'.format(block), shape=(3, 3, 32, 32)),
-                       strides=[1, 1, 1, 1], padding='SAME')
-    ir2 = tf.nn.relu(ir2)
+    ir2 = tf.nn.relu(tf.nn.conv2d(ir2,
+                                  create_variables(
+                                      name='resnet_A{}/conv2'.format(block),
+                                      shape=(3, 3, 32, 32)),
+                                  strides=[1, 1, 1, 1], padding='SAME'))
 
-    ir3 = tf.nn.conv2d(x,
-                       create_variables(name='resnet_A{}/conv3'.format(block), shape=(1, 1, input_channel, 32)),
-                       strides=[1, 1, 1, 1], padding='SAME')
-    ir3 = tf.nn.relu(ir3)
+    ir3 = tf.nn.relu(tf.nn.conv2d(x,
+                                  create_variables(
+                                      name='resnet_A{}/conv3'.format(block),
+                                      shape=(1, 1, input_channel, 32)),
+                                  strides=[1, 1, 1, 1], padding='SAME'))
 
-    ir3 = tf.nn.conv2d(ir3,
-                       create_variables(name='resnet_A{}/conv4'.format(block), shape=(3, 3, 32, 32)),
-                       strides=[1, 1, 1, 1], padding='SAME')
-    ir3 = tf.nn.relu(ir3)
+    ir3 = tf.nn.relu(tf.nn.conv2d(ir3,
+                                  create_variables(
+                                      name='resnet_A{}/conv4'.format(block),
+                                      shape=(3, 3, 32, 32)),
+                                  strides=[1, 1, 1, 1], padding='SAME'))
 
-    ir3 = tf.nn.conv2d(ir3,
-                       create_variables(name='resnet_A{}/conv5'.format(block), shape=(3, 3, 32, 32)),
-                       strides=[1, 1, 1, 1], padding='SAME')
-    ir3 = tf.nn.relu(ir3)
+    ir3 = tf.nn.relu(tf.nn.conv2d(ir3,
+                                  create_variables(
+                                      name='resnet_A{}/conv5'.format(block),
+                                      shape=(3, 3, 32, 32)),
+                                  strides=[1, 1, 1, 1], padding='SAME'))
 
     ir_merge = tf.concat(axis=3, values=[ir1, ir2, ir3])
 
     ir_conv = tf.nn.conv2d(ir_merge,
-                           create_variables(name='resnet_A{}/conv6'.format(block), shape=(1, 1, int(ir_merge.shape[-1]), out_channel)),
+                           create_variables(
+                               name='resnet_A{}/conv6'.format(block),
+                               shape=(1, 1, int(ir_merge.shape[-1]), out_channel)),
                            strides=[1, 1, 1, 1], padding='SAME')
 
     if scale_residual:
@@ -112,162 +129,229 @@ def inception_resnet_A(x, input_channel, block, scale_residual=True):
 
 
 def reduction_A(x, input_channel, k=192, l=224, m=256, n=384):
-
     r1 = tf.nn.max_pool(x,
                         ksize=[1, 3, 3, 1], strides=[1, 2, 2, 1], padding='VALID')
 
-    r2 = tf.nn.conv2d(x,
-                      create_variables(name='reduction_A/conv0', shape=(3, 3, input_channel, n)),
-                      strides=[1, 2, 2, 1], padding='VALID')
-    r2 = tf.nn.relu(r2)
+    r2 = tf.nn.relu(tf.nn.conv2d(x,
+                                 create_variables(
+                                     name='reduction_A/conv0',
+                                     shape=(3, 3, input_channel, n)),
+                                 strides=[1, 2, 2, 1], padding='VALID'))
 
-    r3 = tf.nn.conv2d(x,
-                      create_variables(name='reduction_A/conv1', shape=(1, 1, input_channel, k)),
-                      strides=[1, 1, 1, 1], padding='SAME')
-    r3 = tf.nn.relu(r3)
+    r3 = tf.nn.relu(tf.nn.conv2d(x,
+                                 create_variables(
+                                     name='reduction_A/conv1',
+                                     shape=(1, 1, input_channel, k)),
+                                 strides=[1, 1, 1, 1], padding='SAME'))
 
-    r3 = tf.nn.conv2d(r3,
-                      create_variables(name='reduction_A/conv2', shape=(3, 3, k, l)),
-                      strides=[1, 1, 1, 1], padding='SAME')
-    r3 = tf.nn.relu(r3)
+    r3 = tf.nn.relu(tf.nn.conv2d(r3,
+                                 create_variables(
+                                     name='reduction_A/conv2',
+                                     shape=(3, 3, k, l)),
+                                 strides=[1, 1, 1, 1], padding='SAME'))
 
-    r3 = tf.nn.conv2d(r3,
-                      create_variables(name='reduction_A/conv3', shape=(3, 3, l, m)),
-                      strides=[1, 2, 2, 1], padding='VALID')
-    r3 = tf.nn.relu(r3)
+    r3 = tf.nn.relu(tf.nn.conv2d(r3,
+                                 create_variables(
+                                     name='reduction_A/conv3',
+                                     shape=(3, 3, l, m)),
+                                 strides=[1, 2, 2, 1], padding='VALID'))
 
     out = tf.concat(axis=3, values=[r1, r2, r3])
-    out = batch_normalization_layer(out, int(out.shape[-1]), "reduction_A")
+    out_channel = int(out.shape[-1])
+    out = batch_normalization_layer(out, out_channel, "reduction_A")
     out = tf.nn.relu(out)
-    return out
+    return out, out_channel
 
 
-def inception_resnet_B(x, scale_residual=True):
+def inception_resnet_B(x, input_channel, block, scale_residual=True):
     out_channel = 896
     init = x
-    ir1 = tf.nn.conv2d(x,
-                       create_variables(name='conv0', shape=(1, 1, 256, 128)),
-                       strides=[1, 1, 1, 1], padding='SAME')
+    ir1 = tf.nn.relu(tf.nn.conv2d(x,
+                                  create_variables(
+                                      name='resnet_B{}/conv0'.format(block),
+                                      shape=(1, 1, input_channel, 128)),
+                                  strides=[1, 1, 1, 1], padding='SAME'))
 
-    ir2 = tf.nn.conv2d(x,
-                       create_variables(name='conv0', shape=(1, 1, 256, 128)),
-                       strides=[1, 1, 1, 1], padding='SAME')
-    ir2 = tf.nn.conv2d(ir2,
-                       create_variables(name='conv0', shape=(1, 7, 128, 128)),
-                       strides=[1, 1, 1, 1], padding='SAME')
+    ir2 = tf.nn.relu(tf.nn.conv2d(x,
+                                  create_variables(
+                                      name='resnet_B{}/conv1'.format(block),
+                                      shape=(1, 1, input_channel, 128)),
+                                  strides=[1, 1, 1, 1], padding='SAME'))
 
-    ir2 = tf.nn.conv2d(ir2,
-                       create_variables(name='conv0', shape=(7, 1, 128, 128)),
-                       strides=[1, 1, 1, 1], padding='SAME')
+    ir2 = tf.nn.relu(tf.nn.conv2d(ir2,
+                                  create_variables(
+                                      name='resnet_B{}/conv2'.format(block),
+                                      shape=(1, 7, 128, 128)),
+                                  strides=[1, 1, 1, 1], padding='SAME'))
+
+    ir2 = tf.nn.relu(tf.nn.conv2d(ir2,
+                                  create_variables(
+                                      name='resnet_B{}/conv3'.format(block),
+                                      shape=(7, 1, 128, 128)),
+                                  strides=[1, 1, 1, 1], padding='SAME'))
 
     ir_merge = tf.concat(axis=3, values=[ir1, ir2])
     ir_conv = tf.nn.conv2d(ir_merge,
-                           create_variables(name='conv0', shape=(3, 3, 128, out_channel)),
+                           create_variables(
+                               name='resnet_B{}/conv4'.format(block),
+                               shape=(1, 1, int(ir_merge.shape[-1]), out_channel)),
                            strides=[1, 1, 1, 1], padding='SAME')
     if scale_residual:
         ir_conv = ir_conv * 0.1
 
     out = tf.add(init, ir_conv)
-    out = batch_normalization_layer(out, out_channel)
+    out = batch_normalization_layer(out, out_channel, 'resnet_B{}'.format(block))
     out = tf.nn.relu(out)
-    return out
+    return out, out_channel
 
 
-def reduction_resnet_B(x):
-    input_channel = 0
-    out_channel = 256
+def reduction_B(x, input_channel):
     r1 = tf.nn.max_pool(x,
                         ksize=[1, 3, 3, 1], strides=[1, 2, 2, 1], padding='VALID')
-    r2 = tf.nn.conv2d(x,
-                      create_variables(name='conv1', shape=(1, 1, input_channel, 256)),
-                      strides=[1, 1, 1, 1], padding='SAME')
-    r2 = tf.nn.conv2d(r2,
-                      create_variables(name='conv1', shape=(3, 3, 256, 384)),
-                      strides=[1, 1, 1, 1], padding='VALID')
-    r3 = tf.nn.conv2d(x,
-                      create_variables(name='conv1', shape=(1, 1, input_channel, 256)),
-                      strides=[1, 1, 1, 1], padding='SAME')
-    r3 = tf.nn.conv2d(r3,
-                      create_variables(name='conv1', shape=(3, 3, 256, 256)),
-                      strides=[1, 1, 1, 1], padding='VALID')
-    r4 = tf.nn.conv2d(x,
-                      create_variables(name='conv1', shape=(1, 1, input_channel, 256)),
-                      strides=[1, 1, 1, 1], padding='SAME')
-    r4 = tf.nn.conv2d(r4,
-                      create_variables(name='conv1', shape=(3, 3, 256, 256)),
-                      strides=[1, 1, 1, 1], padding='VALID')
-    r4 = tf.nn.conv2d(r4,
-                      create_variables(name='conv1', shape=(3, 3, 256, 256)),
-                      strides=[1, 1, 1, 1], padding='VALID')
+    r2 = tf.nn.relu(tf.nn.conv2d(x,
+                                 create_variables(
+                                     name='reduction_B/conv1',
+                                     shape=(1, 1, input_channel, 256)),
+                                 strides=[1, 1, 1, 1], padding='SAME'))
+
+    r2 = tf.nn.relu(tf.nn.conv2d(r2,
+                                 create_variables(
+                                     name='reduction_B/conv2',
+                                     shape=(3, 3, 256, 384)),
+                                 strides=[1, 2, 2, 1], padding='VALID'))
+
+    r3 = tf.nn.relu(tf.nn.conv2d(x,
+                                 create_variables(
+                                     name='reduction_B/conv3',
+                                     shape=(1, 1, input_channel, 256)),
+                                 strides=[1, 1, 1, 1], padding='SAME'))
+
+    r3 = tf.nn.relu(tf.nn.conv2d(r3,
+                                 create_variables(
+                                     name='reduction_B/conv4',
+                                     shape=(3, 3, 256, 256)),
+                                 strides=[1, 2, 2, 1], padding='VALID'))
+
+    r4 = tf.nn.relu(tf.nn.conv2d(x,
+                                 create_variables(
+                                     name='reduction_B/conv5',
+                                     shape=(1, 1, input_channel, 256)),
+                                 strides=[1, 1, 1, 1], padding='SAME'))
+
+    r4 = tf.nn.relu(tf.nn.conv2d(r4,
+                                 create_variables(
+                                     name='reduction_B/conv6',
+                                     shape=(3, 3, 256, 256)),
+                                 strides=[1, 1, 1, 1], padding='SAME'))
+
+    r4 = tf.nn.relu(tf.nn.conv2d(r4,
+                                 create_variables(
+                                     name='reduction_B/conv7',
+                                     shape=(3, 3, 256, 256)),
+                                 strides=[1, 2, 2, 1], padding='VALID'))
 
     out = tf.concat(axis=3, values=[r1, r2, r3, r4])
-    out = batch_normalization_layer(out, out_channel)
+    out_channel = int(out.shape[-1])
+    out = batch_normalization_layer(out, out_channel, "reduction_B")
     out = tf.nn.relu(out)
-    return out
+    return out, out_channel
 
 
-def inception_resnet_C(x, scale_residual=True):
+def inception_resnet_C(x, input_channel, block, scale_residual=True):
     init = x
-    input_channel = 0
     out_channel = 1792
-    ir1 = tf.nn.conv2d(x,
-                       create_variables(name='conv0', shape=(1, 1, input_channel, 128)),
-                       strides=[1, 1, 1, 1], padding='SAME')
+    ir1 = tf.nn.relu(tf.nn.conv2d(x,
+                                  create_variables(
+                                      name='resnet_C{}/conv1'.format(block),
+                                      shape=(1, 1, input_channel, 128)),
+                                  strides=[1, 1, 1, 1], padding='SAME'))
 
-    ir2 = tf.nn.conv2d(x,
-                       create_variables(name='conv0', shape=(1, 1, 256, 192)),
-                       strides=[1, 1, 1, 1], padding='SAME')
-    ir2 = tf.nn.conv2d(ir2,
-                       create_variables(name='conv0', shape=(1, 3, 128, 192)),
-                       strides=[1, 1, 1, 1], padding='SAME')
+    ir2 = tf.nn.relu(tf.nn.conv2d(x,
+                                  create_variables(
+                                      name='resnet_C{}/conv2'.format(block),
+                                      shape=(1, 1, input_channel, 192)),
+                                  strides=[1, 1, 1, 1], padding='SAME'))
 
-    ir2 = tf.nn.conv2d(ir2,
-                       create_variables(name='conv0', shape=(3, 1, 128, 192)),
-                       strides=[1, 1, 1, 1], padding='SAME')
+    ir2 = tf.nn.relu(tf.nn.conv2d(ir2,
+                                  create_variables(
+                                      name='resnet_C{}/conv4'.format(block),
+                                      shape=(1, 3, 192, 192)),
+                                  strides=[1, 1, 1, 1], padding='SAME'))
+
+    ir2 = tf.nn.relu(tf.nn.conv2d(ir2,
+                                  create_variables(
+                                      name='resnet_C{}/conv5'.format(block),
+                                      shape=(3, 1, 192, 192)),
+                                  strides=[1, 1, 1, 1], padding='SAME'))
 
     ir_merge = tf.concat(axis=3, values=[ir1, ir2])
     ir_conv = tf.nn.conv2d(ir_merge,
-                           create_variables(name='conv0', shape=(3, 3, 192, out_channel)),
+                           create_variables(
+                               name='resnet_C{}/conv6'.format(block),
+                               shape=(1, 1, int(ir_merge.shape[-1]), out_channel)),
                            strides=[1, 1, 1, 1], padding='SAME')
 
     if scale_residual:
         ir_conv = ir_conv * 0.1
 
     out = tf.add(init, ir_conv)
-    out = batch_normalization_layer(out, out_channel)
+    out = batch_normalization_layer(out, out_channel, 'resnet_C{}/conv7'.format(block))
     out = tf.nn.relu(out)
-    return out
+    return out, out_channel
+
+
+def center_loss(x, y, alpha=0.5, nb_classes=10, embed_dim=128):
+    centers = tf.Variable(tf.random.uniform(shape=(nb_classes, embed_dim)), name='centers', trainable=False)
+    delta_centers = tf.matmul(tf.transpose(y), tf.matmul(y, centers) - x)
+    center_counts = tf.reshape(tf.reduce_sum(tf.transpose(y), axis=1) + 1, (-1, 1))
+    delta_centers /= center_counts
+    new_centers = tf.subtract(centers, alpha * delta_centers)
+    centers.assign(new_centers)
+    result = tf.reshape(tf.reduce_sum(tf.square(x - tf.matmul(y, centers)), axis=1), (-1, 1))
+    return result
 
 
 class InceptionResNet(object):
 
-    def __init__(self, scale=True):
+    def __init__(self, nb_classes=10, scale=True):
+        self.nb_classes = nb_classes
+        self.scale = scale
         self.placeholder = tf.placeholder(dtype=tf.float32, shape=[None, 299, 299, 3])
         self.input_label = tf.placeholder(dtype=tf.float32, shape=[None, 10])
+
+    def build(self):
+
         x, out_channel = inception_resnet_stem(self.placeholder)
 
         # 5 x Inception Resnet A
         for i in range(5):
-            x, out_channel = inception_resnet_A(x, out_channel, i, scale_residual=scale)
+            x, out_channel = inception_resnet_A(x, out_channel, i, scale_residual=self.scale)
         # Reduction A - From Inception v4
-        x = reduction_A(x, out_channel, k=192, l=192, m=256, n=384)
+        x, out_channel = reduction_A(x, out_channel, k=192, l=192, m=256, n=384)
 
         # 10 x Inception Resnet B
         for i in range(10):
-            x = inception_resnet_B(x, scale_residual=scale)
+            x, out_channel = inception_resnet_B(x, out_channel, i, scale_residual=self.scale)
 
         # Reduction Resnet B
-        x = reduction_resnet_B(x)
+        x, out_channel = reduction_B(x, out_channel)
 
         # 5 x Inception Resnet C
         for i in range(5):
-            x = inception_resnet_C(x, scale_residual=scale)
+            x, out_channel = inception_resnet_C(x, out_channel, i, scale_residual=self.scale)
 
         # Average Pooling
         x = tf.nn.max_pool(x,
                            ksize=[1, 8, 8, 1], strides=[1, 1, 1, 1], padding='VALID')
         x = tf.nn.dropout(x, rate=0.2)
-        # Dropout
+
+        x = tf.layers.flatten(x)
+        out = tf.layers.dense(x, self.nb_classes)
+        side_out = center_loss(x, self.input_label, alpha=0.5, nb_classes=self.nb_classes, embed_dim=1792)
+
+        return out, side_out
 
 
-InceptionResNet()
+out, side_out = InceptionResNet(nb_classes=10, scale=True).build()
+print(out)
+print(side_out)
