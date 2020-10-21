@@ -1,4 +1,8 @@
 import tensorflow as tf
+import os
+import numpy as np
+from PIL import Image
+import random
 
 
 def create_variables(name, shape, initializer=tf.contrib.layers.xavier_initializer()):
@@ -313,11 +317,12 @@ def center_loss(x, y, alpha=0.5, nb_classes=10, embed_dim=128):
 
 class InceptionResNet(object):
 
-    def __init__(self, nb_classes=10, scale=True):
+    def __init__(self, nb_classes=10, learning_rate=0.001, scale=True, height=299, width=299):
         self.nb_classes = nb_classes
         self.scale = scale
-        self.placeholder = tf.placeholder(dtype=tf.float32, shape=[None, 299, 299, 3])
-        self.input_label = tf.placeholder(dtype=tf.float32, shape=[None, 10])
+        self.placeholder = tf.placeholder(dtype=tf.float32, shape=[None, height, width, 3])
+        self.input_label = tf.placeholder(dtype=tf.float32, shape=[None, nb_classes])
+        self.learning_rate = learning_rate
 
     def build(self):
 
@@ -342,16 +347,72 @@ class InceptionResNet(object):
 
         # Average Pooling
         x = tf.nn.max_pool(x,
-                           ksize=[1, 8, 8, 1], strides=[1, 1, 1, 1], padding='VALID')
+                           ksize=[1, 4, 4, 1], strides=[1, 1, 1, 1], padding='VALID')
+
         x = tf.nn.dropout(x, rate=0.2)
 
         x = tf.layers.flatten(x)
         out = tf.layers.dense(x, self.nb_classes)
         side_out = center_loss(x, self.input_label, alpha=0.5, nb_classes=self.nb_classes, embed_dim=1792)
+        categorical_crossentropy = tf.nn.softmax_cross_entropy_with_logits_v2(self.input_label, out)
+        zero_loss = 0.5 * tf.reduce_sum(side_out)
+        loss = categorical_crossentropy + 0.1 * zero_loss
+        optimizer = tf.train.GradientDescentOptimizer(
+            self.learning_rate).minimize(loss, name="minimizeGradientDescent")
 
-        return out, side_out
+        return out, side_out, optimizer, loss
 
 
-out, side_out = InceptionResNet(nb_classes=10, scale=True).build()
+def load_data(path):
+    image_cate = os.listdir(path)
+    for p in image_cate:
+        if p.endswith('txt'):
+            image_cate.remove(p)
+
+    cate_num = []
+    for i in range(len(image_cate)):
+        cate_num.append(len(os.listdir(os.path.join(path, image_cate[i]))))
+    size = 2000
+    x = np.zeros(shape=(size, 182, 182, 3), dtype=np.float32)
+    y = np.zeros(shape=(size,), dtype=np.int32)
+    f = 0
+    s = 0
+    for i in range(len(image_cate)):
+
+        cate_dir = os.listdir(os.path.join(path, image_cate[i]))
+        for img in cate_dir:
+            if s >= 2000:
+                break
+            s += 1
+            im = Image.open(os.path.join(path, image_cate[i] + '/' + img))
+            x[f] = np.array(im)
+            y[f] = int(i)
+            f += 1
+    rl1 = list(range(x.shape[0]))
+    random.shuffle(rl1)
+    x = x[rl1]
+    y = y[rl1]
+    y = np.eye(len(cate_num))[y]
+    rl = random.sample(list(range(x.shape[0])), 1000)
+    x_eval = x[rl]
+    y_eval = y[rl]
+    return x, y, x_eval, y_eval, len(cate_num)
+
+
+model = InceptionResNet(nb_classes=1006, scale=True, height=182, width=182)
+out, side_out, optimizer, loss = model.build()
 print(out)
 print(side_out)
+training_epochs = 5
+x, y, x_eval, y_eval, nb_classes = load_data('/home/zhangxun/data/CASIA-WebFace-aligned')
+init = tf.global_variables_initializer()
+sess = tf.Session()
+sess.run(init)
+for epoch in range(training_epochs):
+    for i in range(x.shape[0] // 2):
+        x_batch = x[i * 2: (i + 1) * 2]
+        y_batch = y[i * 2: (i + 1) * 2]
+        dummy1 = np.zeros((x_batch.shape[0], 1))
+        feeds_train = {model.input_label: y_batch, model.placeholder: x_batch, side_out: dummy1, out: y_batch}
+        sess.run(optimizer, feed_dict=feeds_train)
+        print(sess.run(loss, feed_dict=feeds_train))
