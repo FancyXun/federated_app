@@ -32,7 +32,6 @@ targetCompatibility = 1.8
 // updating the version in our release process.
 def grpcVersion = '1.31.1' // CURRENT_GRPC_VERSION
 def protobufVersion = '3.12.0'
-def tensorflowVersion = '1.15.0'
 def protocVersion = protobufVersion
 
 dependencies {
@@ -117,7 +116,7 @@ applicationDistribution.into('bin') {
 //    manifest {
 //        attributes(
 //                "Manifest-Version": 1.0,
-//                "Main-Class": "io.grpc.learning.computation.ComputationServer"   //主函数的名称
+//                "Main-Class": "io.grpc.learning.computation.ComputationServer"
 //        )
 //    }
 //    from { configurations.compile.collect { it.isDirectory() ? it : zipTree(it) } }

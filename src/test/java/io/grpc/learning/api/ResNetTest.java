@@ -30,7 +30,7 @@ public class ResNetTest {
     public void readPB() {
         Graph graph = new Graph();
         InputStream modelStream = null;
-        String path = "/Users/voyager/code/issues_test/tf_android/cifar10_data/cifar10_png/train/";
+        String path = "/home/zhangxun/data/cifar10_png/train/";
         String[] LabelList = new String[]{
                 "airplane", "automobile", "bird", "cat", "deer",
                 "dog", "frog", "horse", "ship", "truck"
@@ -61,9 +61,11 @@ public class ResNetTest {
         }
         Session session = new Session(graph);
         Iterator<Operation> operationIterator = graph.operations();
-//        while (operationIterator.hasNext()) {
-//            Operation op = operationIterator.next();
-//        }
+        while (operationIterator.hasNext()) {
+            Operation op = operationIterator.next();
+            System.out.println(op);
+        }
+        System.out.println("----------------------------");
         // train data
         ArrayList<String[]> arrayList = new ArrayList();
         for (int i = 0; i < LabelList.length; i++) {
@@ -148,10 +150,19 @@ public class ResNetTest {
                     System.out.println("Validation top1 error = " + validation_error_value.floatValue());
                     System.out.println("Validation loss = " + validation_loss_value.floatValue());
                     System.out.println("----------------------------");
+                    float [][][][] floats = new float[3][3][3][16];
+                    float [][][][] floats1 = new float[3][3][3][16];
+                    float [][][][] floats2 = new float[3][3][3][16];
                     for (Object key: linkedHashMap.keySet()){
-                        Tensor var = runner.fetch(String.valueOf(key)).run().get(0);
+                        Tensor var = session.runner().fetch(String.valueOf(key)).run().get(0);
                         String shape = (String) linkedHashMap.get(key);
                         System.out.println(var +" "+ shape);
+                        var.copyTo(floats);
+                        session.runner().feed(String.valueOf(key), Tensor.create(floats1))
+                                .addTarget(String.valueOf(key) +"/Assign")
+                                .run();
+                        Tensor var1 = session.runner().fetch(String.valueOf(key)).run().get(0);
+                        var1.copyTo(floats2);
                     }
                     imgIdx = 0;
                 } else {

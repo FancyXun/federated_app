@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context="io.grpc.computation.MainActivity"
+    android:orientation="vertical">
+
+    <ImageView
+        android:layout_width="match_parent"
+        android:layout_height="200dp"
+        android:id="@+id/faceImg"
+        android:layout_marginTop="20dp"
+        android:contentDescription="Face image" />
+
+    <Button
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="训练集导入"
+        android:layout_gravity="center"
+        android:layout_marginTop="20dp"
+        android:id="@+id/trainFaceUpload"/>
+    <Button
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="人脸导入"
+        android:layout_gravity="center"
+        android:layout_marginTop="20dp"
+        android:id="@+id/faceUpload"/>
+    <Button
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="20dp"
+        android:layout_gravity="center"
+        android:text="人脸识别"
+        android:id="@+id/faceRec"/>
+
+    <Button
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="20dp"
+        android:id="@+id/train"
+        android:onClick="Training"
+        android:layout_gravity="center"
+        android:text="联合训练" />
+<!--        android:background="@drawable/bt_shape"-->
+
+
+</LinearLayout>

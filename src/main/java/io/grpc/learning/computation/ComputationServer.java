@@ -18,7 +18,10 @@ package io.grpc.learning.computation;
 
 import io.grpc.Server;
 import io.grpc.ServerBuilder;
+import io.grpc.learning.model.Initializer;
+import io.grpc.learning.model.Updater;
 import io.grpc.learning.storage.MapQueue;
+import io.grpc.learning.storage.MetricsContainer;
 import io.grpc.learning.vo.GraphZoo;
 import io.grpc.learning.storage.ModelWeights;
 import io.grpc.learning.storage.RoundStateInfo;
@@ -29,8 +32,11 @@ import io.grpc.stub.StreamObserver;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
+import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -48,8 +54,12 @@ import static io.grpc.learning.computation.SequenceComp.offsetStreamReply;
 public class ComputationServer {
     private static final Logger logger = Logger.getLogger(ComputationServer.class.getName());
     private Server server;
+    public Initializer initializer;
 
     private void start() throws IOException {
+        /* initialize the model and graph */
+        Initializer.getInstance().loadModel();
+        System.out.println("-----" + initializer);
         /* The port on which the server should run */
         String localIP;
         Enumeration<NetworkInterface> n = NetworkInterface.getNetworkInterfaces();
@@ -112,6 +122,122 @@ public class ComputationServer {
     static class ComputationImpl extends ComputationGrpc.ComputationImplBase {
         public int minRequestNum = 1;
 
+        @Override
+        public void callModel(ClientRequest request, StreamObserver<Model> responseObserver) {
+            String client_id = request.getId();
+            Initializer initializer = Initializer.getInstance();
+            Graph graph = initializer.getGraph();
+            LinkedHashMap<String, String> modelMap = initializer.getModelMap();
+            LinkedHashMap<String, String> modelInitMap = initializer.getModelInitMap();
+            LinkedHashMap<String, String> metaMap = initializer.getMetaMap();
+            // set model graph
+            Model.Builder model = Model.newBuilder();
+            model.setGraph(ByteString.copyFrom(graph.toGraphDef()));
+            // set model layer and layer shape
+            int layer_index = 0;
+            String [][] strings = new String[modelMap.size()][2];
+            int i =0;
+            for (String key : modelMap.keySet()) {
+                strings[i][0] = key;
+                i++;
+            }
+            int j =0;
+            for (String key : modelInitMap.keySet()) {
+                strings[j][1] = key;
+                j++;
+            }
+            for (i =0; i< modelMap.size(); i++) {
+                Layer.Builder layer = Layer.newBuilder();
+
+                layer.setLayerName(strings[i][0]);
+                layer.setLayerInitName(strings[i][1]);
+                layer.setLayerShape(modelMap.get(strings[i][0]));
+
+                model.addLayer(layer_index, layer);
+                layer_index++;
+            }
+            // set model meta and its shape if necessary
+            int meta_index = 0;
+            for (String key : metaMap.keySet()) {
+                Meta.Builder meta = Meta.newBuilder();
+                meta.setMetaName(key);
+                meta.setMetaShape(metaMap.get(key));
+                model.addMeta(meta_index, meta);
+                meta_index++;
+            }
+            responseObserver.onNext(model.build());
+            responseObserver.onCompleted();
+        }
+
+        @Override
+        public void callLayerWeights(LayerWeightsRequest request, StreamObserver<LayerWeights> responseObserver) {
+            String client_id = request.getId();
+            Updater updater = Updater.getInstance();
+            int layer_id = (int) request.getLayerId();
+            responseObserver.onNext(updater.layerWeightsArrayList.get(layer_id).build());
+            responseObserver.onCompleted();
+        }
+
+        // todo: Received DATA frame for an unknown stream error
+        //  https://github.com/grpc/grpc-java/issues/4651
+        @Override
+        public void callModelWeights(ClientRequest request,
+                                     StreamObserver<io.grpc.learning.computation.ModelWeights> responseObserver) {
+            String client_id = request.getId();
+            Updater updater = Updater.getInstance();
+            responseObserver.onNext(updater.modelWeightsBuilder.build());
+            responseObserver.onCompleted();
+        }
+
+        // todo: Received DATA frame for an unknown stream error
+        //  https://github.com/grpc/grpc-java/issues/4651
+        @Override
+        public void computeWeights(io.grpc.learning.computation.ModelWeights request, StreamObserver<ValueReply> responseObserver) {
+            int count = request.getTensorCount();
+            System.out.println(count);
+            ValueReply.Builder valueReplyBuilder = ValueReply.newBuilder();
+            valueReplyBuilder.setMessage(true);
+            responseObserver.onNext(valueReplyBuilder.build());
+            responseObserver.onCompleted();
+        }
+
+        @Override
+        public void computeLayerWeights(LayerWeights request, StreamObserver<ValueReply> responseObserver) {
+            Updater updater = Updater.getInstance();
+            LinkedHashMap<Long, List<Float>> layerMap = updater.weightsLinkedHashMap.get(request.getId());
+            if (layerMap == null) {
+                layerMap = new LinkedHashMap<>();
+                updater.weightsLinkedHashMap.put(request.getId(), layerMap);
+            }
+            if (layerMap.containsKey(request.getLayerId())){
+                List<Float> floatList = layerMap.get(request.getLayerId());
+                floatList.addAll(request.getTensor().getFloatValList());
+                layerMap.put(request.getLayerId(), new ArrayList(floatList));
+            }
+            else{
+                layerMap.put(request.getLayerId(), new ArrayList(request.getTensor().getFloatValList()));
+
+            }
+            ValueReply.Builder valueReplyBuilder = ValueReply.newBuilder();
+            valueReplyBuilder.setMessage(true);
+            responseObserver.onNext(valueReplyBuilder.build());
+            responseObserver.onCompleted();
+        }
+
+        @Override
+        public void computeFinish(ClientRequest request, StreamObserver<ValueReply> responseObserver) {
+            Updater updater = Updater.getInstance();
+            updater.updateWeights();
+            ValueReply.Builder valueReplyBuilder = ValueReply.newBuilder();
+            valueReplyBuilder.setMessage(true);
+            responseObserver.onNext(valueReplyBuilder.build());
+            responseObserver.onCompleted();
+        }
+
+        // ----------------------------------------------------------------------------------------------------------------------
+// ----------------------------------------------------------------------------------------------------------------------
+// ----------------------------------------------------------------------------------------------------------------------
+
         /**
          * @param request
          * @param responseObserver
@@ -122,7 +248,7 @@ public class ComputationServer {
             String clientId = request.getId();
             String action = request.getAction();
             // Update server state if call is a training request.
-            if (action.equals("training")){
+            if (action.equals("training")) {
                 MapQueue.queueChecker(nodeName, clientId);
                 RoundStateInfo.callUpdate(nodeName, clientId);
             }
@@ -130,7 +256,7 @@ public class ComputationServer {
             byte[] byteGraph = graph == null ? getGraph(nodeName).toGraphDef() : graph.toGraphDef();
             ComputationReply.Builder reply = ComputationReply.newBuilder();
             reply.setGraph(ByteString.copyFrom(byteGraph));
-            if (action.equals("training")){
+            if (action.equals("training")) {
                 reply.setRound(RoundStateInfo.epochMap.get(clientId));
             }
             reply.setMessage(RoundStateInfo.dataSplit);
