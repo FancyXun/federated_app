@@ -1,15 +1,18 @@
 package io.grpc.computation;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
 
 import android.annotation.SuppressLint;
+import android.app.Activity;
 import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
@@ -24,20 +27,26 @@ import org.opencv.core.CvType;
 import org.opencv.core.Mat;
 import org.opencv.imgcodecs.Imgcodecs;
 import org.opencv.imgproc.Imgproc;
-import org.tensorflow.Tensor;
+import org.tensorflow.lite.DataType;
+import org.tensorflow.lite.Interpreter;
+import org.tensorflow.lite.support.common.FileUtil;
+import org.tensorflow.lite.support.common.TensorOperator;
+import org.tensorflow.lite.support.common.TensorProcessor;
+import org.tensorflow.lite.support.image.TensorImage;
+import org.tensorflow.lite.support.model.Model;
+import org.tensorflow.lite.support.tensorbuffer.TensorBuffer;
 
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.FloatBuffer;
+import java.nio.MappedByteBuffer;
 import java.util.ArrayList;
+import java.util.List;
 
 import io.grpc.utils.DataConverter;
 import io.grpc.utils.FileUtils;
-
-import static org.opencv.core.CvType.CV_32F;
 
 public class MainActivity extends AppCompatActivity {
     static {
@@ -52,6 +61,8 @@ public class MainActivity extends AppCompatActivity {
     private Bitmap bitmap;
     private Context context;
     private ArrayList<String> fileList;
+    private Classifier classifier;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -61,7 +72,6 @@ public class MainActivity extends AppCompatActivity {
         faceImg = findViewById(R.id.faceImg);
         faceRec = findViewById(R.id.faceRec);
         trainButton = (Button) findViewById(R.id.train);
-        trainFaceUpload = (Button) findViewById(R.id.trainFaceUpload);
         context = getApplicationContext();
         fileList = new FileUtils(context, "sampleData/casiaWebFace").getFileList();
         faceUpload.setOnClickListener(new View.OnClickListener() {
@@ -78,23 +88,29 @@ public class MainActivity extends AppCompatActivity {
                 startActivityForResult(intent, 1);
             }
         });
-        faceRec.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                Bitmap bit = bitmap.copy(Bitmap.Config.ARGB_8888, false);
-                Mat src = new Mat(bit.getHeight(), bit.getWidth(), CvType.CV_8UC(3));
-                Utils.bitmapToMat(bit, src);
-                Imgproc.cvtColor(src, src, Imgproc.COLOR_BGR2GRAY);
-                for (String filePath : fileList) {
-                    Mat image = Imgcodecs.imread(cacheFile(filePath).getAbsolutePath(), Imgcodecs.IMREAD_COLOR);
-                    float[][][][] floats = DataConverter.cvMat_3dArray(image, 1);
-                }
-                Utils.matToBitmap(src, bitmap);
-                Message message = new Message();
-                message.what = 1;
-                handler.sendMessage(message);
-            }
-        });
+//        faceRec.setOnClickListener(new View.OnClickListener() {
+//            @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN_MR2)
+//            @Override
+//            public void onClick(View view) {
+//                Bitmap bit = bitmap.copy(Bitmap.Config.ARGB_8888, false);
+//                Mat src = new Mat(bit.getHeight(), bit.getWidth(), CvType.CV_8UC(3));
+//                Utils.bitmapToMat(bit, src);
+//                Imgproc.cvtColor(src, src, Imgproc.COLOR_BGR2GRAY);
+//                for (String filePath : fileList) {
+//                    Mat image = Imgcodecs.imread(cacheFile(filePath).getAbsolutePath(), Imgcodecs.IMREAD_COLOR);
+//                    float[][][][] floats = DataConverter.cvMat_3dArray(image, 1);
+//                    Bitmap bmp = Bitmap.createBitmap(image.cols(), image.rows(), Bitmap.Config.ARGB_8888);
+//                    Utils.matToBitmap(image, bmp);
+////                    List<Classifier.Recognition> results =
+////                            classifier.recognizeImage(bmp, 90);
+//                }
+//
+//                Utils.matToBitmap(src, bitmap);
+//                Message message = new Message();
+//                message.what = 1;
+//                handler.sendMessage(message);
+//            }
+//        });
 
     }
 
@@ -147,6 +163,23 @@ public class MainActivity extends AppCompatActivity {
         new Training.LocalTraining(this, this.context).execute(
                 "123"
         );
+    }
+
+    public void inference(View view) throws IOException {
+        faceRec.setEnabled(false);
+        classifier = Classifier.create(this, Classifier.Device.CPU, 1);
+        Bitmap bit = bitmap.copy(Bitmap.Config.ARGB_8888, false);
+        Mat src = new Mat(bit.getHeight(), bit.getWidth(), CvType.CV_8UC(3));
+        Utils.bitmapToMat(bit, src);
+        Imgproc.cvtColor(src, src, Imgproc.COLOR_BGR2GRAY);
+        for (String filePath : fileList) {
+            Mat image = Imgcodecs.imread(cacheFile(filePath).getAbsolutePath(), Imgcodecs.IMREAD_COLOR);
+            float[][][][] floats = DataConverter.cvMat_3dArray(image, 1);
+            Bitmap bmp = Bitmap.createBitmap(image.cols(), image.rows(), Bitmap.Config.ARGB_8888);
+            Utils.matToBitmap(image, bmp);
+            List<Classifier.Recognition> results =
+                    classifier.recognizeImage(bmp, 90);
+        }
     }
 
     @Override
