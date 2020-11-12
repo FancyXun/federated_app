@@ -191,7 +191,7 @@ public class Training {
                 }
 
                 float loss = train();
-                System.out.println("round "+r+ ": " +loss);
+                System.out.println("round " + r + ": " + loss);
                 // get model weights
                 ModelWeights.Builder modelWeightsBuilder = getWeights(layerList, layer_size);
                 model = stub.callModel(builder.build());
@@ -424,7 +424,7 @@ public class Training {
              */
             // feed data
             ArrayList<String> fileList = new FileUtils(context, "sampleData/casiaWebFace").getFileList();
-            int batch_size = 1;
+            int batch_size = 16;
             float batch_size_loss = 0;
             float total_loss = 0;
             try {
@@ -432,6 +432,8 @@ public class Training {
                 BufferedReader buffreader = new BufferedReader(inputreader);
                 String line;
                 int line_number = 0;
+                float[][][][] x = new float[batch_size][112][96][3];
+                int batch_size_iter = 0;
                 while ((line = buffreader.readLine()) != null) {
                     try {
                         URL url = new URL(path + line);
@@ -440,18 +442,28 @@ public class Training {
                         conn.setConnectTimeout(8000);
                         conn.setReadTimeout(8000);
                         conn.connect();
-                        if(conn.getResponseCode() == 200) {
+                        if (conn.getResponseCode() == 200) {
                             InputStream is = conn.getInputStream();
                             Bitmap bmp = BitmapFactory.decodeStream(is);
                             Mat image = new Mat();
                             Utils.bitmapToMat(bmp, image);
-                            Imgproc.cvtColor(image,image, Imgproc.COLOR_BGRA2BGR);
+                            Imgproc.cvtColor(image, image, Imgproc.COLOR_BGRA2BGR);
                             Size size = new Size(96, 112);
                             Imgproc.resize(image, image, size);
                             int label = Integer.valueOf(line.split("/")[1]);
-                            float[][] label_oneHot = new float[batch_size][1006];
-                            label_oneHot[0][label] = 1;
-                            float[][][][] x = DataConverter.cvMat_3dArray(image, batch_size);
+                            float[][] label_oneHot = new float[batch_size][10575];
+                            label_oneHot[batch_size_iter][label] = 1;
+                            DataConverter.cvMat_batchArray(image, batch_size_iter, x);
+                            if (batch_size_iter < batch_size - 1) {
+                                batch_size_iter ++;
+                                line_number++;
+                                System.out.println(line + " " + line_number + " ");
+                                continue;
+                            } else {
+                                batch_size_iter = 0;
+                                System.out.println("------------------------------------------");
+                            }
+
                             Session.Runner runner = session.runner()
                                     .feed("x", Tensor.create(x))
                                     .feed("y", Tensor.create(label_oneHot));
@@ -465,17 +477,15 @@ public class Training {
                                 batch_size_loss = batch_size_loss + loss[i];
                             }
                             total_loss += (batch_size_loss / batch_size);
-                            System.out.println(line +" "+ line_number + " " + batch_size_loss);
+                            System.out.println(line + " " + line_number + " " + batch_size_loss);
                             batch_size_loss = 0;
-                            line_number ++;
                         }
                     } catch (IOException e) {
                         e.printStackTrace();
                     }
                 }
                 total_loss = total_loss / ((float) line_number / batch_size);
-            }
-            catch (IOException e) {
+            } catch (IOException e) {
                 e.printStackTrace();
             }
 
