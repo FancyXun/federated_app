@@ -29,7 +29,7 @@ def bias_variable(shape, name=None):
         return tf.get_variable(name, shape=shape, initializer=initial)
 
 def ce_loss( logit, label, reg_ratio=0.):
-    cross_entropy_loss = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(logits=logit, labels=label))
+    cross_entropy_loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits_v2(logits=logit, labels=label))
     # cross_entropy_loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=logit, labels=label))
     # reg_losses = tf.add_n(tf.get_collection('losses'))
     # return cross_entropy_loss + reg_ratio * reg_losses
@@ -98,7 +98,7 @@ class Sphere:
         self.nb_classes = nb_classes
         self.scale = scale
         self.input_x = tf.placeholder(dtype=tf.float32, shape=[None, height, width, 3], name="x")
-        self.input_label = tf.placeholder(dtype=tf.int32, shape=[None,], name="y")
+        self.input_label = tf.placeholder(dtype=tf.float32, shape=[None, self.nb_classes], name="y")
         self.learning_rate = learning_rate
     
     def build(self):
@@ -131,8 +131,8 @@ class Sphere:
         }
 
         global_step = tf.Variable(0, trainable=False)
-        input_image = tf.image.resize_images(images=self.input_x, size=(112, 96))
-        conv11 = tf.nn.conv2d(input_image, weights['c1_1'], strides=[1, 2, 2, 1], padding='SAME', name='c_11')
+        # input_image = tf.image.resize_images(images=self.input_x, size=(112, 96))
+        conv11 = tf.nn.conv2d(self.input_x, weights['c1_1'], strides=[1, 2, 2, 1], padding='SAME', name='c_11')
         h_1 = prelu(conv11, name='act_1')
 
         # ResNet-1
@@ -202,9 +202,9 @@ class Sphere:
 
         train_op = tf.train.MomentumOptimizer(self.learning_rate, momentum=0.9).minimize(loss_val)
         # correct = tf.equal(tf.argmax(output_pred, 1), tf.argmax(input_y, 1))
-        correct = tf.equal(tf.cast(tf.argmax(output_pred, 1), tf.int32), self.input_label)
-        acc = tf.reduce_mean(tf.cast(correct, tf.float32))
-        return fc_1, loss_val, train_op, acc
+        # correct = tf.equal(tf.cast(tf.argmax(output_pred, 1), tf.int32), self.input_label)
+        # acc = tf.reduce_mean(tf.cast(correct, tf.float32))
+        return fc_1, loss_val, train_op
 		
 		
 tf.reset_default_graph()
