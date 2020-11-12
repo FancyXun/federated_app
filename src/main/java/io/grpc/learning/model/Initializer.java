@@ -49,7 +49,7 @@ public class Initializer {
 
         graph = new Graph();
         InputStream modelStream = null;
-        String var2 = "resource/modelMeta/inception_resnet.pb";
+        String var2 = "resource/modelMeta/sphere.pb";
         try {
             modelStream = new FileInputStream(var2);
             ByteArrayOutputStream buffer = new ByteArrayOutputStream();
@@ -64,9 +64,9 @@ public class Initializer {
         } catch (IOException e) {
             e.printStackTrace();
         }
-        String trainable_var = "resource/modelMeta/inception_resnet_trainable_var.txt";
-        String trainable_init_var = "resource/modelMeta/inception_resnet_trainable_init_var.txt";
-        String feed_fetch_var = "resource/modelMeta/inception_resnet_feed_fetch.txt";
+        String trainable_var = "resource/modelMeta/sphere_trainable_var.txt";
+        String trainable_init_var = "resource/modelMeta/sphere_trainable_init_var.txt";
+        String feed_fetch_var = "resource/modelMeta/sphere_feed_fetch.txt";
         modelMap = loadModelMeta(trainable_var);
         modelInitMap = loadModelMeta(trainable_init_var);
         metaMap = loadModelMeta(feed_fetch_var);

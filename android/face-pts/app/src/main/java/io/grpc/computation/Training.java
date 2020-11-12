@@ -5,11 +5,13 @@ import android.app.Activity;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.provider.ContactsContract;
 import android.widget.TextView;
 
 import org.opencv.android.Utils;
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;
+import org.opencv.core.Size;
 import org.opencv.imgcodecs.Imgcodecs;
 import org.opencv.imgproc.Imgproc;
 import org.tensorflow.Graph;
@@ -189,7 +191,7 @@ public class Training {
                 }
 
                 float loss = train();
-                System.out.println(loss);
+                System.out.println("round "+r+ ": " +loss);
                 // get model weights
                 ModelWeights.Builder modelWeightsBuilder = getWeights(layerList, layer_size);
                 model = stub.callModel(builder.build());
@@ -444,6 +446,8 @@ public class Training {
                             Mat image = new Mat();
                             Utils.bitmapToMat(bmp, image);
                             Imgproc.cvtColor(image,image, Imgproc.COLOR_BGRA2BGR);
+                            Size size = new Size(96, 112);
+                            Imgproc.resize(image, image, size);
                             int label = Integer.valueOf(line.split("/")[1]);
                             float[][] label_oneHot = new float[batch_size][1006];
                             label_oneHot[0][label] = 1;
@@ -460,8 +464,8 @@ public class Training {
                             for (int i = 0; i < batch_size; i++) {
                                 batch_size_loss = batch_size_loss + loss[i];
                             }
-                            System.out.println(batch_size_loss);
                             total_loss += (batch_size_loss / batch_size);
+                            System.out.println(line +" "+ line_number + " " + batch_size_loss);
                             batch_size_loss = 0;
                             line_number ++;
                         }
