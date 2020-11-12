@@ -41,12 +41,12 @@ def agular_margin_softmax_loss(embedding, label, step, margin=4):
     embeddig_norm = tf.norm(embedding, axis=1)
     embed_dim = embedding.get_shape()[1]
     initial = tf.glorot_uniform_initializer()
-    weights = tf.get_variable(name='softmax_weights', shape=[embed_dim, NB_CLASS],
+    weights = tf.get_variable(name='softmax_weights', shape=[embed_dim, 10575],
                               initializer=initial)
     weights_norm = tf.nn.l2_normalize(weights, axis=0)
     stad_logits = tf.matmul(embedding, weights_norm)
     # batch_size = tf.shape(embedding)[0]
-    batch_size = BATCH_SIZE
+    batch_size = 64
     spr_label = label
     sample_2d_label_idx = tf.stack([tf.constant(list(range(batch_size)), tf.int32), spr_label], axis=1)
     sample_logits = tf.gather_nd(stad_logits, sample_2d_label_idx)
@@ -62,9 +62,9 @@ def agular_margin_softmax_loss(embedding, label, step, margin=4):
     margin_logits = tf.multiply(phi_theta, embeddig_norm)
     combined_logits = tf.add(stad_logits, tf.scatter_nd(sample_2d_label_idx,
                                                         tf.subtract(margin_logits, sample_logits),
-                                                        (batch_size, NB_CLASS)))
+                                                        (batch_size, 10575)))
 
-    lamb = tf.maximum(LambdaMin, LambdaMax/(1+1.0*it))
+    lamb = tf.maximum(5., 1500./(1+1.0*it))
     f = 1.0/(1.0+lamb)
     ff = 1.0 - f
     final_logits = ff*stad_logits + f*combined_logits
@@ -131,8 +131,8 @@ class Sphere:
         }
 
         global_step = tf.Variable(0, trainable=False)
-
-        conv11 = tf.nn.conv2d(self.input_x, weights['c1_1'], strides=[1,2,2,1], padding='SAME', name='c_11')
+        input_image = tf.image.resize_images(images=self.input_x, size=(112, 96))
+        conv11 = tf.nn.conv2d(input_image, weights['c1_1'], strides=[1, 2, 2, 1], padding='SAME', name='c_11')
         h_1 = prelu(conv11, name='act_1')
 
         # ResNet-1
