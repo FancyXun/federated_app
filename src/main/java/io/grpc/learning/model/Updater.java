@@ -3,7 +3,6 @@ package io.grpc.learning.model;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -78,13 +77,7 @@ public class Updater {
                 layer_index ++;
             }
         }
-        for (int i =0 ; i< 302; i++){
-            new SystemOut().output(
-                    String.valueOf(
-                            modelWeightsBuilder.getTensor(i).getFloatValList().size()),
-                    System.out);
-            System.out.println(modelWeightsBuilder.getTensor(i).getFloatValList().size());
-        }
+        weightsLinkedHashMap.clear();
     }
 
     public Updater() {

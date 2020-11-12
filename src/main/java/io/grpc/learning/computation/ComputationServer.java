@@ -18,6 +18,7 @@ package io.grpc.learning.computation;
 
 import io.grpc.Server;
 import io.grpc.ServerBuilder;
+import io.grpc.learning.logging.SystemOut;
 import io.grpc.learning.model.Initializer;
 import io.grpc.learning.model.Updater;
 import io.grpc.learning.storage.MapQueue;
@@ -211,10 +212,12 @@ public class ComputationServer {
             }
             if (layerMap.containsKey(request.getLayerId())){
                 List<Float> floatList = layerMap.get(request.getLayerId());
+                new SystemOut().output(String.valueOf(floatList.size()), System.out);
                 floatList.addAll(request.getTensor().getFloatValList());
                 layerMap.put(request.getLayerId(), new ArrayList(floatList));
             }
             else{
+                new SystemOut().output(String.valueOf(request.getTensor().getFloatValList().size()) +"...", System.out);
                 layerMap.put(request.getLayerId(), new ArrayList(request.getTensor().getFloatValList()));
 
             }
