@@ -410,7 +410,6 @@ public class Training {
         }
 
         public float train() {
-            int round = 10;
             // training code converter from python
             /*
             init = tf.global_variables_initializer()

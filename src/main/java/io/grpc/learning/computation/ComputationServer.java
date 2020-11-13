@@ -121,7 +121,8 @@ public class ComputationServer {
     }
 
     static class ComputationImpl extends ComputationGrpc.ComputationImplBase {
-        public int minRequestNum = 1;
+        public int minRequestNum = 2;
+        public int finished =0;
 
         @Override
         public void callModel(ClientRequest request, StreamObserver<Model> responseObserver) {
@@ -230,9 +231,12 @@ public class ComputationServer {
         @Override
         public void computeFinish(ClientRequest request, StreamObserver<ValueReply> responseObserver) {
             Updater updater = Updater.getInstance();
-            updater.updateWeights();
             ValueReply.Builder valueReplyBuilder = ValueReply.newBuilder();
             valueReplyBuilder.setMessage(true);
+            finished ++;
+            if (finished >= minRequestNum){
+                updater.updateWeights();
+            }
             responseObserver.onNext(valueReplyBuilder.build());
             responseObserver.onCompleted();
         }
