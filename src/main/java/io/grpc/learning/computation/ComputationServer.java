@@ -121,7 +121,7 @@ public class ComputationServer {
     }
 
     static class ComputationImpl extends ComputationGrpc.ComputationImplBase {
-        public int minRequestNum = 2;
+        public int minRequestNum = 1;
         public int finished =0;
 
         @Override

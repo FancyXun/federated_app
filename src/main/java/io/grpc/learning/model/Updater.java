@@ -1,10 +1,15 @@
 package io.grpc.learning.model;
 
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileWriter;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import javax.swing.JOptionPane;
 
 import computation.TensorEntity;
 import io.grpc.learning.computation.LayerWeights;
@@ -17,6 +22,8 @@ public class Updater {
     public ArrayList<LayerWeights.Builder> layerWeightsArrayList;
     public ArrayList<TensorEntity.TensorShapeProto.Builder> tensorShapeArrayList;
     public LinkedHashMap<String, LinkedHashMap<Long, List<Float>>> weightsLinkedHashMap;
+    public LinkedHashMap<Long, List<Float>> modelWeights;
+    public String weightsURL = "resource/modelMeta/weights.txt";
 
     private void ModelWeightsInitializer() {
         Initializer initializer = Initializer.getInstance();
@@ -59,25 +66,66 @@ public class Updater {
         weightsLinkedHashMap = new LinkedHashMap<>();
     }
 
-    public void updateWeights(){
+    public void updateWeights() {
         // todo: add more clients to do
         modelWeightsBuilder.clear();
         modelWeightsBuilder = ModelWeights.newBuilder();
-        for(String key: weightsLinkedHashMap.keySet()){
-            LinkedHashMap<Long, List<Float>> listLinkedHashMap = weightsLinkedHashMap.get(key);
-            int layer_index =0;
-            for (Long layer_id: listLinkedHashMap.keySet()){
-                TensorEntity.TensorProto.Builder tensorBuilder =
-                        TensorEntity.TensorProto.newBuilder();
-                tensorBuilder.setTensorShape(tensorShapeArrayList.get(layer_index));
-                for(int i =0; i< listLinkedHashMap.get(layer_id).size(); i++){
-                    tensorBuilder.addFloatVal(listLinkedHashMap.get(layer_id).get(i));
-                }
-                modelWeightsBuilder.addTensor(layer_index, tensorBuilder);
-                layer_index ++;
+        this.aggregateWeights();
+        int layer_index = 0;
+        for (Long layer_id : modelWeights.keySet()) {
+            TensorEntity.TensorProto.Builder tensorBuilder =
+                    TensorEntity.TensorProto.newBuilder();
+            tensorBuilder.setTensorShape(tensorShapeArrayList.get(layer_index));
+            for (int i = 0; i < modelWeights.get(layer_id).size(); i++) {
+                tensorBuilder.addFloatVal(modelWeights.get(layer_id).get(i));
             }
+            modelWeightsBuilder.addTensor(layer_index, tensorBuilder);
+            layer_index++;
+
         }
         weightsLinkedHashMap.clear();
+    }
+
+    private void aggregateWeights() {
+        int idx = 0;
+        for (String key : weightsLinkedHashMap.keySet()) {
+            if (idx == 0) {
+                modelWeights = weightsLinkedHashMap.get(key);
+            } else {
+                LinkedHashMap<Long, List<Float>> listLinkedHashMap = weightsLinkedHashMap.get(key);
+                for (Long layer_id : listLinkedHashMap.keySet()) {
+                    for (int i = 0; i < listLinkedHashMap.get(layer_id).size(); i++) {
+                        float ele = modelWeights.get(layer_id).get(i) +
+                                listLinkedHashMap.get(layer_id).get(i);
+                        modelWeights.get(layer_id).set(i, ele);
+                    }
+                }
+            }
+            idx++;
+        }
+        for (Long layer_id : modelWeights.keySet()) {
+            for (int i = 0; i < modelWeights.get(layer_id).size(); i++) {
+                float ele = modelWeights.get(layer_id).get(i) / idx;
+                modelWeights.get(layer_id).set(i, ele);
+            }
+        }
+        saveModel();
+    }
+
+    private void saveModel() {
+        File file = new File(weightsURL);
+        try {
+            FileWriter fw = new FileWriter(file);
+            BufferedWriter output = new BufferedWriter(fw);
+            for (Long layer_id : modelWeights.keySet()) {
+                output.write(modelWeights.get(layer_id).toString());
+                output.newLine();
+            }
+            output.close();
+
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(null, "I cannot create that file");
+        }
     }
 
     public Updater() {
