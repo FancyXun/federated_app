@@ -5,42 +5,26 @@ import android.app.Activity;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-import android.provider.ContactsContract;
-import android.widget.TextView;
 
 import org.opencv.android.Utils;
-import org.opencv.core.CvType;
 import org.opencv.core.Mat;
 import org.opencv.core.Size;
-import org.opencv.imgcodecs.Imgcodecs;
 import org.opencv.imgproc.Imgproc;
 import org.tensorflow.Graph;
-import org.tensorflow.Operation;
 import org.tensorflow.Session;
 import org.tensorflow.Tensor;
 
 import java.io.BufferedReader;
-import java.io.ByteArrayOutputStream;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileOutputStream;
-import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.io.PrintWriter;
-import java.io.StringWriter;
 import java.lang.ref.WeakReference;
 import java.net.HttpURLConnection;
-import java.net.MalformedURLException;
-import java.net.ProtocolException;
 import java.net.URL;
-import java.nio.DoubleBuffer;
 import java.nio.FloatBuffer;
 import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.UUID;
 import java.util.regex.Matcher;
@@ -51,8 +35,6 @@ import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import io.grpc.learning.computation.ClientRequest;
 import io.grpc.learning.computation.ComputationGrpc;
-import io.grpc.learning.computation.ComputationReply;
-import io.grpc.learning.computation.ComputationRequest;
 import io.grpc.learning.computation.Layer;
 import io.grpc.learning.computation.LayerWeights;
 import io.grpc.learning.computation.LayerWeightsRequest;
@@ -93,12 +75,12 @@ public class Training {
         protected String doInBackground(String... params) {
             // client id
             // server IP and port
-            File file = new File(liteModelUrl);
-            LiteDownload.downloadFile("http://52.81.162.253:8000/res/model1006%2B.tflite", file);
-//            String host = "192.168.89.88";
-//            int port = 50051;
-//            ValueReply valueReply = runOneRound(host, port);
-//            System.out.println(valueReply.getMessage());
+//            File file = new File(liteModelUrl);
+//            LiteDownload.downloadFile("http://52.81.162.253:8000/res/model1006%2B.tflite", file);
+            String host = "192.168.89.178";
+            int port = 50051;
+            ValueReply valueReply = runOneRound(host, port);
+            System.out.println(valueReply.getMessage());
             return "success";
         }
 
