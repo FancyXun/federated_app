@@ -179,6 +179,7 @@ public class MainActivity extends AppCompatActivity {
             Utils.matToBitmap(image, bmp);
             List<Classifier.Recognition> results =
                     classifier.recognizeImage(bmp, 90);
+            System.out.println(results);
         }
     }
 

@@ -39,7 +39,9 @@ import org.tensorflow.lite.support.image.ops.Rot90Op;
 import org.tensorflow.lite.support.label.TensorLabel;
 import org.tensorflow.lite.support.tensorbuffer.TensorBuffer;
 
+import java.io.File;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.nio.MappedByteBuffer;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -47,6 +49,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.PriorityQueue;
 
+import io.grpc.utils.LiteDownload;
 import io.grpc.utils.Logger;
 
 /** A classifier specialized to label images using TensorFlow Lite. */
@@ -65,6 +68,7 @@ public abstract class Classifier {
 
   /** The loaded TensorFlow Lite model. */
   private MappedByteBuffer tfliteModel;
+  private ByteBuffer tfliteModel1;
   private MappedByteBuffer myphoto;
 
   /** Image size along the x axis. */
@@ -183,6 +187,8 @@ public abstract class Classifier {
   /** Initializes a {@code Classifier}. */
   protected Classifier(Activity activity, Device device, int numThreads) throws IOException {
     tfliteModel = FileUtil.loadMappedFile(activity, getModelPath());
+    String liteModelUrl = "/data/user/0/io.grpc.computation/cache/model";
+    tfliteModel1 = TFLiteFileUtil.loadMappedFile(activity, liteModelUrl);
     //TODO:GETxxx way
     switch (device) {
       case GPU:
@@ -195,7 +201,7 @@ public abstract class Classifier {
     tfliteOptions.setNumThreads(numThreads);
 
     // TODO: Create a TFLite interpreter instance
-    tflite = new Interpreter(tfliteModel, tfliteOptions);
+    tflite = new Interpreter(tfliteModel1, tfliteOptions);
 
     // Loads labels out from the label file.
     labels = FileUtil.loadLabels(activity, getLabelPath());

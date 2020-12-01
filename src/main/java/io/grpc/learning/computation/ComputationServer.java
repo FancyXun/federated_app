@@ -196,7 +196,6 @@ public class ComputationServer {
         @Override
         public void computeWeights(io.grpc.learning.computation.ModelWeights request, StreamObserver<ValueReply> responseObserver) {
             int count = request.getTensorCount();
-            System.out.println(count);
             ValueReply.Builder valueReplyBuilder = ValueReply.newBuilder();
             valueReplyBuilder.setMessage(true);
             responseObserver.onNext(valueReplyBuilder.build());
