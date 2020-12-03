@@ -20,6 +20,7 @@ import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ImageView;
+import android.widget.TextView;
 
 import org.opencv.android.OpenCVLoader;
 import org.opencv.android.Utils;
@@ -41,6 +42,7 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.ref.WeakReference;
 import java.nio.MappedByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
@@ -62,6 +64,7 @@ public class MainActivity extends AppCompatActivity {
     private Context context;
     private ArrayList<String> fileList;
     private Classifier classifier;
+    private TextView textView;
 
 
     @Override
@@ -71,6 +74,7 @@ public class MainActivity extends AppCompatActivity {
         faceUpload = findViewById(R.id.faceUpload);
         faceImg = findViewById(R.id.faceImg);
         faceRec = findViewById(R.id.faceRec);
+        textView = findViewById(R.id.Similarity);
         trainButton = (Button) findViewById(R.id.train);
         context = getApplicationContext();
         fileList = new FileUtils(context, "sampleData/casiaWebFace").getFileList();
@@ -171,16 +175,35 @@ public class MainActivity extends AppCompatActivity {
         Bitmap bit = bitmap.copy(Bitmap.Config.ARGB_8888, false);
         Mat src = new Mat(bit.getHeight(), bit.getWidth(), CvType.CV_8UC(3));
         Utils.bitmapToMat(bit, src);
+        float[] results =
+                classifier.recognizeImage(bit, 90);
         Imgproc.cvtColor(src, src, Imgproc.COLOR_BGR2GRAY);
+        String res = "";
         for (String filePath : fileList) {
             Mat image = Imgcodecs.imread(cacheFile(filePath).getAbsolutePath(), Imgcodecs.IMREAD_COLOR);
             float[][][][] floats = DataConverter.cvMat_3dArray(image, 1);
             Bitmap bmp = Bitmap.createBitmap(image.cols(), image.rows(), Bitmap.Config.ARGB_8888);
             Utils.matToBitmap(image, bmp);
-            List<Classifier.Recognition> results =
+            float[] results1 =
                     classifier.recognizeImage(bmp, 90);
-            System.out.println(results);
+            double similarity = cosineSimilarity(results, results1);
+            System.out.println("similarity：" + similarity);
+            res = res + similarity +";";
         }
+        textView.setText(res);
+        faceRec.setEnabled(true);
+    }
+
+    public static double cosineSimilarity(float[] vectorA, float[] vectorB) {
+        double dotProduct = 0.0;
+        double normA = 0.0;
+        double normB = 0.0;
+        for (int i = 0; i < vectorA.length; i++) {
+            dotProduct += vectorA[i] * vectorB[i];
+            normA += Math.pow(vectorA[i], 2);
+            normB += Math.pow(vectorB[i], 2);
+        }
+        return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
     }
 
     @Override
@@ -202,6 +225,7 @@ public class MainActivity extends AppCompatActivity {
         }
         super.onActivityResult(requestCode, resultCode, data);
     }
+
 
     @Override
     public void onResume() {

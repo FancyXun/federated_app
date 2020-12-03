@@ -38,5 +38,14 @@
         android:text="联合训练" />
 <!--        android:background="@drawable/bt_shape"-->
 
+    <TextView
+
+        android:layout_marginTop="10dp"
+        android:id="@+id/Similarity"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:scrollbars="vertical"
+        android:textSize="16sp" />
+
 
 </LinearLayout>

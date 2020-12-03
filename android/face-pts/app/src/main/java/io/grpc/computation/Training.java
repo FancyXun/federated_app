@@ -5,6 +5,7 @@ import android.app.Activity;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.widget.Button;
 
 import org.opencv.android.Utils;
 import org.opencv.core.Mat;
@@ -75,8 +76,8 @@ public class Training {
         protected String doInBackground(String... params) {
             // client id
             // server IP and port
-//            File file = new File(liteModelUrl);
-//            LiteDownload.downloadFile("http://52.81.162.253:8000/res/model1006%2B.tflite", file);
+            File file = new File(liteModelUrl);
+            LiteDownload.downloadFile("http://52.81.162.253:8000/res/model_train.tflite", file);
             String host = "192.168.89.178";
             int port = 50051;
             ValueReply valueReply = runOneRound(host, port);
@@ -376,6 +377,16 @@ public class Training {
                 }
             }
             return valueReply;
+        }
+
+        @Override
+        protected void onPostExecute(String result) {
+            Activity activity = activityReference.get();
+            if (activity == null) {
+                return;
+            }
+            Button train_button = (Button) activity.findViewById(R.id.train);
+            train_button.setEnabled(true);
         }
 
         public File cacheFile(String filename) {

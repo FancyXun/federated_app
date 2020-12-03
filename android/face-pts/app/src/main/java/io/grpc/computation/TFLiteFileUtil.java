@@ -133,7 +133,7 @@ public class TFLiteFileUtil {
      * @throws IOException if an I/O error occurs when loading the tflite model.
      */
     @NonNull
-    public static ByteBuffer loadMappedFile(@NonNull Context context, @NonNull String filePath)
+    public static MappedByteBuffer loadMappedFile(@NonNull Context context, @NonNull String filePath)
             throws IOException {
 
 //        try (AssetFileDescriptor fileDescriptor = context.getAssets().openFd(filePath);
