@@ -14,10 +14,8 @@ import javax.swing.JOptionPane;
 import computation.TensorEntity;
 import io.grpc.learning.computation.LayerWeights;
 import io.grpc.learning.computation.ModelWeights;
-import io.grpc.learning.logging.SystemOut;
 
-public class Updater {
-
+public class StreamUpdater {
     public ModelWeights.Builder modelWeightsBuilder;
     public ArrayList<LayerWeights.Builder> layerWeightsArrayList;
     public ArrayList<TensorEntity.TensorShapeProto.Builder> tensorShapeArrayList;
@@ -26,6 +24,7 @@ public class Updater {
     public String weightsURL = "resource/modelMeta/weights.txt";
 
     private void ModelWeightsInitializer() {
+        // 初始化
         Initializer initializer = Initializer.getInstance();
         LinkedHashMap<String, String> modelMap = initializer.getModelMap();
         Pattern p = Pattern.compile("\\d+");
@@ -128,15 +127,15 @@ public class Updater {
         }
     }
 
-    public Updater() {
+    public StreamUpdater() {
         this.ModelWeightsInitializer();
     }
 
     private static class UpdaterHolder {
-        private static Updater instance = new Updater();
+        private static StreamUpdater instance = new StreamUpdater();
     }
 
-    public static Updater getInstance() {
-        return Updater.UpdaterHolder.instance;
+    public static StreamUpdater getInstance() {
+        return StreamUpdater.UpdaterHolder.instance;
     }
 }

@@ -25,6 +25,7 @@ import android.os.Trace;
 
 import androidx.annotation.RequiresApi;
 
+import org.checkerframework.checker.nullness.qual.NonNull;
 import org.tensorflow.lite.DataType;
 import org.tensorflow.lite.Interpreter;
 import org.tensorflow.lite.support.common.FileUtil;
@@ -36,10 +37,10 @@ import org.tensorflow.lite.support.image.ops.ResizeOp;
 import org.tensorflow.lite.support.image.ops.ResizeOp.ResizeMethod;
 import org.tensorflow.lite.support.image.ops.ResizeWithCropOrPadOp;
 import org.tensorflow.lite.support.image.ops.Rot90Op;
-import org.tensorflow.lite.support.label.TensorLabel;
 import org.tensorflow.lite.support.tensorbuffer.TensorBuffer;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.nio.MappedByteBuffer;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -182,7 +183,8 @@ public abstract class Classifier {
 
   /** Initializes a {@code Classifier}. */
   protected Classifier(Activity activity, Device device, int numThreads) throws IOException {
-    tfliteModel = FileUtil.loadMappedFile(activity, getModelPath());
+    String liteModelUrl = "/data/user/0/io.grpc.computation/cache/model";
+    tfliteModel = TFLiteFileUtil.loadMappedFile(activity, liteModelUrl);
     //TODO:GETxxx way
     switch (device) {
       case GPU:
@@ -198,7 +200,6 @@ public abstract class Classifier {
     tflite = new Interpreter(tfliteModel, tfliteOptions);
 
     // Loads labels out from the label file.
-    labels = FileUtil.loadLabels(activity, getLabelPath());
     int imageTensorIndex = 0;
     int[] imageShape = tflite.getInputTensor(imageTensorIndex).shape(); // {1, height, width, 3}
     imageSizeY = imageShape[1];
@@ -221,9 +222,10 @@ public abstract class Classifier {
     LOGGER.d("Created a Tensorflow Lite Image Classifier.");
   }
 
-  /** Runs inference and returns the classification results. */
+  /** Runs inference and returns the classification results.
+   * @return*/
   @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN_MR2)
-  public List<Recognition> recognizeImage(final Bitmap bitmap, int sensorOrientation) {
+  public @NonNull float[] recognizeImage(final Bitmap bitmap, int sensorOrientation) {
     // Logs this method so that it can be analyzed with systrace.
     Trace.beginSection("recognizeImage");
 
@@ -239,20 +241,21 @@ public abstract class Classifier {
     long startTimeForReference = SystemClock.uptimeMillis();
     // TODO: Run TFLite inference
     tflite.run(inputImageBuffer.getBuffer(), outputProbabilityBuffer.getBuffer().rewind());
-    long endTimeForReference = SystemClock.uptimeMillis();
-    Trace.endSection();
-    LOGGER.v("Timecost to run model inference: " + (endTimeForReference - startTimeForReference));
-
-    // Gets the map of label and probability.
-    // TODO: Use TensorLabel from TFLite Support Library to associate the probabilities
-    //       with category labels
-    Map<String, Float> labeledProbability =
-            new TensorLabel(labels, probabilityProcessor.process(outputProbabilityBuffer))
-                    .getMapWithFloatValue();
-    Trace.endSection();
-
-    // Gets top-k results.
-    return getTopKProbability(labeledProbability);
+    return outputProbabilityBuffer.getFloatArray();
+//    long endTimeForReference = SystemClock.uptimeMillis();
+//    Trace.endSection();
+//    LOGGER.v("Timecost to run model inference: " + (endTimeForReference - startTimeForReference));
+//
+//    // Gets the map of label and probability.
+//    // TODO: Use TensorLabel from TFLite Support Library to associate the probabilities
+//    //       with category labels
+//    Map<String, Float> labeledProbability =
+//            new TensorLabel(labels, probabilityProcessor.process(outputProbabilityBuffer))
+//                    .getMapWithFloatValue();
+//    Trace.endSection();
+//
+//    // Gets top-k results.
+//    return getTopKProbability(labeledProbability);
   }
 
   /** Closes the interpreter and model to release resources. */

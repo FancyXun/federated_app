@@ -10,11 +10,22 @@ public class DataConverter {
             for (int i = 0; i < mat.height(); i++) {
                 for (int j = 0; j < mat.width(); j++) {
                     for (int c = 0; c < mat.channels(); c++) {
-                        result[bat][i][j][c] = (float) mat.get(i, j)[c];
+                        result[bat][i][j][c] = (float) (mat.get(i, j)[c] - 127.5)/128;
                     }
                 }
             }
         }
+        return result;
+    }
+
+    public static float[][][][] cvMat_batchArray(Mat mat, int batch_size_iter, float[][][][] result) {
+            for (int i = 0; i < mat.height(); i++) {
+                for (int j = 0; j < mat.width(); j++) {
+                    for (int c = 0; c < mat.channels(); c++) {
+                        result[batch_size_iter][i][j][c] = (float) (mat.get(i, j)[c] - 127.5)/128;
+                    }
+                }
+            }
         return result;
     }
 }

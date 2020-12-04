@@ -20,6 +20,7 @@ import io.grpc.Server;
 import io.grpc.ServerBuilder;
 import io.grpc.learning.logging.SystemOut;
 import io.grpc.learning.model.Initializer;
+import io.grpc.learning.model.StreamUpdater;
 import io.grpc.learning.model.Updater;
 import io.grpc.learning.storage.MapQueue;
 import io.grpc.learning.storage.MetricsContainer;
@@ -122,6 +123,7 @@ public class ComputationServer {
 
     static class ComputationImpl extends ComputationGrpc.ComputationImplBase {
         public int minRequestNum = 1;
+        public int finished =0;
 
         @Override
         public void callModel(ClientRequest request, StreamObserver<Model> responseObserver) {
@@ -195,7 +197,6 @@ public class ComputationServer {
         @Override
         public void computeWeights(io.grpc.learning.computation.ModelWeights request, StreamObserver<ValueReply> responseObserver) {
             int count = request.getTensorCount();
-            System.out.println(count);
             ValueReply.Builder valueReplyBuilder = ValueReply.newBuilder();
             valueReplyBuilder.setMessage(true);
             responseObserver.onNext(valueReplyBuilder.build());
@@ -230,9 +231,12 @@ public class ComputationServer {
         @Override
         public void computeFinish(ClientRequest request, StreamObserver<ValueReply> responseObserver) {
             Updater updater = Updater.getInstance();
-            updater.updateWeights();
             ValueReply.Builder valueReplyBuilder = ValueReply.newBuilder();
             valueReplyBuilder.setMessage(true);
+            finished ++;
+            if (finished >= minRequestNum){
+                updater.updateWeights();
+            }
             responseObserver.onNext(valueReplyBuilder.build());
             responseObserver.onCompleted();
         }

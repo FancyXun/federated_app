@@ -47,6 +47,8 @@ message ClientRequest{
 message LayerWeightsRequest{
   string id = 1;
   int64 layer_id = 2;
+  int64 idx =3;
+  bool split = 4;
 }
 
 message LayerWeights{

@@ -1,57 +1,28 @@
-package io.grpc.learning.model;
+package io.grpc.computation;
+
+import android.content.Context;
 
 import org.tensorflow.Graph;
+import org.tensorflow.Operation;
+import org.tensorflow.Session;
 
 import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
-import java.io.FileInputStream;
-import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 
+public class TrainingUtils {
 
-public class Initializer {
-
-    private LinkedHashMap<String, String> modelMap;
-    private LinkedHashMap<String, String> modelInitMap;
-    private LinkedHashMap<String, String> metaMap;
-    private Graph graph;
-
-    public LinkedHashMap<String, String> getModelMap() {
-        return modelMap;
-    }
-
-    public LinkedHashMap<String, String> getModelInitMap() {
-        return modelInitMap;
-    }
-
-    public LinkedHashMap<String, String> getMetaMap() {
-        return metaMap;
-    }
-
-    public Graph getGraph() {
-        return graph;
-    }
-
-    private static class InitializerHolder {
-        private static Initializer instance = new Initializer();
-    }
-
-    public Initializer() {
-    }
-
-    public static Initializer getInstance() {
-        return InitializerHolder.instance;
-    }
-
-    public void loadModel() {
-
-        graph = new Graph();
+    public void localTraining(Context context, String pbPath) {
+        Graph graph = new Graph();
         InputStream modelStream = null;
-        String var2 = "resource/modelMeta/sphere.pb";
         try {
-            modelStream = new FileInputStream(var2);
+            boolean var1 = pbPath.startsWith("file:///android_asset/");
+            String var2 = var1 ? pbPath.split("file:///android_asset/")[1] : pbPath;
+            modelStream = context.getAssets().open(var2);
             ByteArrayOutputStream buffer = new ByteArrayOutputStream();
             int nRead;
             byte[] data = new byte[1024];
@@ -61,26 +32,28 @@ public class Initializer {
             buffer.flush();
             byte[] byteArray = buffer.toByteArray();
             graph.importGraphDef(byteArray);
+            Iterator<Operation> operationIterator = graph.operations();
+            Session session = new Session(graph);
+            String trainable_var = "file:///android_asset/protobuffer/inception_resnet_trainable_var.txt";
+            String feed_fetch_var = "file:///android_asset/protobuffer/inception_resnet_feed_fetch.txt";
+            String data_path = "sampleData/casiaWebFace";
+            LinkedHashMap<String, String> modelMap = loadModelMeta(context, trainable_var);
+            LinkedHashMap<String, String> metaMap = loadModelMeta(context, feed_fetch_var);
+
         } catch (IOException e) {
             e.printStackTrace();
         }
-        String trainable_var = "resource/modelMeta/sphere_trainable_var.txt";
-        String trainable_init_var = "resource/modelMeta/sphere_trainable_init_var.txt";
-        String feed_fetch_var = "resource/modelMeta/sphere_feed_fetch.txt";
-        modelMap = loadModelMeta(trainable_var);
-        modelInitMap = loadModelMeta(trainable_init_var);
-        metaMap = loadModelMeta(feed_fetch_var);
     }
 
-
-    private LinkedHashMap<String, String> loadModelMeta(String filePath) {
-
+    public LinkedHashMap<String, String> loadModelMeta(Context context, String filePath) {
         LinkedHashMap<String, String> map = new LinkedHashMap<String, String>();
-
+        boolean var1 = filePath.startsWith("file:///android_asset/");
+        String var2 = var1 ? filePath.split("file:///android_asset/")[1] : filePath;
         String line;
-        BufferedReader reader;
+        BufferedReader reader = null;
         try {
-            reader = new BufferedReader(new FileReader(filePath));
+            InputStream modelStream = context.getAssets().open(var2);
+            reader = new BufferedReader(new InputStreamReader(modelStream));
             int emptyLine = 0;
             while ((line = reader.readLine()) != null) {
                 String[] parts = line.split(":", 2);
@@ -104,4 +77,6 @@ public class Initializer {
         }
         return map;
     }
+
+
 }
