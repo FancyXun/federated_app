@@ -161,8 +161,8 @@ class Sphere:
         # input_x = tf.placeholder(tf.float32, [None] + [112, 96] + [3], name='input_x')
         # input_y = tf.placeholder(tf.int32, [None, nb_classes], name='input_y')
 
-        pad11 = tf.pad(self.input_x, PAD, "CONSTANT")
-        conv11 = tf.nn.conv2d(pad11, weights['c1_1'], strides=[1, 2, 2, 1], padding='VALID', name='c_11')
+        # pad11 = tf.pad(self.input_x, PAD, "CONSTANT")
+        conv11 = tf.nn.conv2d(self.input_x, weights['c1_1'], strides=[1, 2, 2, 1], padding=PAD, name='c_11')
         h_conv11 = tf.nn.bias_add(conv11, weights['b1_1'])
         h_1 = prelu(h_conv11, name='act_1')
 
@@ -176,8 +176,8 @@ class Sphere:
         res_1 = h_1 + res_h_12
 
         # ResNet-2
-        pad21 = tf.pad(res_1, PAD, "CONSTANT")
-        conv21 = tf.nn.conv2d(pad21, weights['c2_1'], strides=[1, 2, 2, 1], padding='VALID', name='c_21')
+        # pad21 = tf.pad(res_1, PAD, "CONSTANT")
+        conv21 = tf.nn.conv2d(res_1, weights['c2_1'], strides=[1, 2, 2, 1], padding=PAD, name='c_21')
         h_conv21 = tf.nn.bias_add(conv21, weights['b2_1'])
         h_2 = prelu(h_conv21, name='act_2')
         res_conv_21 = tf.nn.conv2d(h_2, weights['c2_2'], strides=[1, 1, 1, 1], padding='SAME', name='res_c_22')
@@ -197,8 +197,8 @@ class Sphere:
         res_22 = res_21 + res_h_24
 
         # ResNet-3
-        pad31 = tf.pad(res_22, PAD, "CONSTANT")
-        conv31 = tf.nn.conv2d(pad31, weights['c3_1'], strides=[1, 2, 2, 1], padding='VALID', name='c_31')
+        # pad31 = tf.pad(res_22, PAD, "CONSTANT")
+        conv31 = tf.nn.conv2d(res_22, weights['c3_1'], strides=[1, 2, 2, 1], padding=PAD, name='c_31')
         h_conv31 = tf.nn.bias_add(conv31, weights['b3_1'])
         h_3 = prelu(h_conv31, name='act_3')
         res_conv_31 = tf.nn.conv2d(h_3, weights['c3_2'], strides=[1, 1, 1, 1], padding='SAME', name='res_c_31')
@@ -234,8 +234,8 @@ class Sphere:
         res_34 = res_33 + res_h_38
 
         # ResNet-4
-        pad41 = tf.pad(res_34, PAD, "CONSTANT")
-        conv41 = tf.nn.conv2d(pad41, weights['c4_1'], strides=[1, 2, 2, 1], padding='VALID', name='c_41')
+        # pad41 = tf.pad(res_34, PAD, "CONSTANT")
+        conv41 = tf.nn.conv2d(res_34, weights['c4_1'], strides=[1, 2, 2, 1], padding=PAD, name='c_41')
         h_conv41 = tf.nn.bias_add(conv41, weights['b4_1'])
         h_4 = prelu(h_conv41, name='act_4')
         res_conv_41 = tf.nn.conv2d(h_4, weights['c4_2'], strides=[1, 1, 1, 1], padding='SAME', name='res_c_41')
