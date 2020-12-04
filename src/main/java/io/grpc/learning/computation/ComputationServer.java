@@ -20,6 +20,7 @@ import io.grpc.Server;
 import io.grpc.ServerBuilder;
 import io.grpc.learning.logging.SystemOut;
 import io.grpc.learning.model.Initializer;
+import io.grpc.learning.model.StreamUpdater;
 import io.grpc.learning.model.Updater;
 import io.grpc.learning.storage.MapQueue;
 import io.grpc.learning.storage.MetricsContainer;

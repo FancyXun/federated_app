@@ -6,6 +6,7 @@ import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.widget.Button;
+import android.widget.TextView;
 
 import org.opencv.android.Utils;
 import org.opencv.core.Mat;
@@ -78,7 +79,7 @@ public class Training {
             // server IP and port
             File file = new File(liteModelUrl);
             LiteDownload.downloadFile("http://52.81.162.253:8000/res/model_train.tflite", file);
-            String host = "192.168.89.178";
+            String host = "192.168.89.88";
             int port = 50051;
             ValueReply valueReply = runOneRound(host, port);
             System.out.println(valueReply.getMessage());
@@ -93,6 +94,7 @@ public class Training {
             return session;
         }
 
+        @SuppressLint("SetTextI18n")
         public ValueReply runOneRound(String host, int port) {
             // todo: 是否需要流传输
             channel = ManagedChannelBuilder
@@ -102,7 +104,7 @@ public class Training {
             ComputationGrpc.ComputationBlockingStub stub = ComputationGrpc.newBlockingStub(channel);
             ClientRequest.Builder builder = ClientRequest.newBuilder().setId(localId);
             Model model = stub.callModel(builder.build());
-
+            Activity activity = activityReference.get();
             // the round of federated training
             int round = model.getRound();
             round = 10;
@@ -157,13 +159,18 @@ public class Training {
                     }
                 }
                 // 本地训练
-                float loss = train();
+                TextView train_loss_view = null;
+                if (activity != null){
+                    train_loss_view = activity.findViewById(R.id.TrainLoss);
+                }
+                float loss = train(train_loss_view);
                 System.out.println("round " + r + ": " + loss);
                 // get model weights
 //                ModelWeights.Builder modelWeightsBuilder = getWeights(layerList, layer_size);
 //                model = stub.callModel(builder.build());
 //              ValueReply valueReply  = computeStream(stub, layerList, layer_size);
 //              ValueReply valueReply = stub.computeWeights(modelWeightsBuilder.build());
+                train_loss_view.setText("round " + r + ": " + loss);
                 computeStream(stub, layerList, layer_size);
                 valueReply = stub.computeFinish(builder.build());
             }
@@ -185,7 +192,8 @@ public class Training {
             }
         }
 
-        public float train() {
+        @SuppressLint("SetTextI18n")
+        public float train(TextView train_loss_view ) {
             // training code converter from python
             /*
             init = tf.global_variables_initializer()
@@ -233,7 +241,7 @@ public class Training {
                             Imgproc.cvtColor(image, image, Imgproc.COLOR_BGRA2BGR);
                             Size size = new Size(width, height);
                             Imgproc.resize(image, image, size);
-                            int label = Integer.valueOf(line.split("/")[1]);
+                            int label = Integer.parseInt(line.split("/")[1]);
                             float[][] label_oneHot = new float[batch_size][label_num];
                             label_oneHot[batch_size_iter][label] = 1;
                             DataConverter.cvMat_batchArray(image, batch_size_iter, x);
@@ -261,6 +269,7 @@ public class Training {
                             }
                             total_loss += (batch_size_loss / batch_size);
                             System.out.println(line + " " + line_number + " " + batch_size_loss);
+                            train_loss_view.setText(line + ": " + line_number + ": " + batch_size_loss);
                             batch_size_loss = 0;
                         }
                     } catch (IOException e) {
