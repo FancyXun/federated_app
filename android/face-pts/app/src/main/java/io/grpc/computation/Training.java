@@ -261,15 +261,16 @@ public class Training {
                             // bp
                             runner.addTarget(optimizerName).run();
                             // loss
-                            float[] loss = new float[batch_size];
+                            float[] loss = new float[1];
                             Tensor train_loss = runner.fetch(lossName).run().get(0);
                             train_loss.copyTo(loss);
-                            for (int i = 0; i < batch_size; i++) {
-                                batch_size_loss = batch_size_loss + loss[i];
-                            }
-                            total_loss += (batch_size_loss / batch_size);
-                            System.out.println(line + " " + line_number + " " + batch_size_loss);
-                            train_loss_view.setText(line + ": " + line_number + ": " + batch_size_loss);
+//                            for (int i = 0; i < batch_size; i++) {
+//                                batch_size_loss = batch_size_loss + loss[i];
+//                            }
+//                            total_loss += (batch_size_loss / batch_size);
+                            total_loss += loss[0];
+                            System.out.println(line + " " + line_number + " " + loss[0]);
+                            train_loss_view.setText(line + ": " + line_number + ": " + loss[0]);
                             batch_size_loss = 0;
                         }
                     } catch (IOException e) {
