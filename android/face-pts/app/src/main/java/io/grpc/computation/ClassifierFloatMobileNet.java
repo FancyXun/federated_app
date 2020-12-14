@@ -49,19 +49,16 @@ public class ClassifierFloatMobileNet extends Classifier {
   }
 
   // TODO: Specify model.tflite as the model file and labels.txt as the label file
+  @Deprecated
   @Override
   protected String getModelPath() {
     return "model1006+.tflite";
   }
 
+  @Deprecated
   @Override
   protected String getLabelPath() {
     return "lab1006.txt";
-  }
-
-  @Override
-  protected String getpngPath() {
-    return null;
   }
 
   @Override

@@ -20,15 +20,7 @@ import io.grpc.Server;
 import io.grpc.ServerBuilder;
 import io.grpc.learning.logging.SystemOut;
 import io.grpc.learning.model.Initializer;
-import io.grpc.learning.model.StreamUpdater;
 import io.grpc.learning.model.Updater;
-import io.grpc.learning.storage.MapQueue;
-import io.grpc.learning.storage.MetricsContainer;
-import io.grpc.learning.vo.GraphZoo;
-import io.grpc.learning.storage.ModelWeights;
-import io.grpc.learning.storage.RoundStateInfo;
-import io.grpc.learning.vo.SequenceData;
-import io.grpc.learning.vo.StateMachine;
 import io.grpc.stub.StreamObserver;
 
 import java.io.IOException;
@@ -36,7 +28,6 @@ import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.util.ArrayList;
 import java.util.Enumeration;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -47,8 +38,6 @@ import com.google.protobuf.ByteString;
 
 import org.tensorflow.Graph;
 
-import static io.grpc.learning.computation.FederatedComp.getGraph;
-import static io.grpc.learning.computation.SequenceComp.offsetStreamReply;
 
 /**
  * Server that manages startup/shutdown of a {@code Computation} server.
@@ -60,12 +49,13 @@ public class ComputationServer {
 
     private void start() throws IOException {
         /* initialize the model and graph */
+        logger.setLevel(Level.WARNING);
+        Logger.getLogger("io.grpc.netty.shaded").setLevel(Level.OFF);
         Initializer.getInstance().loadModel();
         System.out.println("-----" + initializer);
         /* The port on which the server should run */
         String localIP;
         Enumeration<NetworkInterface> n = NetworkInterface.getNetworkInterfaces();
-        Logger.getLogger("io.netty").setLevel(Level.OFF);
         try {
             NetworkInterface e = n.nextElement();
             Enumeration<InetAddress> a = e.getInetAddresses();
@@ -81,7 +71,6 @@ public class ComputationServer {
                 .addService(new ComputationImpl())
                 .build()
                 .start();
-        logger.info("Server started, ip is " + localIP + " listening on " + port);
         Runtime.getRuntime().addShutdownHook(new Thread() {
             @Override
             public void run() {
@@ -128,6 +117,7 @@ public class ComputationServer {
         @Override
         public void callModel(ClientRequest request, StreamObserver<Model> responseObserver) {
             String client_id = request.getId();
+            System.out.println("Receive callModel request from " + client_id);
             Initializer initializer = Initializer.getInstance();
             Graph graph = initializer.getGraph();
             LinkedHashMap<String, String> modelMap = initializer.getModelMap();
@@ -175,6 +165,7 @@ public class ComputationServer {
         @Override
         public void callLayerWeights(LayerWeightsRequest request, StreamObserver<LayerWeights> responseObserver) {
             String client_id = request.getId();
+            System.out.println("Receive callLayerWeights request from " + client_id);
             Updater updater = Updater.getInstance();
             int layer_id = (int) request.getLayerId();
             responseObserver.onNext(updater.layerWeightsArrayList.get(layer_id).build());
@@ -183,10 +174,12 @@ public class ComputationServer {
 
         // todo: Received DATA frame for an unknown stream error
         //  https://github.com/grpc/grpc-java/issues/4651
+        @Deprecated
         @Override
         public void callModelWeights(ClientRequest request,
                                      StreamObserver<io.grpc.learning.computation.ModelWeights> responseObserver) {
             String client_id = request.getId();
+            System.out.println("Receive callModelWeights request from " + client_id);
             Updater updater = Updater.getInstance();
             responseObserver.onNext(updater.modelWeightsBuilder.build());
             responseObserver.onCompleted();
@@ -194,9 +187,9 @@ public class ComputationServer {
 
         // todo: Received DATA frame for an unknown stream error
         //  https://github.com/grpc/grpc-java/issues/4651
+        @Deprecated
         @Override
         public void computeWeights(io.grpc.learning.computation.ModelWeights request, StreamObserver<ValueReply> responseObserver) {
-            int count = request.getTensorCount();
             ValueReply.Builder valueReplyBuilder = ValueReply.newBuilder();
             valueReplyBuilder.setMessage(true);
             responseObserver.onNext(valueReplyBuilder.build());
@@ -238,82 +231,6 @@ public class ComputationServer {
                 updater.updateWeights();
             }
             responseObserver.onNext(valueReplyBuilder.build());
-            responseObserver.onCompleted();
-        }
-
-        // ----------------------------------------------------------------------------------------------------------------------
-// ----------------------------------------------------------------------------------------------------------------------
-// ----------------------------------------------------------------------------------------------------------------------
-
-        /**
-         * @param request
-         * @param responseObserver
-         */
-        @Override
-        public void call(ComputationRequest request, StreamObserver<ComputationReply> responseObserver) {
-            String nodeName = request.getNodeName();
-            String clientId = request.getId();
-            String action = request.getAction();
-            // Update server state if call is a training request.
-            if (action.equals("training")) {
-                MapQueue.queueChecker(nodeName, clientId);
-                RoundStateInfo.callUpdate(nodeName, clientId);
-            }
-            Graph graph = new GraphZoo().getGraphZoo().get(nodeName);
-            byte[] byteGraph = graph == null ? getGraph(nodeName).toGraphDef() : graph.toGraphDef();
-            ComputationReply.Builder reply = ComputationReply.newBuilder();
-            reply.setGraph(ByteString.copyFrom(byteGraph));
-            if (action.equals("training")) {
-                reply.setRound(RoundStateInfo.epochMap.get(clientId));
-            }
-            reply.setMessage(RoundStateInfo.dataSplit);
-            responseObserver.onNext(reply.build());
-            responseObserver.onCompleted();
-        }
-
-        /**
-         * @param request
-         * @param responseObserver
-         */
-        @Override
-        public void callValue(ComputationRequest request, StreamObserver<TensorValue> responseObserver) {
-            String nodeName = request.getNodeName();
-            String clientId = request.getId();
-            SequenceData weight = ModelWeights.weightsAggregation.get(nodeName);
-            HashMap<String, SequenceData> weightMap =
-                    ModelWeights.weightsCollector.get(clientId);
-            if (weightMap == null) {
-                SequenceData sequenceData = FederatedComp.weightsInitializer(nodeName, clientId);
-                if (weight == null) {
-                    ModelWeights.weightsAggregation.put(nodeName, sequenceData);
-                }
-                weight = ModelWeights.weightsAggregation.get(nodeName);
-            }
-            TensorValue.Builder reply = offsetStreamReply(weight, request.getOffset());
-            responseObserver.onNext(reply.build());
-            responseObserver.onCompleted();
-        }
-
-        /**
-         * @param request
-         * @param responseObserver
-         */
-        @Override
-        public void compute(TensorValue request, StreamObserver<ValueReply> responseObserver) {
-            ValueReply.Builder reply;
-            String nodeName = request.getNodeName();
-            StateMachine currentState = RoundStateInfo.roundState.get(nodeName);
-            if (StateMachine.end != currentState) {
-                RoundStateInfo.collectValueUpdate(request);
-                int collectClients = RoundStateInfo.waitRequest.get(nodeName).size();
-                if (collectClients == minRequestNum) {
-                    // update weights
-                    FederatedComp.aggregationInner(request);
-                    FederatedComp.update = false;
-                }
-            }
-            reply = ValueReply.newBuilder().setMessage(true);
-            responseObserver.onNext(reply.build());
             responseObserver.onCompleted();
         }
     }

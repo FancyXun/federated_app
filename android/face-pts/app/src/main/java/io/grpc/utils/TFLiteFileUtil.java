@@ -1,13 +1,16 @@
-package io.grpc.computation;
+package io.grpc.utils;
 import android.content.Context;
-import android.content.res.AssetFileDescriptor;
 import java.io.BufferedReader;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
 import java.io.File;
-import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.RandomAccessFile;
+import java.net.URL;
+import java.net.URLConnection;
 import java.nio.ByteBuffer;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
@@ -135,14 +138,6 @@ public class TFLiteFileUtil {
     @NonNull
     public static MappedByteBuffer loadMappedFile(@NonNull Context context, @NonNull String filePath)
             throws IOException {
-
-//        try (AssetFileDescriptor fileDescriptor = context.getAssets().openFd(filePath);
-//             FileInputStream inputStream = new FileInputStream(fileDescriptor.getFileDescriptor())) {
-//            FileChannel fileChannel = inputStream.getChannel();
-//            long startOffset = fileDescriptor.getStartOffset();
-//            long declaredLength = fileDescriptor.getDeclaredLength();
-//            return fileChannel.map(FileChannel.MapMode.READ_ONLY, startOffset, declaredLength);
-//        }
         File file = new File(filePath);
         long len = file.length();
         MappedByteBuffer mappedByteBuffer = null;
@@ -151,22 +146,12 @@ public class TFLiteFileUtil {
                     .getChannel()
                     .map(FileChannel.MapMode.READ_ONLY, 0, len);
 
-        } catch (IOException e) {}
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
 
+        assert mappedByteBuffer != null;
         return mappedByteBuffer;
-
-
-
-
-//        FileInputStream inputStream = new FileInputStream(file);
-//        int size = inputStream.available();
-//        byte[] buffer = new byte[size];
-//        inputStream.read(buffer);
-//        return ByteBuffer.wrap(buffer);
-//        FileChannel fileChannel = inputStream.getChannel();
-//        long startOffset = 276048;
-//        long declaredLength = inputStream.available();
-//        return fileChannel.map(FileChannel.MapMode.READ_ONLY, startOffset, declaredLength);
     }
 
     /**
@@ -184,5 +169,29 @@ public class TFLiteFileUtil {
         byte[] byteArray = new byte[buffer.remaining()];
         buffer.get(byteArray);
         return byteArray;
+    }
+    /**
+     * Download tf lite from server and save to tmp file
+     *
+     * @param url tf lite model url in server
+     * @param outputFile tmp path of the file.
+     */
+    public static void downloadFile(String url, File outputFile) {
+        try {
+            URL u = new URL(url);
+            URLConnection conn = u.openConnection();
+            int contentLength = conn.getContentLength();
+            DataInputStream stream = new DataInputStream(u.openStream());
+            byte[] buffer = new byte[contentLength];
+            stream.readFully(buffer);
+            stream.close();
+
+            DataOutputStream fos = new DataOutputStream(new FileOutputStream(outputFile));
+            fos.write(buffer);
+            fos.flush();
+            fos.close();
+        } catch(IOException e) {
+            e.printStackTrace();
+        }
     }
 }

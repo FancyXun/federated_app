@@ -9,6 +9,8 @@ import java.io.InputStream;
 import java.nio.FloatBuffer;
 import java.util.ArrayList;
 
+// get local file list, example:
+// ArrayList<String> fileList = new FileUtils(context, "sampleData/casiaWebFace").getFileList();
 public class FileUtils {
 
     private ArrayList<String> fileList = new ArrayList<>();

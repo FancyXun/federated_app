@@ -14,9 +14,13 @@ import java.io.InputStreamReader;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 
+@Deprecated
 public class TrainingUtils {
 
     public void localTraining(Context context, String pbPath) {
+        /**
+         * just for local training debug in android
+         */
         Graph graph = new Graph();
         InputStream modelStream = null;
         try {

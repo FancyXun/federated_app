@@ -4,6 +4,7 @@ import org.opencv.core.Mat;
 
 public class DataConverter {
 
+    @Deprecated
     public static float[][][][] cvMat_3dArray(Mat mat, int batch_size) {
         float[][][][] result = new float[batch_size][mat.height()][mat.width()][mat.channels()];
         for (int bat = 0; bat< batch_size; bat++) {
@@ -18,7 +19,7 @@ public class DataConverter {
         return result;
     }
 
-    public static float[][][][] cvMat_batchArray(Mat mat, int batch_size_iter, float[][][][] result) {
+    public static void cvMat_batchArray(Mat mat, int batch_size_iter, float[][][][] result) {
             for (int i = 0; i < mat.height(); i++) {
                 for (int j = 0; j < mat.width(); j++) {
                     for (int c = 0; c < mat.channels(); c++) {
@@ -26,6 +27,5 @@ public class DataConverter {
                     }
                 }
             }
-        return result;
     }
 }

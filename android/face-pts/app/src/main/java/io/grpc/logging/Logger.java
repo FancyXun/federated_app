@@ -13,8 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-package io.grpc.utils;
+package io.grpc.logging;
 
+import android.annotation.SuppressLint;
 import android.util.Log;
 
 import java.util.HashSet;
@@ -126,6 +127,7 @@ public final class Logger {
     return messagePrefix + (args.length > 0 ? String.format(format, args) : format);
   }
 
+  @SuppressLint("LogTagMismatch")
   @SuppressWarnings("AnnotateFormatMethod")
   public void v(final String format, final Object... args) {
     if (isLoggable(Log.VERBOSE)) {
@@ -133,6 +135,7 @@ public final class Logger {
     }
   }
 
+  @SuppressLint("LogTagMismatch")
   @SuppressWarnings("AnnotateFormatMethod")
   public void v(final Throwable t, final String format, final Object... args) {
     if (isLoggable(Log.VERBOSE)) {
@@ -140,6 +143,7 @@ public final class Logger {
     }
   }
 
+  @SuppressLint("LogTagMismatch")
   @SuppressWarnings("AnnotateFormatMethod")
   public void d(final String format, final Object... args) {
     if (isLoggable(Log.DEBUG)) {
@@ -147,6 +151,7 @@ public final class Logger {
     }
   }
 
+  @SuppressLint("LogTagMismatch")
   @SuppressWarnings("AnnotateFormatMethod")
   public void d(final Throwable t, final String format, final Object... args) {
     if (isLoggable(Log.DEBUG)) {
@@ -154,6 +159,7 @@ public final class Logger {
     }
   }
 
+  @SuppressLint("LogTagMismatch")
   @SuppressWarnings("AnnotateFormatMethod")
   public void i(final String format, final Object... args) {
     if (isLoggable(Log.INFO)) {
@@ -161,6 +167,7 @@ public final class Logger {
     }
   }
 
+  @SuppressLint("LogTagMismatch")
   @SuppressWarnings("AnnotateFormatMethod")
   public void i(final Throwable t, final String format, final Object... args) {
     if (isLoggable(Log.INFO)) {
@@ -168,6 +175,7 @@ public final class Logger {
     }
   }
 
+  @SuppressLint("LogTagMismatch")
   @SuppressWarnings("AnnotateFormatMethod")
   public void w(final String format, final Object... args) {
     if (isLoggable(Log.WARN)) {
@@ -175,6 +183,7 @@ public final class Logger {
     }
   }
 
+  @SuppressLint("LogTagMismatch")
   @SuppressWarnings("AnnotateFormatMethod")
   public void w(final Throwable t, final String format, final Object... args) {
     if (isLoggable(Log.WARN)) {
@@ -182,6 +191,7 @@ public final class Logger {
     }
   }
 
+  @SuppressLint("LogTagMismatch")
   @SuppressWarnings("AnnotateFormatMethod")
   public void e(final String format, final Object... args) {
     if (isLoggable(Log.ERROR)) {
@@ -189,6 +199,7 @@ public final class Logger {
     }
   }
 
+  @SuppressLint("LogTagMismatch")
   @SuppressWarnings("AnnotateFormatMethod")
   public void e(final Throwable t, final String format, final Object... args) {
     if (isLoggable(Log.ERROR)) {

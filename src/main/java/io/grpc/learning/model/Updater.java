@@ -14,7 +14,6 @@ import javax.swing.JOptionPane;
 import computation.TensorEntity;
 import io.grpc.learning.computation.LayerWeights;
 import io.grpc.learning.computation.ModelWeights;
-import io.grpc.learning.logging.SystemOut;
 
 public class Updater {
 

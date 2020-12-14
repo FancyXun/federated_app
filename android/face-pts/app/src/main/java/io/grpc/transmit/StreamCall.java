@@ -1,4 +1,4 @@
-package io.grpc.task;
+package io.grpc.transmit;
 
 import android.os.AsyncTask;
 
@@ -12,11 +12,13 @@ import io.grpc.learning.computation.ValueReply;
 import io.grpc.vo.Metrics;
 import io.grpc.vo.SequenceType;
 
+@Deprecated
 public class StreamCall extends AsyncTask<String, Void, String> {
 
     protected int offSet = 0;
     protected SequenceType sequenceType;
 
+    @Deprecated
     public SequenceType SequenceCall(ComputationGrpc.ComputationBlockingStub stub, ComputationRequest.Builder builder) {
         SequenceType sequenceType = new SequenceType();
         TensorValue tensorValue = stub.callValue(builder.setOffset(offSet).build());
@@ -45,6 +47,7 @@ public class StreamCall extends AsyncTask<String, Void, String> {
         return sequenceType;
     }
 
+    @Deprecated
     public boolean upload(ComputationGrpc.ComputationBlockingStub stub, String localId,
                           String modelName, List<List<Float>> lists, Metrics metrics) {
         boolean uploaded = false;

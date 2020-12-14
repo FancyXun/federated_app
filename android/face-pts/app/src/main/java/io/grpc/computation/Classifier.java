@@ -15,20 +15,18 @@ limitations under the License.
 
 package io.grpc.computation;
 
+import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.RectF;
 import android.os.Build;
-import android.os.SystemClock;
-import android.os.Trace;
 
 import androidx.annotation.RequiresApi;
 
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.tensorflow.lite.DataType;
 import org.tensorflow.lite.Interpreter;
-import org.tensorflow.lite.support.common.FileUtil;
 import org.tensorflow.lite.support.common.TensorOperator;
 import org.tensorflow.lite.support.common.TensorProcessor;
 import org.tensorflow.lite.support.image.ImageProcessor;
@@ -40,15 +38,11 @@ import org.tensorflow.lite.support.image.ops.Rot90Op;
 import org.tensorflow.lite.support.tensorbuffer.TensorBuffer;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.nio.MappedByteBuffer;
-import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
-import java.util.Map;
-import java.util.PriorityQueue;
 
-import io.grpc.utils.Logger;
+import io.grpc.logging.Logger;
+import io.grpc.utils.TFLiteFileUtil;
 
 /** A classifier specialized to label images using TensorFlow Lite. */
 public abstract class Classifier {
@@ -142,22 +136,14 @@ public abstract class Classifier {
       return id;
     }
 
-    public String getTitle() {
-      return title;
-    }
 
     public Float getConfidence() {
       return confidence;
     }
 
-    public RectF getLocation() {
-      return new RectF(location);
-    }
 
-    public void setLocation(RectF location) {
-      this.location = location;
-    }
 
+    @SuppressLint("DefaultLocale")
     @Override
     public String toString() {
       String resultString = "";
@@ -227,35 +213,11 @@ public abstract class Classifier {
   @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN_MR2)
   public @NonNull float[] recognizeImage(final Bitmap bitmap, int sensorOrientation) {
     // Logs this method so that it can be analyzed with systrace.
-    Trace.beginSection("recognizeImage");
-
-    Trace.beginSection("loadImage");
-    long startTimeForLoadImage = SystemClock.uptimeMillis();
     inputImageBuffer = loadImage(bitmap, sensorOrientation);
-    long endTimeForLoadImage = SystemClock.uptimeMillis();
-    Trace.endSection();
-    LOGGER.v("Timecost to load the image: " + (endTimeForLoadImage - startTimeForLoadImage));
-
     // Runs the inference call.
-    Trace.beginSection("runInference");
-    long startTimeForReference = SystemClock.uptimeMillis();
     // TODO: Run TFLite inference
     tflite.run(inputImageBuffer.getBuffer(), outputProbabilityBuffer.getBuffer().rewind());
     return outputProbabilityBuffer.getFloatArray();
-//    long endTimeForReference = SystemClock.uptimeMillis();
-//    Trace.endSection();
-//    LOGGER.v("Timecost to run model inference: " + (endTimeForReference - startTimeForReference));
-//
-//    // Gets the map of label and probability.
-//    // TODO: Use TensorLabel from TFLite Support Library to associate the probabilities
-//    //       with category labels
-//    Map<String, Float> labeledProbability =
-//            new TensorLabel(labels, probabilityProcessor.process(outputProbabilityBuffer))
-//                    .getMapWithFloatValue();
-//    Trace.endSection();
-//
-//    // Gets top-k results.
-//    return getTopKProbability(labeledProbability);
   }
 
   /** Closes the interpreter and model to release resources. */
@@ -301,40 +263,14 @@ public abstract class Classifier {
 
   }
 
-  /** Gets the top-k results. */
-  private static List<Recognition> getTopKProbability(Map<String, Float> labelProb) {
-    // Find the best classifications.
-    PriorityQueue<Recognition> pq =
-        new PriorityQueue<>(
-            MAX_RESULTS,
-            new Comparator<Recognition>() {
-              @Override
-              public int compare(Recognition lhs, Recognition rhs) {
-                // Intentionally reversed to put high confidence at the head of the queue.
-                return Float.compare(rhs.getConfidence(), lhs.getConfidence());
-              }
-            });
-
-    for (Map.Entry<String, Float> entry : labelProb.entrySet()) {
-      pq.add(new Recognition("" + entry.getKey(), entry.getKey(), entry.getValue(), null));
-    }
-
-    final ArrayList<Recognition> recognitions = new ArrayList<>();
-    int recognitionsSize = Math.min(pq.size(), MAX_RESULTS);
-    for (int i = 0; i < recognitionsSize; ++i) {
-      recognitions.add(pq.poll());
-    }
-    return recognitions;
-  }
 
   /** Gets the name of the model file stored in Assets. */
   protected abstract String getModelPath();
 
   /** Gets the name of the label file stored in Assets. */
   protected abstract String getLabelPath();
-  protected abstract String getpngPath();
 
-  /** Gets the TensorOperator to nomalize the input image in preprocessing. */
+  /** Gets the TensorOperator to normalize the input image in preprocessing. */
   protected abstract TensorOperator getPreprocessNormalizeOp();
 
   /**
