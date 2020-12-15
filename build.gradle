@@ -102,6 +102,13 @@ task computationServer(type: CreateStartScripts) {
     classpath = startScripts.classpath
 }
 
+task LRComputationServer(type: CreateStartScripts) {
+    mainClassName = 'io.grpc.learning.computation.LRComputationServer'
+    applicationName = 'LRComputation-server'
+    outputDir = new File(project.buildDir, 'tmp')
+    classpath = startScripts.classpath
+}
+
 task computationClient(type: CreateStartScripts) {
     mainClassName = 'io.grpc.learning.computation.ComputationClient'
     applicationName = 'computation-client'

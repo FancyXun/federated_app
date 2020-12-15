@@ -67,6 +67,7 @@ public class ComputationServer {
         logbackLogger.setLevel(Level.INFO);
 //        Logger root = (Logger) LoggerFactory.getLogger(ComputationServer.class.getName());
         Initializer.getInstance().loadModel();
+        logger.info(Initializer.getInstance().toString() + " initialization finished");
         // this will print the name of the logger factory to stdout
 //        System.out.println(binder.getLoggerFactoryClassStr());
         /* The port on which the server should run */
@@ -76,13 +77,13 @@ public class ComputationServer {
             NetworkInterface e = n.nextElement();
             Enumeration<InetAddress> a = e.getInetAddresses();
             a.nextElement();
-            InetAddress addr = a.nextElement();
-            localIP = addr.getHostAddress();
+            InetAddress address = a.nextElement();
+            localIP = address.getHostAddress();
         } catch (Exception e1) {
             localIP = "127.0.0.1";
         }
         int port = 50051;
-        System.out.println(localIP + ":" + port);
+        logger.info(ComputationServer.class.getName() +": " +localIP + ":" + port);
         server = ServerBuilder.forPort(port)
                 .addService(new ComputationImpl())
                 .build()
