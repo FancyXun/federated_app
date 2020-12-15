@@ -16,6 +16,7 @@
 
 package io.grpc.learning.computation;
 
+import ch.qos.logback.classic.Level;
 import io.grpc.Server;
 import io.grpc.ServerBuilder;
 import io.grpc.learning.logging.SystemOut;
@@ -31,28 +32,43 @@ import java.util.Enumeration;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 import com.google.protobuf.ByteString;
 
+import org.apache.logging.log4j.LogManager;
+import org.slf4j.LoggerFactory;
 import org.tensorflow.Graph;
+import org.slf4j.impl.StaticLoggerBinder;
+
+import javax.security.auth.login.Configuration;
 
 
 /**
  * Server that manages startup/shutdown of a {@code Computation} server.
  */
 public class ComputationServer {
-    private static final Logger logger = Logger.getLogger(ComputationServer.class.getName());
+    private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(ComputationServer.class.getName());
     private Server server;
     public Initializer initializer;
+    // Determine what logging framework SLF4J is bound to:
+//    final StaticLoggerBinder binder = StaticLoggerBinder.getSingleton();
+
+//    static {
+//        LoggerContext ctx = (LoggerContext) LogManager.getContext(false);
+//
+//        ctx.getLogger("io.netty").setLevel(Level.INFO);
+//    }
+
 
     private void start() throws IOException {
         /* initialize the model and graph */
-        logger.setLevel(Level.WARNING);
-        Logger.getLogger("io.grpc.netty.shaded").setLevel(Level.OFF);
+        ch.qos.logback.classic.Logger logbackLogger =
+                (ch.qos.logback.classic.Logger) logger;
+        logbackLogger.setLevel(Level.INFO);
+//        Logger root = (Logger) LoggerFactory.getLogger(ComputationServer.class.getName());
         Initializer.getInstance().loadModel();
-        System.out.println("-----" + initializer);
+        // this will print the name of the logger factory to stdout
+//        System.out.println(binder.getLoggerFactoryClassStr());
         /* The port on which the server should run */
         String localIP;
         Enumeration<NetworkInterface> n = NetworkInterface.getNetworkInterfaces();
@@ -65,8 +81,8 @@ public class ComputationServer {
         } catch (Exception e1) {
             localIP = "127.0.0.1";
         }
-
         int port = 50051;
+        System.out.println(localIP + ":" + port);
         server = ServerBuilder.forPort(port)
                 .addService(new ComputationImpl())
                 .build()
@@ -211,7 +227,7 @@ public class ComputationServer {
                 layerMap.put(request.getLayerId(), new ArrayList(floatList));
             }
             else{
-                new SystemOut().output(String.valueOf(request.getTensor().getFloatValList().size()) +"...", System.out);
+                new SystemOut().output(request.getTensor().getFloatValList().size() +"...", System.out);
                 layerMap.put(request.getLayerId(), new ArrayList(request.getTensor().getFloatValList()));
 
             }

@@ -29,7 +29,7 @@ import io.grpc.transmit.StreamCall;
 import io.grpc.utils.DataConverter;
 import io.grpc.vo.ImageInfo;
 
-public class Trainer {
+public class TrainerStream {
     static class LocalTraining extends StreamCall {
         private final WeakReference<Activity> activityReference;
         private ManagedChannel channel;

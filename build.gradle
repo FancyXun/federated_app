@@ -54,6 +54,9 @@ dependencies {
     compile group: 'org.springframework', name: 'spring-context-support', version: '5.2.8.RELEASE'
     // https://mvnrepository.com/artifact/org.springframework/spring-tx
     compile group: 'org.springframework', name: 'spring-tx', version: '5.2.8.RELEASE'
+    // https://mvnrepository.com/artifact/com.google.cloud/google-cloud-logging-logback
+    compile group: 'com.google.cloud', name: 'google-cloud-logging-logback', version: '0.116.0-alpha'
+
     // https://mvnrepository.com/artifact/org.springframework.boot/spring-boot-starter-test
     testCompile group: 'org.springframework.boot', name: 'spring-boot-starter-test', version: '2.3.3.RELEASE'
 

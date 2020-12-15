@@ -84,7 +84,7 @@ public class MainActivity extends AppCompatActivity {
 
     public void Training(View view) {
         trainButton.setEnabled(false);
-        new Trainer.LocalTraining(this, this.context).execute(
+        new TrainerStream.LocalTraining(this, this.context).execute(
                 "NULL"
         );
     }

@@ -12,7 +12,6 @@ import io.grpc.learning.computation.ValueReply;
 import io.grpc.vo.Metrics;
 import io.grpc.vo.SequenceType;
 
-@Deprecated
 public class StreamCall extends AsyncTask<String, Void, String> {
 
     protected int offSet = 0;

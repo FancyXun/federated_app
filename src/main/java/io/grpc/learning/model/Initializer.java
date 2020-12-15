@@ -89,14 +89,9 @@ public class Initializer {
                     String value = parts[1];
                     map.put(key, value);
                 } else {
-                    System.out.println("ignoring line: " + line);
                     map.put(String.valueOf(emptyLine), "null");
                     emptyLine += 1;
                 }
-            }
-
-            for (String key : map.keySet()) {
-                System.out.println(key + ":" + map.get(key));
             }
             reader.close();
         } catch (IOException e) {
