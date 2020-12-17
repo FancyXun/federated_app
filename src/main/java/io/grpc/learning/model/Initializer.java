@@ -16,6 +16,10 @@ public class Initializer {
     private LinkedHashMap<String, String> modelMap;
     private LinkedHashMap<String, String> modelInitMap;
     private LinkedHashMap<String, String> metaMap;
+    private final String var2 = "resource/modelMeta/sphere2_fro123/sphere_frozen123.pb";
+    private final String trainable_var = "resource/modelMeta/sphere2_fro123/sphere2_trainable_var_f123.txt";
+    private final String  trainable_init_var = "resource/modelMeta/sphere2_fro123/sphere2_trainable_init_var_f123.txt";
+    private final String  feed_fetch_var = "resource/modelMeta/sphere2_fro123/sphere2_feed_fetch_f123.txt";
     private Graph graph;
 
     public LinkedHashMap<String, String> getModelMap() {
@@ -49,7 +53,7 @@ public class Initializer {
 
         graph = new Graph();
         InputStream modelStream = null;
-        String var2 = "resource/modelMeta/sphere2.pb";
+
         try {
             modelStream = new FileInputStream(var2);
             ByteArrayOutputStream buffer = new ByteArrayOutputStream();
@@ -64,9 +68,7 @@ public class Initializer {
         } catch (IOException e) {
             e.printStackTrace();
         }
-        String trainable_var = "resource/modelMeta/sphere2_trainable_var.txt";
-        String trainable_init_var = "resource/modelMeta/sphere2_trainable_init_var.txt";
-        String feed_fetch_var = "resource/modelMeta/sphere2_feed_fetch.txt";
+
         modelMap = loadModelMeta(trainable_var);
         modelInitMap = loadModelMeta(trainable_init_var);
         metaMap = loadModelMeta(feed_fetch_var);
