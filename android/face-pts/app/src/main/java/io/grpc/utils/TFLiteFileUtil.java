@@ -17,7 +17,6 @@ import java.nio.channels.FileChannel;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.List;
-import org.checkerframework.checker.nullness.qual.NonNull;
 
 
 public class TFLiteFileUtil {
@@ -34,8 +33,7 @@ public class TFLiteFileUtil {
      * @return a list of labels.
      * @throws IOException if error occurs to open or read the file.
      */
-    @NonNull
-    public static List<String> loadLabels(@NonNull Context context, @NonNull String filePath)
+    public static List<String> loadLabels( Context context, String filePath)
             throws IOException {
         return loadLabels(context, filePath, Charset.defaultCharset());
     }
@@ -53,9 +51,9 @@ public class TFLiteFileUtil {
      * @return a list of labels.
      * @throws IOException if error occurs to open or read the file.
      */
-    @NonNull
+    
     public static List<String> loadLabels(
-            @NonNull Context context, @NonNull String filePath, Charset cs) throws IOException {
+             Context context,  String filePath, Charset cs) throws IOException {
         try (InputStream inputStream = context.getAssets().open(filePath)) {
             return loadLabels(inputStream, cs);
         }
@@ -68,8 +66,8 @@ public class TFLiteFileUtil {
      * @return a list of labels.
      * @throws IOException if error occurs to open or read the file.
      */
-    @NonNull
-    public static List<String> loadLabels(@NonNull InputStream inputStream) throws IOException {
+    
+    public static List<String> loadLabels( InputStream inputStream) throws IOException {
         return loadLabels(inputStream, Charset.defaultCharset());
     }
 
@@ -81,8 +79,8 @@ public class TFLiteFileUtil {
      * @return a list of labels.
      * @throws IOException if error occurs to open or read the file.
      */
-    @NonNull
-    public static List<String> loadLabels(@NonNull InputStream inputStream, Charset cs)
+    
+    public static List<String> loadLabels( InputStream inputStream, Charset cs)
             throws IOException {
         List<String> labels = new ArrayList<>();
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream, cs))) {
@@ -107,9 +105,9 @@ public class TFLiteFileUtil {
      * @return a list of vocabulary words.
      * @throws IOException if error occurs to open or read the file.
      */
-    @NonNull
+    
     public static List<String> loadSingleColumnTextFile(
-            @NonNull Context context, @NonNull String filePath, Charset cs) throws IOException {
+             Context context,  String filePath, Charset cs) throws IOException {
         return loadLabels(context, filePath, cs);
     }
 
@@ -121,8 +119,8 @@ public class TFLiteFileUtil {
      * @return a list of vocabulary words.
      * @throws IOException if error occurs to open or read the file.
      */
-    @NonNull
-    public static List<String> loadSingleColumnTextFile(@NonNull InputStream inputStream, Charset cs)
+    
+    public static List<String> loadSingleColumnTextFile( InputStream inputStream, Charset cs)
             throws IOException {
         return loadLabels(inputStream, cs);
     }
@@ -135,8 +133,8 @@ public class TFLiteFileUtil {
      * @return the loaded memory mapped file.
      * @throws IOException if an I/O error occurs when loading the tflite model.
      */
-    @NonNull
-    public static MappedByteBuffer loadMappedFile(@NonNull Context context, @NonNull String filePath)
+    
+    public static MappedByteBuffer loadMappedFile( Context context,  String filePath)
             throws IOException {
         File file = new File(filePath);
         long len = file.length();
@@ -162,8 +160,8 @@ public class TFLiteFileUtil {
      * @return the byte array for the binary file.
      * @throws IOException if an I/O error occurs when loading file.
      */
-    @NonNull
-    public static byte[] loadByteFromFile(@NonNull Context context, @NonNull String filePath)
+    
+    public static byte[] loadByteFromFile( Context context,  String filePath)
             throws IOException {
         ByteBuffer buffer = loadMappedFile(context, filePath);
         byte[] byteArray = new byte[buffer.remaining()];

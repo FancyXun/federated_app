@@ -1,3 +1,5 @@
+import org.apache.tools.ant.taskdefs.condition.Os
+
 apply plugin: 'com.android.application'
 apply plugin: 'com.google.protobuf'
 
@@ -77,7 +79,14 @@ dependencies {
     implementation 'org.tensorflow:tensorflow-android:+'
     androidTestImplementation 'com.android.support.test:runner:1.0.2'
     androidTestImplementation 'com.android.support.test.espresso:espresso-core:3.0.2'
-    implementation('org.tensorflow:tensorflow-lite:0.0.0-nightly') { changing = true }
-    implementation('org.tensorflow:tensorflow-lite-gpu:0.0.0-nightly') { changing = true }
-    implementation('org.tensorflow:tensorflow-lite-support:0.0.0-nightly') { changing = true }
+    if (Os.isFamily(Os.FAMILY_MAC)) {
+        implementation('org.tensorflow:tensorflow-lite:0.1.0-rc1') { changing = true }
+        implementation('org.tensorflow:tensorflow-lite-support:0.1.0-rc1') { changing = true }
+    }
+    else {
+        implementation('org.tensorflow:tensorflow-lite:0.0.0-nightly') { changing = true }
+        implementation('org.tensorflow:tensorflow-lite-gpu:0.0.0-nightly') { changing = true }
+        implementation('org.tensorflow:tensorflow-lite-support:0.0.0-nightly') { changing = true }
+    }
+
 }

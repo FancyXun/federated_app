@@ -24,7 +24,6 @@ import android.os.Build;
 
 import androidx.annotation.RequiresApi;
 
-import org.checkerframework.checker.nullness.qual.NonNull;
 import org.tensorflow.lite.DataType;
 import org.tensorflow.lite.Interpreter;
 import org.tensorflow.lite.support.common.TensorOperator;
@@ -211,7 +210,7 @@ public abstract class Classifier {
   /** Runs inference and returns the classification results.
    * @return*/
   @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN_MR2)
-  public @NonNull float[] recognizeImage(final Bitmap bitmap, int sensorOrientation) {
+  public float[] recognizeImage(final Bitmap bitmap, int sensorOrientation) {
     // Logs this method so that it can be analyzed with systrace.
     inputImageBuffer = loadImage(bitmap, sensorOrientation);
     // Runs the inference call.
