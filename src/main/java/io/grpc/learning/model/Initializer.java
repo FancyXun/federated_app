@@ -13,7 +13,7 @@ import java.util.LinkedHashMap;
 
 public class Initializer {
 
-    private LinkedHashMap<String, String> modelMap;
+    private LinkedHashMap<String, String> modelTrainableMap;
     private LinkedHashMap<String, String> modelInitMap;
     private LinkedHashMap<String, String> metaMap;
     private final String var2 = "resource/modelMeta/sphere2_fro123/sphere_frozen123.pb";
@@ -22,8 +22,8 @@ public class Initializer {
     private final String  feed_fetch_var = "resource/modelMeta/sphere2_fro123/sphere2_feed_fetch_f123.txt";
     private Graph graph;
 
-    public LinkedHashMap<String, String> getModelMap() {
-        return modelMap;
+    public LinkedHashMap<String, String> getModelTrainableMap() {
+        return modelTrainableMap;
     }
 
     public LinkedHashMap<String, String> getModelInitMap() {
@@ -69,7 +69,7 @@ public class Initializer {
             e.printStackTrace();
         }
 
-        modelMap = loadModelMeta(trainable_var);
+        modelTrainableMap = loadModelMeta(trainable_var);
         modelInitMap = loadModelMeta(trainable_init_var);
         metaMap = loadModelMeta(feed_fetch_var);
     }

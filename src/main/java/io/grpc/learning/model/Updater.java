@@ -26,19 +26,19 @@ public class Updater {
 
     private void ModelWeightsInitializer() {
         Initializer initializer = Initializer.getInstance();
-        LinkedHashMap<String, String> modelMap = initializer.getModelMap();
+        LinkedHashMap<String, String> modelTrainableMap = initializer.getModelTrainableMap();
         Pattern p = Pattern.compile("\\d+");
         modelWeightsBuilder = ModelWeights.newBuilder();
         layerWeightsArrayList = new ArrayList<>();
         tensorShapeArrayList = new ArrayList<>();
         int layer_index = 0;
-        for (String key : modelMap.keySet()) {
+        for (String key : modelTrainableMap.keySet()) {
             TensorEntity.TensorProto.Builder tensorBuilder =
                     TensorEntity.TensorProto.newBuilder();
             TensorEntity.TensorShapeProto.Builder tensorShapeBuilder =
                     TensorEntity.TensorShapeProto.newBuilder();
             LayerWeights.Builder layerWeightsBuilder = LayerWeights.newBuilder();
-            String shape = modelMap.get(key);
+            String shape = modelTrainableMap.get(key);
             Matcher m = p.matcher(shape);
             int size = 1;
             int dim_index = 0;

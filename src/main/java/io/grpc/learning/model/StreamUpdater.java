@@ -26,7 +26,7 @@ public class StreamUpdater {
     private void ModelWeightsInitializer() {
         // 初始化
         Initializer initializer = Initializer.getInstance();
-        LinkedHashMap<String, String> modelMap = initializer.getModelMap();
+        LinkedHashMap<String, String> modelMap = initializer.getModelTrainableMap();
         Pattern p = Pattern.compile("\\d+");
         modelWeightsBuilder = ModelWeights.newBuilder();
         layerWeightsArrayList = new ArrayList<>();

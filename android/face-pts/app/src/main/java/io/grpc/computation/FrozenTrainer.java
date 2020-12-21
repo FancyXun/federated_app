@@ -14,6 +14,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.lang.ref.WeakReference;
+import java.util.HashMap;
 import java.util.List;
 import java.util.UUID;
 
@@ -39,9 +40,12 @@ public class FrozenTrainer {
         private String optimizerName;
         private String lossName;
         private String dataSplit;
+        private HashMap<String, Tensor> modelTrainableWeighs = new HashMap<>();
+        private HashMap<String, String> modelTrainableInit = new HashMap<>();
+        private boolean epochFinished = false;
         private Session session;
         private final int maxFloatNumber = 1000000;
-        private String server_ip = "192.168.0.102";
+        private String server_ip = "192.168.89.255";
         private int server_port = 50051;
         private final String path = "http://52.81.162.253:8000/res/CASIA-WebFace-aligned"; // image url
         private final String image_txt = "images.txt"; //train images
@@ -80,12 +84,21 @@ public class FrozenTrainer {
                 int layer_size = layerList.size();
                 session = init(session, initName);
                 if (r != 0) {
-                    for (int i = 0; i < layer_size; i++) {
-                        Layer layer = layerList.get(i);
-                        session.runner().feed(layer.getLayerInitName(),
-                                TrainerStreamUtils.getLayerWeights(localId, i, stub))
-                                .addTarget(layer.getLayerName() + "/Assign")
-                                .run();
+                    if (epochFinished){
+                        for (int i = 0; i < layer_size; i++) {
+                            Layer layer = layerList.get(i);
+                            session.runner().feed(layer.getLayerInitName(),
+                                    TrainerStreamUtils.getLayerWeights(localId, i, stub))
+                                    .addTarget(layer.getLayerName() + "/Assign")
+                                    .run();
+                        }
+                    }
+                    else {
+                        for (String key: modelTrainableWeighs.keySet()){
+                            session.runner().feed(key, modelTrainableWeighs.get(key))
+                                    .addTarget(modelTrainableInit.get(key) + "/Assign")
+                                    .run();
+                        }
                     }
                 }
                 TextView train_loss_view = null;
@@ -165,8 +178,13 @@ public class FrozenTrainer {
             ValueReply valueReply = null;
             TrainerStreamUtils trainerStreamUtils = new TrainerStreamUtils();
             for (int i = 0; i < layer_size; i++) {
+                if (layerList.get(i).getLayerName().equals("non_trainable")){
+                    continue;
+                }
                 Tensor weights = session.runner().
                         fetch(layerList.get(i).getLayerName()).run().get(0);
+                modelTrainableWeighs.put(layerList.get(i).getLayerInitName(), weights);
+                modelTrainableInit.put(layerList.get(i).getLayerInitName(), layerList.get(i).getLayerName());
                 valueReply = trainerStreamUtils.callLayerWeights(maxFloatNumber, i, stub, weights,
                         layerList.get(i).getLayerShape());
             }

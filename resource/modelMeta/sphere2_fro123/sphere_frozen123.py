@@ -230,7 +230,7 @@ with open("sphere2_trainable_var_f123.txt", "a+") as f:
         for i in range(len(var.shape)):
             accumulate = var.shape[i] * accumulate
         variables_sum = accumulate + variables_sum
-        f.write(var.op.name + ";" + str(var.shape) + "\n")
+        f.write(var.op.name + ";" + var.initial_value.op.name + "\n")
     print(variables_sum)
 
 with open("sphere2_trainable_init_var_f123.txt", "a+") as f:

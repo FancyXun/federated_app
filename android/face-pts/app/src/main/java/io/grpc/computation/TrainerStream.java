@@ -41,7 +41,7 @@ public class TrainerStream {
         private String dataSplit;
         private Session session;
         private final int maxFloatNumber = 1000000;
-        private String server_ip = "192.168.50.38";
+        private String server_ip = "192.168.89.255";
         private int server_port = 50051;
         private final String path = "http://52.81.162.253:8000/res/CASIA-WebFace-aligned"; // image url
         private final String image_txt = "images.txt"; //train images

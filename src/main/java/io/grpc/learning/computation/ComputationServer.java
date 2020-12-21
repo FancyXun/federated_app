@@ -137,7 +137,7 @@ public class ComputationServer {
             System.out.println("Receive callModel request from " + client_id);
             Initializer initializer = Initializer.getInstance();
             Graph graph = initializer.getGraph();
-            LinkedHashMap<String, String> modelMap = initializer.getModelMap();
+            LinkedHashMap<String, String> modelTrainableMap = initializer.getModelTrainableMap();
             LinkedHashMap<String, String> modelInitMap = initializer.getModelInitMap();
             LinkedHashMap<String, String> metaMap = initializer.getMetaMap();
             // set model graph
@@ -147,7 +147,7 @@ public class ComputationServer {
             int layer_index = 0;
             String [][] strings = new String[modelInitMap.size()][2];
             int i =0;
-            for (String key : modelMap.keySet()) {
+            for (String key : modelTrainableMap.keySet()) {
                 strings[i][0] = key;
                 i++;
             }
@@ -156,7 +156,7 @@ public class ComputationServer {
                 strings[j][1] = key;
                 j++;
             }
-            for (i =0; i< modelMap.size(); i++) {
+            for (i =0; i< modelInitMap.size(); i++) {
                 Layer.Builder layer = Layer.newBuilder();
                 if (strings[i][0] == null){
                     layer.setLayerName("non_trainable");
@@ -164,9 +164,8 @@ public class ComputationServer {
                 else{
                     layer.setLayerName(strings[i][0]);
                 }
+                layer.setLayerShape(modelInitMap.get(strings[i][1]));
                 layer.setLayerInitName(strings[i][1]);
-                layer.setLayerShape(modelMap.get(strings[i][0]));
-
                 model.addLayer(layer_index, layer);
                 layer_index++;
             }
