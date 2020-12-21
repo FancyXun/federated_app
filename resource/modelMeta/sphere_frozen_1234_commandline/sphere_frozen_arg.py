@@ -255,7 +255,8 @@ with open("sphere2_trainable_init_var_unfrozen"+".txt", "w") as f:
         for i in range(len(var.shape)):
             accumulate = var.shape[i] * accumulate
         variables_sum = accumulate + variables_sum
-        f.write(var.initial_value.op.name + ";" + str(var.shape) + "\n")
+        if 'Momentum' not in var.initial_value.op.name:
+            f.write(var.initial_value.op.name + ";" + str(var.shape) + "\n")
     print(variables_sum)
 
 with open("sphere2_feed_fetch_unfrozen"+".txt", "w") as f:
