@@ -10,15 +10,19 @@ args = parser.parse_args()
 
 path = args.path
 fff = args.unfrozen
-f1, f2, f3, f4 = True, True, True, True
+f1, f2, f3, f4, f5 = False, False, False, False, False
 if fff == 1:
-    f2, f3, f4 = False, False, False
+    f1 = True
 elif fff == 2:
-    f1, f3, f4 = False, False, False
+    f2 = True
 elif fff == 3:
-    f1, f2, f4 = False, False, False
+    f3 = True
 elif fff == 4:
-    f1, f2, f3 = False, False, False
+    f4 = True
+elif fff == 5:
+    f5 = True
+else:
+    f1, f2, f3, f4, f5 = True, True, True, True, True
 
 
 def prelu(input, name, trainable=True):
@@ -147,8 +151,6 @@ class Sphere:
             'c4_1': weight_variable([3, 3, 256, 512], name='W_conv41', trainable=f4),
             'c4_2': weight_variable([3, 3, 512, 512], name='W_conv42', trainable=f4),
             'c4_3': weight_variable([3, 3, 512, 512], name='W_conv43', trainable=f4),
-
-            'fc5': weight_variable([512 * 7 * 6, 512], name='W_fc5', trainable=True),
         }
 
         # input_image = tf.image.resize_images(images=self.input_x, size=(112, 96))
@@ -213,9 +215,9 @@ class Sphere:
         res_41 = h_4 + res_h_42
 
         flat1 = tf.layers.flatten(res_41, 'flat_1')
-        fc_1 = tf.layers.dense(flat1, 512, name='fc_1')
+        fc_1 = tf.layers.dense(flat1, 512, name='fc_1', trainable=f5)
 
-        logits = tf.layers.dense(fc_1, self.nb_classes, name='pred_logits')
+        logits = tf.layers.dense(fc_1, self.nb_classes, name='pred_logits', trainable=f5)
         loss_val = ce_loss(logits, self.input_label)
 
         train_op = tf.train.MomentumOptimizer(self.learning_rate, momentum=0.9).minimize(loss_val)

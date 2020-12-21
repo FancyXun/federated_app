@@ -129,7 +129,7 @@ public class ComputationServer {
     }
 
     static class ComputationImpl extends ComputationGrpc.ComputationImplBase {
-        public int minRequestNum = 1;
+        public int minRequestNum = 10;
         public int finished =0;
         public int maxBlock = 4;
         public HashMap<String, Integer> currentBlock = new HashMap<>();
