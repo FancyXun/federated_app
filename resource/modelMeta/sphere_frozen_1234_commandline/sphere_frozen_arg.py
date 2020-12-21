@@ -10,18 +10,15 @@ parser.add_argument('--unfrozen', type=int, default = None)
 args = parser.parse_args()
 
 fff = args.unfrozen
-f1=False
-f2=False
-f3=False
-f4=False
+f1,f2,f3,f4 = True,True,True,True
 if fff == 1:
-	f1 = True
+    f2,f3,f4 = False,False,False
 elif fff == 2:
-	f2 = True
+    f1,f3,f4 = False,False,False
 elif fff == 3:
-	f3 = True
+    f1,f2,f4 = False,False,False
 elif fff == 4:
-	f4 = True
+    f1,f2,f3 = False,False,False
 
 def prelu(input, name,trainable=True):
     alphas = tf.get_variable(name + '_alphas', input.get_shape()[-1],
