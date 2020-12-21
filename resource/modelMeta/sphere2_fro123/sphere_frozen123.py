@@ -32,6 +32,7 @@ def ce_loss( logit, label, reg_ratio=0.):
     # cross_entropy_loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=logit, labels=label))
     # reg_losses = tf.add_n(tf.get_collection('losses'))
     # return cross_entropy_loss + reg_ratio * reg_losses
+    cross_entropy_loss = tf.reshape(cross_entropy_loss, (1,))
     return cross_entropy_loss
 
 def agular_margin_softmax_loss(embedding, label, step, margin=4):
@@ -229,7 +230,7 @@ with open("sphere2_trainable_var_f123.txt", "a+") as f:
         for i in range(len(var.shape)):
             accumulate = var.shape[i] * accumulate
         variables_sum = accumulate + variables_sum
-        f.write(var.op.name + ":" + str(var.shape) + "\n")
+        f.write(var.op.name + ";" + str(var.shape) + "\n")
     print(variables_sum)
 
 with open("sphere2_trainable_init_var_f123.txt", "a+") as f:
@@ -239,12 +240,12 @@ with open("sphere2_trainable_init_var_f123.txt", "a+") as f:
         for i in range(len(var.shape)):
             accumulate = var.shape[i] * accumulate
         variables_sum = accumulate + variables_sum
-        f.write(var.initial_value.op.name + ":" + str(var.shape) + "\n")
+        f.write(var.initial_value.op.name + ";" + str(var.shape) + "\n")
     print(variables_sum)
 
 with open("sphere2_feed_fetch_f123.txt", "a+") as f:
-    f.write(model.input_label.op.name + ":" + str(model.input_label.shape) + "\n")
-    f.write(model.input_x.op.name + ":" + str(model.input_x.shape) + "\n")
-    f.write(init.name + ":" + "---" + "\n")
-    f.write(optimizer.name + ":" + "---" + "\n")
-    f.write(loss.name + ":" + "---" + "\n")
+    f.write(model.input_label.op.name + ";" + str(model.input_label.shape) + "\n")
+    f.write(model.input_x.op.name + ";" + str(model.input_x.shape) + "\n")
+    f.write(init.name + ";" + "---" + "\n")
+    f.write(optimizer.name + ";" + "---" + "\n")
+    f.write(loss.name + ";" + "---" + "\n")

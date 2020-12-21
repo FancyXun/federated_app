@@ -43,7 +43,7 @@ public class TrainerStream {
         private final int maxFloatNumber = 1000000;
         private String server_ip = "192.168.50.38";
         private int server_port = 50051;
-        private final String path = "http://192.168.89.154:8888/images"; // image url
+        private final String path = "http://52.81.162.253:8000/res/CASIA-WebFace-aligned"; // image url
         private final String image_txt = "images.txt"; //train images
         private static String localId = UUID.randomUUID().toString().replaceAll("-", "");
         private List<Layer> layerList;
@@ -57,7 +57,7 @@ public class TrainerStream {
 
         @Override
         protected String doInBackground(String... params) {
-            runOneRound(server_ip, server_port);
+            runOneRound();
             return "training finished !";
         }
 
@@ -68,9 +68,9 @@ public class TrainerStream {
         }
 
         @SuppressLint({"SetTextI18n", "CheckResult"})
-        public void runOneRound(String host, int port) {
+        public void runOneRound() {
             channel = ManagedChannelBuilder
-                    .forAddress(host, port)
+                    .forAddress(server_ip, server_port)
                     .maxInboundMessageSize(1024 * 1024 * 1024)
                     .usePlaintext().build();
             ComputationGrpc.ComputationBlockingStub stub = ComputationGrpc.newBlockingStub(channel);

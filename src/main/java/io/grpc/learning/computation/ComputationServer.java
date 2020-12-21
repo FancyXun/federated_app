@@ -145,7 +145,7 @@ public class ComputationServer {
             model.setGraph(ByteString.copyFrom(graph.toGraphDef()));
             // set model layer and layer shape
             int layer_index = 0;
-            String [][] strings = new String[modelMap.size()][2];
+            String [][] strings = new String[modelInitMap.size()][2];
             int i =0;
             for (String key : modelMap.keySet()) {
                 strings[i][0] = key;
@@ -158,8 +158,12 @@ public class ComputationServer {
             }
             for (i =0; i< modelMap.size(); i++) {
                 Layer.Builder layer = Layer.newBuilder();
-
-                layer.setLayerName(strings[i][0]);
+                if (strings[i][0] == null){
+                    layer.setLayerName("non_trainable");
+                }
+                else{
+                    layer.setLayerName(strings[i][0]);
+                }
                 layer.setLayerInitName(strings[i][1]);
                 layer.setLayerShape(modelMap.get(strings[i][0]));
 
