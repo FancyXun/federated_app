@@ -29,6 +29,7 @@ import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.util.ArrayList;
 import java.util.Enumeration;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -66,7 +67,7 @@ public class ComputationServer {
                 (ch.qos.logback.classic.Logger) logger;
         logbackLogger.setLevel(Level.INFO);
 //        Logger root = (Logger) LoggerFactory.getLogger(ComputationServer.class.getName());
-        Initializer.getInstance().loadModel();
+        Initializer.getInstance().loadModel(1);
         logger.info(Initializer.getInstance().toString() + " initialization finished");
         // this will print the name of the logger factory to stdout
 //        System.out.println(binder.getLoggerFactoryClassStr());
@@ -130,11 +131,25 @@ public class ComputationServer {
     static class ComputationImpl extends ComputationGrpc.ComputationImplBase {
         public int minRequestNum = 1;
         public int finished =0;
+        public int maxBlock = 4;
+        public HashMap<String, Integer> currentBlock = new HashMap<>();
 
         @Override
         public void callModel(ClientRequest request, StreamObserver<Model> responseObserver) {
             String client_id = request.getId();
-            System.out.println("Receive callModel request from " + client_id);
+            if (currentBlock.containsKey(client_id)){
+                if (currentBlock.get(client_id) > maxBlock){
+                    currentBlock.put(client_id, 1);
+                }
+                else{
+                    currentBlock.put(client_id, currentBlock.get(client_id) + 1);
+                }
+            }
+            else{
+                currentBlock.put(client_id, 1);
+            }
+            System.out.println("Receive callModel request from " + client_id + ": "+ currentBlock.get(client_id));
+            Initializer.getInstance().loadModel(currentBlock.get(client_id));
             Initializer initializer = Initializer.getInstance();
             Graph graph = initializer.getGraph();
             LinkedHashMap<String, String> modelTrainableMap = initializer.getModelTrainableMap();
@@ -163,6 +178,7 @@ public class ComputationServer {
                 }
                 else{
                     layer.setLayerName(strings[i][0]);
+                    layer.setLayerTrainableShape(modelTrainableMap.get(strings[i][0]));
                 }
                 layer.setLayerShape(modelInitMap.get(strings[i][1]));
                 layer.setLayerInitName(strings[i][1]);

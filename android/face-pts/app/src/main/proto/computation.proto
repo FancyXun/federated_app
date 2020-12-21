@@ -73,6 +73,7 @@ message Layer{
   string layer_name = 1;
   string layer_init_name = 3;
   string layer_shape = 2;
+  string layer_trainable_shape = 4;
 }
 
 message Meta{

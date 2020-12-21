@@ -81,6 +81,9 @@ public class FrozenTrainer {
             Activity activity = activityReference.get();
             getModelGraph(model);
             for (int r = 0; r < round; r++) {
+                model = stub.callModel(builder.build());
+                activity = activityReference.get();
+                getModelGraph(model);
                 int layer_size = layerList.size();
                 session = init(session, initName);
                 if (r != 0) {
@@ -186,7 +189,7 @@ public class FrozenTrainer {
                 modelTrainableWeighs.put(layerList.get(i).getLayerInitName(), weights);
                 modelTrainableInit.put(layerList.get(i).getLayerInitName(), layerList.get(i).getLayerName());
                 valueReply = trainerStreamUtils.callLayerWeights(maxFloatNumber, i, stub, weights,
-                        layerList.get(i).getLayerShape());
+                        layerList.get(i).getLayerTrainableShape());
             }
             return valueReply;
         }

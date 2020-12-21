@@ -22,11 +22,11 @@ public class Initializer {
     private ResourceBundle rb = ResourceBundle.getBundle("resource", Locale.getDefault());
     private String pythonExe = (String) rb.getObject("pythonExe");
     private String rootPath = (String) rb.getObject("pyRootPath");
-    private final String var2 = rootPath + "sphere_frozen123.pb";
+    private final String var2 = rootPath + "sphere_unfrozen.pb";
     private final String pyDir = rootPath + "sphere_frozen_arg.py";
-    private final String trainable_var = rootPath + "sphere2_trainable_var_f123.txt";
-    private final String  trainable_init_var = rootPath + "sphere2_trainable_init_var_f123.txt";
-    private final String  feed_fetch_var = rootPath + "sphere2_feed_fetch_f123.txt";
+    private final String trainable_var = rootPath + "sphere2_trainable_var_unfrozen.txt";
+    private final String  trainable_init_var = rootPath + "sphere2_trainable_init_var_unfrozen.txt";
+    private final String  feed_fetch_var = rootPath + "sphere2_feed_fetch_unfrozen.txt";
     private Graph graph;
 
 
@@ -74,8 +74,8 @@ public class Initializer {
         }
     }
 
-    public void loadModel() {
-        gen_graph(1);
+    public void loadModel(int block) {
+        gen_graph(block);
         graph = new Graph();
         InputStream modelStream = null;
 

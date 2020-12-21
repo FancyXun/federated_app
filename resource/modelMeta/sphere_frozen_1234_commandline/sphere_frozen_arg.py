@@ -52,6 +52,7 @@ def ce_loss(logit, label, reg_ratio=0.):
     # cross_entropy_loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=logit, labels=label))
     # reg_losses = tf.add_n(tf.get_collection('losses'))
     # return cross_entropy_loss + reg_ratio * reg_losses
+    cross_entropy_loss = tf.reshape(cross_entropy_loss, (1,))
     return cross_entropy_loss
 
 
@@ -248,7 +249,7 @@ with open(path + "sphere2_trainable_var_unfrozen" + ".txt", "w") as f:
         for i in range(len(var.shape)):
             accumulate = var.shape[i] * accumulate
         variables_sum = accumulate + variables_sum
-        f.write(var.op.name + ";" + var.initial_value.op.name + "\n")
+        f.write(var.op.name + ";" + str(var.shape)+ "\n")
     print(variables_sum)
 
 with open(path + "sphere2_trainable_init_var_unfrozen" + ".txt", "w") as f:
