@@ -5,8 +5,10 @@ import argparse
 
 parser = argparse.ArgumentParser(description='frozen_layers to this script')
 parser.add_argument('--unfrozen', type=int, default=None)
+parser.add_argument('-p', '--path', help='the root path ')
 args = parser.parse_args()
 
+path = args.path
 fff = args.unfrozen
 f1, f2, f3, f4 = True, True, True, True
 if fff == 1:
@@ -234,12 +236,12 @@ sess.run(init)
 graph_def = sess.graph.as_graph_def()
 json_string = json_format.MessageToJson(graph_def)
 obj = json.loads(json_string)
-tf.compat.v1.train.write_graph(sess.graph, "./", 'sphere_unfrozen' + '.pb', as_text=False)
+tf.compat.v1.train.write_graph(sess.graph, path, 'sphere_unfrozen' + '.pb', as_text=False)
 
 # generate txt
 trainable_var = tf.trainable_variables()
 global_var = tf.global_variables()
-with open("sphere2_trainable_var_unfrozen" + ".txt", "w") as f:
+with open(path + "sphere2_trainable_var_unfrozen" + ".txt", "w") as f:
     variables_sum = 0
     for var in trainable_var:
         accumulate = 1
@@ -249,7 +251,7 @@ with open("sphere2_trainable_var_unfrozen" + ".txt", "w") as f:
         f.write(var.op.name + ";" + var.initial_value.op.name + "\n")
     print(variables_sum)
 
-with open("sphere2_trainable_init_var_unfrozen" + ".txt", "w") as f:
+with open(path + "sphere2_trainable_init_var_unfrozen" + ".txt", "w") as f:
     variables_sum = 0
     for var in global_var:
         accumulate = 1
@@ -259,7 +261,7 @@ with open("sphere2_trainable_init_var_unfrozen" + ".txt", "w") as f:
         f.write(var.initial_value.op.name + ";" + str(var.shape) + "\n")
     print(variables_sum)
 
-with open("sphere2_feed_fetch_unfrozen" + ".txt", "w") as f:
+with open(path +"sphere2_feed_fetch_unfrozen" + ".txt", "w") as f:
     f.write(model.input_label.op.name + ";" + str(model.input_label.shape) + "\n")
     f.write(model.input_x.op.name + ";" + str(model.input_x.shape) + "\n")
     f.write(init.name + ";" + "---" + "\n")

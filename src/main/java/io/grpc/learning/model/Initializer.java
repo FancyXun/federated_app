@@ -8,7 +8,10 @@ import java.io.FileInputStream;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.util.LinkedHashMap;
+import java.util.Locale;
+import java.util.ResourceBundle;
 
 
 public class Initializer {
@@ -16,11 +19,16 @@ public class Initializer {
     private LinkedHashMap<String, String> modelTrainableMap;
     private LinkedHashMap<String, String> modelInitMap;
     private LinkedHashMap<String, String> metaMap;
-    private final String var2 = "resource/modelMeta/sphere2_fro123/sphere_frozen123.pb";
-    private final String trainable_var = "resource/modelMeta/sphere2_fro123/sphere2_trainable_var_f123.txt";
-    private final String  trainable_init_var = "resource/modelMeta/sphere2_fro123/sphere2_trainable_init_var_f123.txt";
-    private final String  feed_fetch_var = "resource/modelMeta/sphere2_fro123/sphere2_feed_fetch_f123.txt";
+    private ResourceBundle rb = ResourceBundle.getBundle("resource", Locale.getDefault());
+    private String pythonExe = (String) rb.getObject("pythonExe");
+    private String rootPath = (String) rb.getObject("pyRootPath");
+    private final String var2 = rootPath + "sphere_frozen123.pb";
+    private final String pyDir = rootPath + "sphere_frozen_arg.py";
+    private final String trainable_var = rootPath + "sphere2_trainable_var_f123.txt";
+    private final String  trainable_init_var = rootPath + "sphere2_trainable_init_var_f123.txt";
+    private final String  feed_fetch_var = rootPath + "sphere2_feed_fetch_f123.txt";
     private Graph graph;
+
 
     public LinkedHashMap<String, String> getModelTrainableMap() {
         return modelTrainableMap;
@@ -49,8 +57,25 @@ public class Initializer {
         return InitializerHolder.instance;
     }
 
-    public void loadModel() {
+    public void gen_graph(int block) {
+        Process process;
+        try {
+            process = Runtime.getRuntime().exec(String.format("%s %s -p %s --unfrozen=%s", pythonExe, pyDir, rootPath, block));
+            BufferedReader in = new BufferedReader(new InputStreamReader(process.getErrorStream()));
+            String line;
+            while ((line = in.readLine()) != null) {
+                System.out.println(line);
+            }
+            in.close();
+            process.waitFor();
+            process.destroy();
+        } catch (IOException | InterruptedException e) {
+            e.printStackTrace();
+        }
+    }
 
+    public void loadModel() {
+        gen_graph(1);
         graph = new Graph();
         InputStream modelStream = null;
 
