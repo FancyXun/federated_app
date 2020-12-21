@@ -148,7 +148,6 @@ class Sphere:
             'c4_2': weight_variable([3, 3, 512, 512], name='W_conv42', trainable=f4),
             'c4_3': weight_variable([3, 3, 512, 512], name='W_conv43', trainable=f4),
 
-            'fc5': weight_variable([512 * 7 * 6, 512], name='W_fc5', trainable=True),
         }
 
         # input_image = tf.image.resize_images(images=self.input_x, size=(112, 96))
@@ -229,7 +228,6 @@ class Sphere:
 tf.reset_default_graph()
 model = Sphere(nb_classes=10575, scale=True, height=112, width=96)
 embedding, loss, optimizer = model.build()
-print(embedding)
 training_epochs = 5
 init = tf.global_variables_initializer()
 sess = tf.Session()
