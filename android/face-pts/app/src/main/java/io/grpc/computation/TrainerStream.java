@@ -48,7 +48,7 @@ public class TrainerStream {
         private static String localId = UUID.randomUUID().toString().replaceAll("-", "");
         private List<Layer> layerList;
         private int round;
-
+        private String token = null;
 
         protected LocalTraining(Activity activity, Context context) {
             this.activityReference = new WeakReference<Activity>(activity);
@@ -170,7 +170,11 @@ public class TrainerStream {
             for (int i = 0; i < layer_size; i++) {
                 Tensor weights = session.runner().
                         fetch(layerList.get(i).getLayerName()).run().get(0);
-                valueReply = trainerStreamUtils.callLayerWeights(maxFloatNumber, i, stub, weights,
+                ClientRequest.Builder clientRequestBuilder = ClientRequest.newBuilder();
+                clientRequestBuilder.setToken(token);
+                clientRequestBuilder.setId(localId);
+                valueReply = trainerStreamUtils.callLayerWeights(
+                        clientRequestBuilder,maxFloatNumber, i, stub, weights,
                         layerList.get(i).getLayerShape());
             }
             return valueReply;

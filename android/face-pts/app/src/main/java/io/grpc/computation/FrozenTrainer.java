@@ -20,6 +20,7 @@ import java.util.UUID;
 
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
+import io.grpc.learning.computation.Certificate;
 import io.grpc.learning.computation.ClientRequest;
 import io.grpc.learning.computation.ComputationGrpc;
 import io.grpc.learning.computation.Layer;
@@ -45,13 +46,16 @@ public class FrozenTrainer {
         private boolean epochFinished = false;
         private Session session;
         private final int maxFloatNumber = 1000000;
-        private String server_ip = "192.168.89.255";
+        private String server_ip = "192.168.89.250";
         private int server_port = 50051;
         private final String path = "http://52.81.162.253:8000/res/CASIA-WebFace-aligned"; // image url
         private final String image_txt = "images.txt"; //train images
         private static String localId = UUID.randomUUID().toString().replaceAll("-", "");
         private List<Layer> layerList;
-        private int round;
+        private int round = 0;
+        private String token = null;
+        private float local_loss;
+        private boolean firstRound = true;
 
 
         protected LocalTraining(Activity activity, Context context) {
@@ -59,66 +63,96 @@ public class FrozenTrainer {
             this.context = context;
         }
 
+        /**
+         * @param params
+         * @return
+         */
         @Override
         protected String doInBackground(String... params) {
-            runOneRound();
-            return "training finished !";
-        }
-
-        public Session init(Session session, String initName) {
-            session.runner().addTarget(initName).run();
-            return session;
-        }
-
-        public void runOneRound(){
             channel = ManagedChannelBuilder
                     .forAddress(server_ip, server_port)
                     .maxInboundMessageSize(1024 * 1024 * 1024)
                     .usePlaintext().build();
             ComputationGrpc.ComputationBlockingStub stub = ComputationGrpc.newBlockingStub(channel);
-            ClientRequest.Builder builder = ClientRequest.newBuilder().setId(localId);
+            while (local_loss < 0.01) {
+                ClientRequest.Builder builder = ClientRequest.newBuilder().setId(localId);
+                Certificate certificate = stub.callTraining(builder.build());
+                if (token == null) {
+                    token = certificate.getToken();
+                } else {
+                    while (token.equals(certificate.getToken())) {
+                        try {
+                            Thread.sleep(3000);
+                        } catch (InterruptedException e) {
+                            e.printStackTrace();
+                        }
+                        certificate = stub.callTraining(builder.build());
+                    }
+                }
+                while (!certificate.getServerState().equals("ready")) {
+                    certificate = stub.callTraining(builder.build());
+                }
+                runOneRound(stub, builder);
+                round +=1;
+            }
+            return "Training Finished!";
+        }
+
+        /**
+         * @param session
+         * @param initName
+         * @return
+         */
+        public Session init(Session session, String initName) {
+            session.runner().addTarget(initName).run();
+            return session;
+        }
+
+        /**
+         * @param stub
+         * @param builder
+         */
+        public void runOneRound(ComputationGrpc.ComputationBlockingStub stub,
+                                ClientRequest.Builder builder) {
             Model model = stub.callModel(builder.build());
             Activity activity = activityReference.get();
             getModelGraph(model);
-            for (int r = 0; r < round; r++) {
-                model = stub.callModel(builder.build());
-                activity = activityReference.get();
-                getModelGraph(model);
-                int layer_size = layerList.size();
-                session = init(session, initName);
-                if (r != 0) {
-                    if (epochFinished){
-                        for (int i = 0; i < layer_size; i++) {
-                            Layer layer = layerList.get(i);
-                            session.runner().feed(layer.getLayerInitName(),
-                                    TrainerStreamUtils.getLayerWeights(localId, i, stub))
-                                    .addTarget(layer.getLayerName() + "/Assign")
-                                    .run();
-                        }
+            model = stub.callModel(builder.build());
+            activity = activityReference.get();
+            getModelGraph(model);
+            int layer_size = layerList.size();
+            session = init(session, initName);
+            if (!firstRound) {
+                if (epochFinished) {
+                    for (int i = 0; i < layer_size; i++) {
+                        Layer layer = layerList.get(i);
+                        session.runner().feed(layer.getLayerInitName(),
+                                TrainerStreamUtils.getLayerWeights(localId, i, stub))
+                                .addTarget(layer.getLayerName() + "/Assign")
+                                .run();
                     }
-                    else {
-                        for (String key: modelTrainableWeighs.keySet()){
-                            session.runner().feed(key, modelTrainableWeighs.get(key))
-                                    .addTarget(modelTrainableInit.get(key) + "/Assign")
-                                    .run();
-                        }
+                } else {
+                    for (String key : modelTrainableWeighs.keySet()) {
+                        session.runner().feed(key, modelTrainableWeighs.get(key))
+                                .addTarget(modelTrainableInit.get(key) + "/Assign")
+                                .run();
                     }
                 }
-                TextView train_loss_view = null;
-                if (activity != null) {
-                    train_loss_view = activity.findViewById(R.id.TrainLoss);
-                }
-                float loss = train(train_loss_view);
-                assert train_loss_view != null;
-                train_loss_view.setText("round " + r + ": " + loss);
-                computeStream(stub, layerList, layer_size);
-                stub.computeFinish(builder.build());
             }
+            TextView train_loss_view = null;
+            if (activity != null) {
+                train_loss_view = activity.findViewById(R.id.TrainLoss);
+            }
+            float loss = train(train_loss_view);
+            assert train_loss_view != null;
+            train_loss_view.setText("round " + round + ": " + loss);
+            local_loss = loss;
+            computeStream(stub, layerList, layer_size);
+            stub.computeFinish(builder.build());
         }
 
         public void getModelGraph(Model model) {
-            round = model.getRound();
-            round = 10;
+            firstRound = model.getFirstRound();
             dataSplit = model.getMessage();
             layerList = model.getLayerList();
             List<Meta> metaList = model.getMetaList();
@@ -181,14 +215,18 @@ public class FrozenTrainer {
             ValueReply valueReply = null;
             TrainerStreamUtils trainerStreamUtils = new TrainerStreamUtils();
             for (int i = 0; i < layer_size; i++) {
-                if (layerList.get(i).getLayerName().equals("non_trainable")){
+                if (layerList.get(i).getLayerName().equals("non_trainable")) {
                     continue;
                 }
                 Tensor weights = session.runner().
                         fetch(layerList.get(i).getLayerName()).run().get(0);
                 modelTrainableWeighs.put(layerList.get(i).getLayerInitName(), weights);
                 modelTrainableInit.put(layerList.get(i).getLayerInitName(), layerList.get(i).getLayerName());
-                valueReply = trainerStreamUtils.callLayerWeights(maxFloatNumber, i, stub, weights,
+                ClientRequest.Builder clientRequestBuilder = ClientRequest.newBuilder();
+                clientRequestBuilder.setToken(token);
+                clientRequestBuilder.setId(localId);
+                valueReply = trainerStreamUtils.callLayerWeights(clientRequestBuilder,
+                        maxFloatNumber, i, stub, weights,
                         layerList.get(i).getLayerTrainableShape());
             }
             return valueReply;

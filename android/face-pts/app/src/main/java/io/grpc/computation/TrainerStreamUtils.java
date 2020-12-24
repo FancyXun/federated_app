@@ -20,6 +20,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import computation.TensorEntity;
+import io.grpc.learning.computation.ClientRequest;
 import io.grpc.learning.computation.ComputationGrpc;
 import io.grpc.learning.computation.LayerWeights;
 import io.grpc.learning.computation.LayerWeightsRequest;
@@ -113,7 +114,8 @@ public class TrainerStreamUtils {
      * @param layerShape the shape of layer
      * @return ValueReply
      */
-    public ValueReply callLayerWeights(int maxFloatNumber, int i, ComputationGrpc.ComputationBlockingStub stub,
+    public ValueReply callLayerWeights(ClientRequest.Builder clientRequestBuilder,
+            int maxFloatNumber, int i, ComputationGrpc.ComputationBlockingStub stub,
                                        Tensor weights, String layerShape) {
         ValueReply valueReply = null;
         LayerWeights.Builder layerWeightsBuilder = LayerWeights.newBuilder();
@@ -151,6 +153,7 @@ public class TrainerStreamUtils {
                     layerWeightsBuilder.setTensor(tensorBuilder);
                     layerWeightsBuilder.setLayerId(i);
                     layerWeightsBuilder.setPart(part);
+                    layerWeightsBuilder.setClientRequest(clientRequestBuilder.build());
                     valueReply = stub.computeLayerWeights(layerWeightsBuilder.build());
                     j = 0;
                     size = size - maxFloatNumber;
@@ -168,6 +171,7 @@ public class TrainerStreamUtils {
                 layerWeightsBuilder.setTensor(tensorBuilder);
                 layerWeightsBuilder.setLayerId(i);
                 layerWeightsBuilder.setPart(part);
+                layerWeightsBuilder.setClientRequest(clientRequestBuilder.build());
                 valueReply = stub.computeLayerWeights(layerWeightsBuilder.build());
             }
         } else {
@@ -180,6 +184,7 @@ public class TrainerStreamUtils {
             layerWeightsBuilder.setTensor(tensorBuilder);
             layerWeightsBuilder.setLayerId(i);
             layerWeightsBuilder.setPart(0);
+            layerWeightsBuilder.setClientRequest(clientRequestBuilder.build());
             valueReply = stub.computeLayerWeights(layerWeightsBuilder.build());
         }
         return valueReply;

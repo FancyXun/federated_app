@@ -24,6 +24,9 @@ import io.grpc.learning.model.Initializer;
 import io.grpc.learning.model.Updater;
 import io.grpc.stub.StreamObserver;
 
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
@@ -32,6 +35,7 @@ import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 import com.google.protobuf.ByteString;
@@ -129,10 +133,25 @@ public class ComputationServer {
     }
 
     static class ComputationImpl extends ComputationGrpc.ComputationImplBase {
-        public int minRequestNum = 10;
+        public int minRequestNum = 1;
         public int finished =0;
         public int maxBlock = 4;
         public HashMap<String, Integer> currentBlock = new HashMap<>();
+        public String token = UUID.randomUUID().toString();
+        public String state = "ready";
+        public boolean firstRound = true;
+        public List<String> FinishedClient = new ArrayList<>();
+
+        @Override
+        public void callTraining(ClientRequest request, StreamObserver<Certificate> responseObserver) {
+            String client_id = request.getId();
+            System.out.println("Receive callTraining request from " + client_id );
+            Certificate.Builder cBuilder = Certificate.newBuilder();
+            cBuilder.setServerState(state);
+            cBuilder.setToken(token);
+            responseObserver.onNext(cBuilder.build());
+            responseObserver.onCompleted();
+        }
 
         @Override
         public void callModel(ClientRequest request, StreamObserver<Model> responseObserver) {
@@ -194,6 +213,7 @@ public class ComputationServer {
                 model.addMeta(meta_index, meta);
                 meta_index++;
             }
+            model.setFirstRound(firstRound);
             responseObserver.onNext(model.build());
             responseObserver.onCompleted();
         }
@@ -234,38 +254,45 @@ public class ComputationServer {
 
         @Override
         public void computeLayerWeights(LayerWeights request, StreamObserver<ValueReply> responseObserver) {
-            Updater updater = Updater.getInstance();
-            LinkedHashMap<Long, List<Float>> layerMap = updater.weightsLinkedHashMap.get(request.getId());
-            if (layerMap == null) {
-                layerMap = new LinkedHashMap<>();
-                updater.weightsLinkedHashMap.put(request.getId(), layerMap);
-            }
-            if (layerMap.containsKey(request.getLayerId())){
-                List<Float> floatList = layerMap.get(request.getLayerId());
-                new SystemOut().output(String.valueOf(floatList.size()), System.out);
-                floatList.addAll(request.getTensor().getFloatValList());
-                layerMap.put(request.getLayerId(), new ArrayList(floatList));
-            }
-            else{
-                new SystemOut().output(request.getTensor().getFloatValList().size() +"...", System.out);
-                layerMap.put(request.getLayerId(), new ArrayList(request.getTensor().getFloatValList()));
-
+            ClientRequest clientRequest = request.getClientRequest();
+            String client_token = clientRequest.getToken();
+            if (client_token.equals(token) && state.equals("ready")){
+                // valid token
+                File file=new File("/tmp/model_weights/"+clientRequest.getId());
+                if (!file.exists()) {
+                    file.mkdir();
+                }
+                File f = new File("/tmp/model_weights/"+clientRequest.getId()+"/layer_" +request.getLayerId()+".txt");
+                if (!f.exists()) {
+                    try {
+                        f.createNewFile();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
+                try{
+                    BufferedWriter bw = new BufferedWriter(new FileWriter(f, true));
+                    bw.write(String.valueOf(request.getTensor().getFloatValList()));
+                    bw.close();
+                }catch(IOException e){
+                    e.printStackTrace();
+                }
             }
             ValueReply.Builder valueReplyBuilder = ValueReply.newBuilder();
-            valueReplyBuilder.setMessage(true);
+            Certificate.Builder cBuilder =  Certificate.newBuilder();
+            cBuilder.setToken(token);
+            cBuilder.setServerState(state);
+            valueReplyBuilder.setCertificate(cBuilder);
             responseObserver.onNext(valueReplyBuilder.build());
             responseObserver.onCompleted();
         }
 
         @Override
         public void computeFinish(ClientRequest request, StreamObserver<ValueReply> responseObserver) {
-            Updater updater = Updater.getInstance();
             ValueReply.Builder valueReplyBuilder = ValueReply.newBuilder();
             valueReplyBuilder.setMessage(true);
-            finished ++;
-            if (finished >= minRequestNum){
-                updater.updateWeights();
-            }
+            FinishedClient.add(request.getId());
+            System.out.println(FinishedClient.toArray().toString());
             responseObserver.onNext(valueReplyBuilder.build());
             responseObserver.onCompleted();
         }

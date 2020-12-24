@@ -31,17 +31,22 @@ service Computation {
 
   rpc Compute(TensorValue) returns(ValueReply) {}
 
-  rpc CallModel (ClientRequest) returns (Model) {}
   rpc CallModelWeights (ClientRequest) returns (ModelWeights) {}
   rpc ComputeWeights(ModelWeights) returns(ValueReply){}
 
+
+  rpc CallTraining(ClientRequest) returns(Certificate){}
+  rpc CallModel (ClientRequest) returns (Model) {}
   rpc CallLayerWeights (LayerWeightsRequest) returns (LayerWeights) {}
   rpc ComputeLayerWeights(LayerWeights) returns(ValueReply){}
   rpc ComputeFinish(ClientRequest) returns(ValueReply){}
+
+
 }
 
 message ClientRequest{
   string id = 1;
+  string token =2;
 }
 
 message LayerWeightsRequest{
@@ -56,6 +61,7 @@ message LayerWeights{
   int64 layer_id = 2;
   int64 part =3;
   string id = 4;
+  ClientRequest client_request =5;
 }
 
 message Model {
@@ -66,6 +72,7 @@ message Model {
   repeated Layer layer = 4;
   repeated Meta meta = 5;
   int32 round = 3;
+  bool firstRound = 6;
 }
 
 
@@ -159,10 +166,16 @@ message TrainableVarName{
 //
 message ValueReply{
   bool message = 1;
+  Certificate certificate = 2;
 }
 
 message Metrics{
   repeated string name = 1;
   repeated float value = 2;
   float weights = 3;
+}
+
+message Certificate{
+  string server_state =1;
+  string token =2;
 }
