@@ -14,7 +14,7 @@ import java.util.Locale;
 import java.util.ResourceBundle;
 
 
-public class Initializer {
+public class ModelHelper {
 
     private LinkedHashMap<String, String> modelTrainableMap;
     private LinkedHashMap<String, String> modelInitMap;
@@ -27,7 +27,9 @@ public class Initializer {
     private final String trainable_var = rootPath + "sphere2_trainable_var_unfrozen.txt";
     private final String  trainable_init_var = rootPath + "sphere2_trainable_init_var_unfrozen.txt";
     private final String  feed_fetch_var = rootPath + "sphere2_feed_fetch_unfrozen.txt";
+    private final String pyDirAgg = (String) rb.getObject("pyAggRootPath");
     private Graph graph;
+    private int blockInit;
 
 
     public LinkedHashMap<String, String> getModelTrainableMap() {
@@ -47,13 +49,13 @@ public class Initializer {
     }
 
     private static class InitializerHolder {
-        private static Initializer instance = new Initializer();
+        private static ModelHelper instance = new ModelHelper();
     }
 
-    public Initializer() {
+    public ModelHelper() {
     }
 
-    public static Initializer getInstance() {
+    public static ModelHelper getInstance() {
         return InitializerHolder.instance;
     }
 
@@ -61,6 +63,23 @@ public class Initializer {
         Process process;
         try {
             process = Runtime.getRuntime().exec(String.format("%s %s -p %s --unfrozen=%s", pythonExe, pyDir, rootPath, block));
+            BufferedReader in = new BufferedReader(new InputStreamReader(process.getErrorStream()));
+            String line;
+            while ((line = in.readLine()) != null) {
+                System.out.println(line);
+            }
+            in.close();
+            process.waitFor();
+            process.destroy();
+        } catch (IOException | InterruptedException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void updateWeights(){
+        Process process;
+        try {
+            process = Runtime.getRuntime().exec(String.format("%s %s", pythonExe, pyDirAgg));
             BufferedReader in = new BufferedReader(new InputStreamReader(process.getErrorStream()));
             String line;
             while ((line = in.readLine()) != null) {

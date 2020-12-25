@@ -54,7 +54,7 @@ public class FrozenTrainer {
         private List<Layer> layerList;
         private int round = 0;
         private String token = null;
-        private float local_loss;
+        private float local_loss = Float.MAX_VALUE;
         private boolean firstRound = true;
 
 
@@ -74,7 +74,7 @@ public class FrozenTrainer {
                     .maxInboundMessageSize(1024 * 1024 * 1024)
                     .usePlaintext().build();
             ComputationGrpc.ComputationBlockingStub stub = ComputationGrpc.newBlockingStub(channel);
-            while (local_loss < 0.01) {
+            while (local_loss > 0.01) {
                 ClientRequest.Builder builder = ClientRequest.newBuilder().setId(localId);
                 Certificate certificate = stub.callTraining(builder.build());
                 if (token == null) {

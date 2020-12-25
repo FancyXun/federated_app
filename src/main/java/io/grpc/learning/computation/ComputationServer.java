@@ -19,9 +19,9 @@ package io.grpc.learning.computation;
 import ch.qos.logback.classic.Level;
 import io.grpc.Server;
 import io.grpc.ServerBuilder;
-import io.grpc.learning.logging.SystemOut;
-import io.grpc.learning.model.Initializer;
+import io.grpc.learning.model.ModelHelper;
 import io.grpc.learning.model.Updater;
+import io.grpc.learning.vo.Client;
 import io.grpc.stub.StreamObserver;
 
 import java.io.BufferedWriter;
@@ -30,6 +30,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.HashMap;
@@ -37,15 +38,12 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 import com.google.protobuf.ByteString;
 
-import org.apache.logging.log4j.LogManager;
-import org.slf4j.LoggerFactory;
+import org.jetbrains.bio.npy.NpzFile;
 import org.tensorflow.Graph;
-import org.slf4j.impl.StaticLoggerBinder;
-
-import javax.security.auth.login.Configuration;
 
 
 /**
@@ -54,7 +52,7 @@ import javax.security.auth.login.Configuration;
 public class ComputationServer {
     private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(ComputationServer.class.getName());
     private Server server;
-    public Initializer initializer;
+    public ModelHelper modelHelper;
     // Determine what logging framework SLF4J is bound to:
 //    final StaticLoggerBinder binder = StaticLoggerBinder.getSingleton();
 
@@ -71,8 +69,7 @@ public class ComputationServer {
                 (ch.qos.logback.classic.Logger) logger;
         logbackLogger.setLevel(Level.INFO);
 //        Logger root = (Logger) LoggerFactory.getLogger(ComputationServer.class.getName());
-        Initializer.getInstance().loadModel(1);
-        logger.info(Initializer.getInstance().toString() + " initialization finished");
+        logger.info(ModelHelper.getInstance().toString() + " initialization finished");
         // this will print the name of the logger factory to stdout
 //        System.out.println(binder.getLoggerFactoryClassStr());
         /* The port on which the server should run */
@@ -136,15 +133,18 @@ public class ComputationServer {
         public int minRequestNum = 1;
         public int finished =0;
         public int maxBlock = 4;
-        public HashMap<String, Integer> currentBlock = new HashMap<>();
+        public int currentBlock = 1;
+        public HashMap<Integer, ModelHelper> serverBlock = new HashMap<>();
         public String token = UUID.randomUUID().toString();
         public String state = "ready";
         public boolean firstRound = true;
-        public List<String> FinishedClient = new ArrayList<>();
+        public List<String> AggregationClients = new ArrayList<>();
+        public Client client = new Client();
 
         @Override
         public void callTraining(ClientRequest request, StreamObserver<Certificate> responseObserver) {
             String client_id = request.getId();
+            client.getCallTrainingClients().add(client_id);
             System.out.println("Receive callTraining request from " + client_id );
             Certificate.Builder cBuilder = Certificate.newBuilder();
             cBuilder.setServerState(state);
@@ -156,24 +156,21 @@ public class ComputationServer {
         @Override
         public void callModel(ClientRequest request, StreamObserver<Model> responseObserver) {
             String client_id = request.getId();
-            if (currentBlock.containsKey(client_id)){
-                if (currentBlock.get(client_id) > maxBlock){
-                    currentBlock.put(client_id, 1);
-                }
-                else{
-                    currentBlock.put(client_id, currentBlock.get(client_id) + 1);
-                }
+            client.getCallModelClients().add(client_id);
+            ModelHelper modelHelper;
+            if (serverBlock.containsKey(currentBlock)){
+                modelHelper = serverBlock.get(currentBlock);
             }
             else{
-                currentBlock.put(client_id, 1);
+                ModelHelper.getInstance().loadModel(currentBlock);
+                modelHelper = ModelHelper.getInstance();
+                serverBlock.put(currentBlock, modelHelper);
             }
-            System.out.println("Receive callModel request from " + client_id + ": "+ currentBlock.get(client_id));
-            Initializer.getInstance().loadModel(currentBlock.get(client_id));
-            Initializer initializer = Initializer.getInstance();
-            Graph graph = initializer.getGraph();
-            LinkedHashMap<String, String> modelTrainableMap = initializer.getModelTrainableMap();
-            LinkedHashMap<String, String> modelInitMap = initializer.getModelInitMap();
-            LinkedHashMap<String, String> metaMap = initializer.getMetaMap();
+            System.out.println("Receive callModel request from " + client_id);
+            Graph graph = modelHelper.getGraph();
+            LinkedHashMap<String, String> modelTrainableMap = modelHelper.getModelTrainableMap();
+            LinkedHashMap<String, String> modelInitMap = modelHelper.getModelInitMap();
+            LinkedHashMap<String, String> metaMap = modelHelper.getMetaMap();
             // set model graph
             Model.Builder model = Model.newBuilder();
             model.setGraph(ByteString.copyFrom(graph.toGraphDef()));
@@ -221,6 +218,7 @@ public class ComputationServer {
         @Override
         public void callLayerWeights(LayerWeightsRequest request, StreamObserver<LayerWeights> responseObserver) {
             String client_id = request.getId();
+            client.getCallLayerWeightsClients().add(client_id);
             System.out.println("Receive callLayerWeights request from " + client_id);
             Updater updater = Updater.getInstance();
             int layer_id = (int) request.getLayerId();
@@ -256,6 +254,7 @@ public class ComputationServer {
         public void computeLayerWeights(LayerWeights request, StreamObserver<ValueReply> responseObserver) {
             ClientRequest clientRequest = request.getClientRequest();
             String client_token = clientRequest.getToken();
+            client.getComputeLayerWeightsClients().add(request.getId());
             if (client_token.equals(token) && state.equals("ready")){
                 // valid token
                 File file=new File("/tmp/model_weights/"+clientRequest.getId());
@@ -277,6 +276,17 @@ public class ComputationServer {
                 }catch(IOException e){
                     e.printStackTrace();
                 }
+
+                Path filePath = new File("/tmp/model_weights/"+clientRequest.getId()+"/layer_"
+                        +request.getLayerId()+".npz").toPath();
+                NpzFile.Writer writer = NpzFile.write(filePath, true);
+                float[] arr = new float[request.getTensor().getFloatValList().size()];
+                int index = 0;
+                for (Float value: request.getTensor().getFloatValList()) {
+                    arr[index++] = value;
+                }
+                writer.write("layer_entry", arr);
+                writer.close();
             }
             ValueReply.Builder valueReplyBuilder = ValueReply.newBuilder();
             Certificate.Builder cBuilder =  Certificate.newBuilder();
@@ -291,8 +301,32 @@ public class ComputationServer {
         public void computeFinish(ClientRequest request, StreamObserver<ValueReply> responseObserver) {
             ValueReply.Builder valueReplyBuilder = ValueReply.newBuilder();
             valueReplyBuilder.setMessage(true);
-            FinishedClient.add(request.getId());
-            System.out.println(FinishedClient.toArray().toString());
+            if (state.equals("ready")) {
+                AggregationClients.add(request.getId());
+
+            }
+            client.getComputeFinishClients().add(request.getId());
+            System.out.println(AggregationClients.stream()
+                    .map(Object::toString)
+                    .collect(Collectors.joining("\n")));
+            synchronized(this){
+                if (AggregationClients.size() >= minRequestNum){
+                    state = "wait";
+                    File f = new File("/tmp/model_weights/aggClients.txt");
+                    try{
+                        BufferedWriter bw = new BufferedWriter(new FileWriter(f, false));
+                        bw.write(AggregationClients.stream()
+                                .map(Object::toString)
+                                .collect(Collectors.joining("\n")));
+                        bw.close();
+                    }catch(IOException e){
+                        e.printStackTrace();
+                    }
+                    ModelHelper.getInstance().updateWeights();
+                    AggregationClients.clear();
+                }
+            }
+            
             responseObserver.onNext(valueReplyBuilder.build());
             responseObserver.onCompleted();
         }

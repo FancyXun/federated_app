@@ -18,7 +18,7 @@ package io.grpc.learning.computation;
 
 import io.grpc.Server;
 import io.grpc.ServerBuilder;
-import io.grpc.learning.model.Initializer;
+import io.grpc.learning.model.ModelHelper;
 import io.grpc.learning.storage.MapQueue;
 import io.grpc.learning.vo.GraphZoo;
 import io.grpc.learning.storage.ModelWeights;
@@ -50,14 +50,14 @@ import static io.grpc.learning.computation.SequenceComp.offsetStreamReply;
 public class LRComputationServer {
     private static final Logger logger = Logger.getLogger(ComputationServer.class.getName());
     private Server server;
-    public Initializer initializer;
+    public ModelHelper modelHelper;
 
     private void start() throws IOException {
         /* initialize the model and graph */
         logger.setLevel(Level.WARNING);
         Logger.getLogger("io.grpc.netty.shaded").setLevel(Level.OFF);
-        Initializer.getInstance().loadModel(1);
-        System.out.println("-----" + initializer);
+        ModelHelper.getInstance().loadModel(1);
+        System.out.println("-----" + modelHelper);
         /* The port on which the server should run */
         String localIP;
         Enumeration<NetworkInterface> n = NetworkInterface.getNetworkInterfaces();

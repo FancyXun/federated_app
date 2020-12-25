@@ -25,8 +25,8 @@ public class Updater {
     public String weightsURL = "resource/modelMeta/weights.txt";
 
     private void ModelWeightsInitializer() {
-        Initializer initializer = Initializer.getInstance();
-        LinkedHashMap<String, String> modelTrainableMap = initializer.getModelTrainableMap();
+        ModelHelper modelHelper = ModelHelper.getInstance();
+        LinkedHashMap<String, String> modelTrainableMap = modelHelper.getModelTrainableMap();
         Pattern p = Pattern.compile("\\d+");
         modelWeightsBuilder = ModelWeights.newBuilder();
         layerWeightsArrayList = new ArrayList<>();
