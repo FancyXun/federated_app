@@ -1,17 +1,30 @@
 package io.grpc.learning.model;
 
+import org.jetbrains.bio.npy.NpzFile;
 import org.tensorflow.Graph;
 
 import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
+import java.io.DataInputStream;
+import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.nio.FloatBuffer;
+import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.ResourceBundle;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+import computation.TensorEntity;
+import io.grpc.learning.computation.LayerWeights;
+import io.grpc.learning.computation.ModelWeights;
 
 
 public class ModelHelper {
@@ -30,6 +43,13 @@ public class ModelHelper {
     private final String pyDirAgg = (String) rb.getObject("pyAggRootPath");
     private Graph graph;
     private int blockInit;
+
+    public ArrayList<LayerWeights.Builder> getLayerWeightsArrayList() {
+        return layerWeightsArrayList;
+    }
+
+    private ArrayList<LayerWeights.Builder> layerWeightsArrayList = new ArrayList<>();
+
 
 
     public LinkedHashMap<String, String> getModelTrainableMap() {
@@ -144,5 +164,66 @@ public class ModelHelper {
             e.printStackTrace();
         }
         return map;
+    }
+
+    public void ModelWeightsUpdate() {
+        ModelHelper modelHelper = ModelHelper.getInstance();
+        LinkedHashMap<String, String> modelTrainableMap = modelHelper.getModelTrainableMap();
+        Pattern p = Pattern.compile("\\d+");
+        ModelWeights.Builder modelWeightsBuilder = ModelWeights.newBuilder();
+        ArrayList<TensorEntity.TensorShapeProto.Builder> tensorShapeArrayList = new ArrayList<>();
+        int layer_index = 0;
+        for (String key : modelTrainableMap.keySet()) {
+            // todo: np array read error
+//            Path filePath = new File("/tmp/model_weights/average/layer_"+layer_index+".npz").toPath();
+//            NpzFile.Reader reader = NpzFile.read(filePath);
+//            System.out.println("layer_index" + layer_index);
+//            float[] floats = reader.get("arr_0", reader.introspect().get(0).getShape()[0]).asFloatArray();
+            TensorEntity.TensorShapeProto.Builder tensorShapeBuilder =
+                    TensorEntity.TensorShapeProto.newBuilder();
+            String shape = modelTrainableMap.get(key);
+            Matcher m = p.matcher(shape);
+            int size = 1;
+            int dim_index = 0;
+            while (m.find()) {
+                int dim = Integer.parseInt(m.group());
+                size = size * dim;
+                TensorEntity.TensorShapeProto.Dim.Builder dimBuilder =
+                        TensorEntity.TensorShapeProto.Dim.newBuilder();
+                dimBuilder.setSize(dim);
+                tensorShapeBuilder.addDim(dim_index, dimBuilder);
+                dim_index++;
+            }
+
+            TensorEntity.TensorProto.Builder tensorBuilder =
+                    TensorEntity.TensorProto.newBuilder();
+            LayerWeights.Builder layerWeightsBuilder = LayerWeights.newBuilder();
+            try (BufferedReader br = new BufferedReader(new FileReader("/tmp/model_weights/average/layer_"+layer_index+".txt"))) {
+                try {
+                    String line = br.readLine();
+                    while (line != null) {
+                        tensorBuilder.addFloatVal(Float.parseFloat(line));
+                        line = br.readLine();
+                    }
+                } finally {
+                    br.close();
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
+            /*
+             * To create DataInputStream object, use
+             * DataInputStream(InputStream in) constructor.
+             */
+
+            tensorBuilder.setTensorShape(tensorShapeBuilder);
+            tensorShapeArrayList.add(tensorShapeBuilder);
+            modelWeightsBuilder.addTensor(layer_index, tensorBuilder);
+            layerWeightsBuilder.setTensor(tensorBuilder);
+            layerWeightsBuilder.setLayerId(layer_index);
+            layerWeightsArrayList.add(layerWeightsBuilder);
+            layer_index++;
+        }
     }
 }

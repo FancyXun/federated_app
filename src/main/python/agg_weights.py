@@ -23,7 +23,7 @@ for npz_s in all_npz:
     mean_layer_name = ""
     for npz in npz_s:
         weights = np.load(npz)
-        mean_layer_name = npz.split("/")[-1]
+        mean_layer_name = npz.split("/")[-1].split(".")[0]+".txt"
         list_of_array.append(weights['layer_entry'])
     mean_arr = np.mean(list_of_array, axis=0)
-    np.save(os.path.join(root_mean_url, mean_layer_name), mean_arr)
+    np.savetxt(os.path.join(root_mean_url, mean_layer_name), mean_arr, fmt='%1.6f')

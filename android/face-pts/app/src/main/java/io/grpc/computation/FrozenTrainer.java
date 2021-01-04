@@ -14,6 +14,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.lang.ref.WeakReference;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.UUID;
@@ -46,12 +47,13 @@ public class FrozenTrainer {
         private boolean epochFinished = false;
         private Session session;
         private final int maxFloatNumber = 1000000;
-        private String server_ip = "192.168.89.250";
+        private String server_ip = "192.168.0.103";
         private int server_port = 50051;
         private final String path = "http://52.81.162.253:8000/res/CASIA-WebFace-aligned"; // image url
         private final String image_txt = "images.txt"; //train images
         private static String localId = UUID.randomUUID().toString().replaceAll("-", "");
         private List<Layer> layerList;
+        private List<Layer> trainableLayerList;
         private int round = 0;
         private String token = null;
         private float local_loss = Float.MAX_VALUE;
@@ -120,24 +122,33 @@ public class FrozenTrainer {
             model = stub.callModel(builder.build());
             activity = activityReference.get();
             getModelGraph(model);
-            int layer_size = layerList.size();
+            int layer_size = trainableLayerList.size();
             session = init(session, initName);
             if (!firstRound) {
-                if (epochFinished) {
-                    for (int i = 0; i < layer_size; i++) {
-                        Layer layer = layerList.get(i);
-                        session.runner().feed(layer.getLayerInitName(),
-                                TrainerStreamUtils.getLayerWeights(localId, i, stub))
-                                .addTarget(layer.getLayerName() + "/Assign")
-                                .run();
-                    }
-                } else {
-                    for (String key : modelTrainableWeighs.keySet()) {
-                        session.runner().feed(key, modelTrainableWeighs.get(key))
-                                .addTarget(modelTrainableInit.get(key) + "/Assign")
-                                .run();
-                    }
+                System.out.println("***");
+                for (int i = 0; i < layer_size; i++) {
+                    Layer layer = trainableLayerList.get(i);
+                    session.runner().feed(layer.getLayerInitName(),
+                            TrainerStreamUtils.getLayerWeights(localId, i, stub))
+                            .addTarget(layer.getLayerName() + "/Assign")
+                            .run();
                 }
+//                if (epochFinished) {
+//                    for (int i = 0; i < layer_size; i++) {
+//                        Layer layer = layerList.get(i);
+//                        session.runner().feed(layer.getLayerInitName(),
+//                                TrainerStreamUtils.getLayerWeights(localId, i, stub))
+//                                .addTarget(layer.getLayerName() + "/Assign")
+//                                .run();
+//                    }
+//                } else {
+//
+//                    for (String key : modelTrainableWeighs.keySet()) {
+//                        session.runner().feed(key, modelTrainableWeighs.get(key))
+//                                .addTarget(modelTrainableInit.get(key) + "/Assign")
+//                                .run();
+//                    }
+//                }
             }
             TextView train_loss_view = null;
             if (activity != null) {
@@ -156,6 +167,12 @@ public class FrozenTrainer {
             dataSplit = model.getMessage();
             layerList = model.getLayerList();
             List<Meta> metaList = model.getMetaList();
+            trainableLayerList = new ArrayList<>();
+            for (Layer layer : layerList){
+                if (!layer.getLayerName().equals("non_trainable")){
+                    trainableLayerList.add(layer);
+                }
+            }
             Graph graph = new Graph();
             graph.importGraphDef(model.getGraph().toByteArray());
             initName = metaList.get(2).getMetaName();

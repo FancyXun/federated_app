@@ -220,9 +220,8 @@ public class ComputationServer {
             String client_id = request.getId();
             client.getCallLayerWeightsClients().add(client_id);
             System.out.println("Receive callLayerWeights request from " + client_id);
-            Updater updater = Updater.getInstance();
             int layer_id = (int) request.getLayerId();
-            responseObserver.onNext(updater.layerWeightsArrayList.get(layer_id).build());
+            responseObserver.onNext(ModelHelper.getInstance().getLayerWeightsArrayList().get(layer_id).build());
             responseObserver.onCompleted();
         }
 
@@ -303,7 +302,6 @@ public class ComputationServer {
             valueReplyBuilder.setMessage(true);
             if (state.equals("ready")) {
                 AggregationClients.add(request.getId());
-
             }
             client.getComputeFinishClients().add(request.getId());
             System.out.println(AggregationClients.stream()
@@ -324,6 +322,10 @@ public class ComputationServer {
                     }
                     ModelHelper.getInstance().updateWeights();
                     AggregationClients.clear();
+                    ModelHelper.getInstance().ModelWeightsUpdate();
+                    firstRound = false;
+                    token = UUID.randomUUID().toString();
+                    state = "ready";
                 }
             }
             
