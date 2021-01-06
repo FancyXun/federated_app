@@ -16,6 +16,7 @@ import java.io.InputStreamReader;
 import java.nio.FloatBuffer;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.ResourceBundle;
@@ -44,11 +45,22 @@ public class ModelHelper {
     private Graph graph;
     private int blockInit;
 
-    public ArrayList<LayerWeights.Builder> getLayerWeightsArrayList() {
-        return layerWeightsArrayList;
+    private HashMap <String, LayerWeights.Builder> layerWeightsHashMap = new HashMap<>();
+    private HashMap <String, String> layerWeightsShapeHashMap = new HashMap<>();
+
+    public HashMap<String, String> getLayerWeightsInitHashMap() {
+        return layerWeightsInitHashMap;
     }
 
-    private ArrayList<LayerWeights.Builder> layerWeightsArrayList = new ArrayList<>();
+    private HashMap <String, String> layerWeightsInitHashMap = new HashMap<>();
+
+    public HashMap<String, String> getLayerWeightsShapeHashMap() {
+        return layerWeightsShapeHashMap;
+    }
+
+    public HashMap<String, LayerWeights.Builder> getLayerWeightsHashMap() {
+        return layerWeightsHashMap;
+    }
 
 
 
@@ -167,6 +179,9 @@ public class ModelHelper {
     }
 
     public void ModelWeightsUpdate() {
+        layerWeightsHashMap.clear();
+        layerWeightsShapeHashMap.clear();
+        layerWeightsInitHashMap.clear();
         ModelHelper modelHelper = ModelHelper.getInstance();
         LinkedHashMap<String, String> modelTrainableMap = modelHelper.getModelTrainableMap();
         Pattern p = Pattern.compile("\\d+");
@@ -181,7 +196,7 @@ public class ModelHelper {
 //            float[] floats = reader.get("arr_0", reader.introspect().get(0).getShape()[0]).asFloatArray();
             TensorEntity.TensorShapeProto.Builder tensorShapeBuilder =
                     TensorEntity.TensorShapeProto.newBuilder();
-            String shape = modelTrainableMap.get(key);
+            String shape = modelInitMap.get(key);
             Matcher m = p.matcher(shape);
             int size = 1;
             int dim_index = 0;
@@ -198,7 +213,8 @@ public class ModelHelper {
             TensorEntity.TensorProto.Builder tensorBuilder =
                     TensorEntity.TensorProto.newBuilder();
             LayerWeights.Builder layerWeightsBuilder = LayerWeights.newBuilder();
-            try (BufferedReader br = new BufferedReader(new FileReader("/tmp/model_weights/average/layer_"+layer_index+".txt"))) {
+            try (BufferedReader br = new BufferedReader(new FileReader("/tmp/model_weights/average/"+
+                    modelTrainableMap.get(key)+".txt"))) {
                 try {
                     String line = br.readLine();
                     while (line != null) {
@@ -222,7 +238,9 @@ public class ModelHelper {
             modelWeightsBuilder.addTensor(layer_index, tensorBuilder);
             layerWeightsBuilder.setTensor(tensorBuilder);
             layerWeightsBuilder.setLayerId(layer_index);
-            layerWeightsArrayList.add(layerWeightsBuilder);
+            layerWeightsHashMap.put(modelTrainableMap.get(key), layerWeightsBuilder);
+            layerWeightsShapeHashMap.put(modelTrainableMap.get(key),shape);
+            layerWeightsInitHashMap.put(modelTrainableMap.get(key), key);
             layer_index++;
         }
     }

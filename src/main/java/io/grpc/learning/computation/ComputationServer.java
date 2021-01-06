@@ -36,6 +36,7 @@ import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -176,28 +177,17 @@ public class ComputationServer {
             model.setGraph(ByteString.copyFrom(graph.toGraphDef()));
             // set model layer and layer shape
             int layer_index = 0;
-            String [][] strings = new String[modelInitMap.size()][2];
-            int i =0;
-            for (String key : modelTrainableMap.keySet()) {
-                strings[i][0] = key;
-                i++;
-            }
-            int j =0;
-            for (String key : modelInitMap.keySet()) {
-                strings[j][1] = key;
-                j++;
-            }
-            for (i =0; i< modelInitMap.size(); i++) {
+            for (String key: modelInitMap.keySet()) {
                 Layer.Builder layer = Layer.newBuilder();
-                if (strings[i][0] == null){
+                if (!modelTrainableMap.containsKey(key)){
                     layer.setLayerName("non_trainable");
                 }
                 else{
-                    layer.setLayerName(strings[i][0]);
-                    layer.setLayerTrainableShape(modelTrainableMap.get(strings[i][0]));
+                    layer.setLayerName(modelTrainableMap.get(key));
+                    layer.setLayerTrainableShape(modelInitMap.get(key));
                 }
-                layer.setLayerShape(modelInitMap.get(strings[i][1]));
-                layer.setLayerInitName(strings[i][1]);
+                layer.setLayerShape(modelInitMap.get(key));
+                layer.setLayerInitName(key);
                 model.addLayer(layer_index, layer);
                 layer_index++;
             }
@@ -210,6 +200,15 @@ public class ComputationServer {
                 model.addMeta(meta_index, meta);
                 meta_index++;
             }
+            Set<String> set = modelHelper.getLayerWeightsHashMap().keySet();
+            int key_index = 0;
+            for (String key: set){
+                LayerFeed.Builder layerFeed = LayerFeed.newBuilder();
+                layerFeed.setLayerFeedWeightsName(key);
+                layerFeed.setLayerFeedWeightsShape(modelHelper.getLayerWeightsShapeHashMap().get(key));
+                layerFeed.setLayerInitFeedWeightsName(modelHelper.getLayerWeightsInitHashMap().get(key));
+                model.addLayerFeed(key_index, layerFeed);
+            }
             model.setFirstRound(firstRound);
             responseObserver.onNext(model.build());
             responseObserver.onCompleted();
@@ -220,8 +219,8 @@ public class ComputationServer {
             String client_id = request.getId();
             client.getCallLayerWeightsClients().add(client_id);
             System.out.println("Receive callLayerWeights request from " + client_id);
-            int layer_id = (int) request.getLayerId();
-            responseObserver.onNext(ModelHelper.getInstance().getLayerWeightsArrayList().get(layer_id).build());
+            String layer_name = request.getLayerName();
+            responseObserver.onNext(ModelHelper.getInstance().getLayerWeightsHashMap().get(layer_name).build());
             responseObserver.onCompleted();
         }
 
@@ -260,7 +259,7 @@ public class ComputationServer {
                 if (!file.exists()) {
                     file.mkdir();
                 }
-                File f = new File("/tmp/model_weights/"+clientRequest.getId()+"/layer_" +request.getLayerId()+".txt");
+                File f = new File("/tmp/model_weights/"+clientRequest.getId()+"/"+request.getLayerName()+".txt");
                 if (!f.exists()) {
                     try {
                         f.createNewFile();
@@ -276,8 +275,8 @@ public class ComputationServer {
                     e.printStackTrace();
                 }
 
-                Path filePath = new File("/tmp/model_weights/"+clientRequest.getId()+"/layer_"
-                        +request.getLayerId()+".npz").toPath();
+                Path filePath = new File("/tmp/model_weights/"+clientRequest.getId()+"/"+
+                        request.getLayerName()+".npz").toPath();
                 NpzFile.Writer writer = NpzFile.write(filePath, true);
                 float[] arr = new float[request.getTensor().getFloatValList().size()];
                 int index = 0;
@@ -326,6 +325,12 @@ public class ComputationServer {
                     firstRound = false;
                     token = UUID.randomUUID().toString();
                     state = "ready";
+                    if (currentBlock < maxBlock){
+                        currentBlock += 1;
+                    }
+                    else {
+                        currentBlock = 1;
+                    }
                 }
             }
             

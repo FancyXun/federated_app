@@ -52,6 +52,7 @@ message ClientRequest{
 message LayerWeightsRequest{
   string id = 1;
   int64 layer_id = 2;
+  string layer_name =5;
   int64 idx =3;
   bool split = 4;
 }
@@ -59,6 +60,7 @@ message LayerWeightsRequest{
 message LayerWeights{
   TensorProto tensor = 1;
   int64 layer_id = 2;
+  string layer_name = 6;
   int64 part =3;
   string id = 4;
   ClientRequest client_request =5;
@@ -70,6 +72,7 @@ message Model {
   // Stores a bytes message.
   bytes graph = 2;
   repeated Layer layer = 4;
+  repeated LayerFeed layerFeed = 7;
   repeated Meta meta = 5;
   int32 round = 3;
   bool firstRound = 6;
@@ -81,6 +84,12 @@ message Layer{
   string layer_init_name = 3;
   string layer_shape = 2;
   string layer_trainable_shape = 4;
+}
+
+message LayerFeed{
+  string layer_feed_weights_name = 1;
+  string layer_init_feed_weights_name = 3;
+  string layer_feed_weights_shape = 2;
 }
 
 message Meta{

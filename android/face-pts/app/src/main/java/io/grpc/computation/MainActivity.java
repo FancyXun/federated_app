@@ -33,6 +33,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 
+import io.grpc.tflite.detect.PCNutil.Recognition;
 import io.grpc.utils.FileUtils;
 import io.grpc.utils.TFLiteFileUtil;
 
@@ -99,7 +100,8 @@ public class MainActivity extends AppCompatActivity {
         classifier = Classifier.create(this, Classifier.Device.CPU, 1);
         Bitmap bit = bitmap.copy(Bitmap.Config.ARGB_8888, false);
         Mat src = new Mat(bit.getHeight(), bit.getWidth(), CvType.CV_8UC(3));
-        Utils.bitmapToMat(bit, src);
+        Recognition recognition = new Recognition();
+        Utils.bitmapToMat(bit, recognition.RecongFunc(this, src).get(0));
         float[] results =
                 classifier.recognizeImage(bit, 90);
         Imgproc.cvtColor(src, src, Imgproc.COLOR_BGR2GRAY);

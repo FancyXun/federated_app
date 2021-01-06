@@ -40,7 +40,6 @@ public class TrainerStream {
         private String lossName;
         private String dataSplit;
         private Session session;
-        private final int maxFloatNumber = 1000000;
         private String server_ip = "192.168.89.255";
         private int server_port = 50051;
         private final String path = "http://52.81.162.253:8000/res/CASIA-WebFace-aligned"; // image url
@@ -174,7 +173,7 @@ public class TrainerStream {
                 clientRequestBuilder.setToken(token);
                 clientRequestBuilder.setId(localId);
                 valueReply = trainerStreamUtils.callLayerWeights(
-                        clientRequestBuilder,maxFloatNumber, i, stub, weights,
+                        clientRequestBuilder, layerList.get(i).getLayerName(), stub, weights,
                         layerList.get(i).getLayerShape());
             }
             return valueReply;

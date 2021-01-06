@@ -15,7 +15,6 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.UUID;
 
@@ -25,39 +24,58 @@ import io.grpc.learning.computation.Certificate;
 import io.grpc.learning.computation.ClientRequest;
 import io.grpc.learning.computation.ComputationGrpc;
 import io.grpc.learning.computation.Layer;
+import io.grpc.learning.computation.LayerFeed;
 import io.grpc.learning.computation.Meta;
 import io.grpc.learning.computation.Model;
 import io.grpc.learning.computation.ValueReply;
 import io.grpc.transmit.StreamCall;
 import io.grpc.utils.DataConverter;
+import io.grpc.utils.Timer;
 import io.grpc.vo.ImageInfo;
 
 public class FrozenTrainer {
+
+    static class MetaInfo {
+        public static String initName;
+        public static String optimizerName;
+        public static String lossName;
+    }
+
+    static class ServeInfo{
+        public static String server_ip = "192.168.50.13";
+        public static int server_port = 50051;
+        public static final String path = "http://52.81.162.253:8000/res/CASIA-WebFace-aligned";
+        public static final String image_txt = "images.txt";
+    }
+
+    static class ClientInfo{
+        public static String localId =
+                UUID.randomUUID().toString().replaceAll("-", "");
+        public static int round = 0;
+        public static String token = null;
+        public static float local_loss = Float.MAX_VALUE;
+        public static float loss_threshold = 0.01f;
+        public static boolean firstRound = true;
+    }
+
+    static class TrainInfo{
+        public static int batch_size = 16;
+        public static float total_loss = 0;
+    }
+
     static class LocalTraining extends StreamCall {
         private final WeakReference<Activity> activityReference;
         private ManagedChannel channel;
         @SuppressLint("StaticFieldLeak")
         private Context context;
-        private String initName;
-        private String optimizerName;
-        private String lossName;
-        private String dataSplit;
-        private HashMap<String, Tensor> modelTrainableWeighs = new HashMap<>();
-        private HashMap<String, String> modelTrainableInit = new HashMap<>();
-        private boolean epochFinished = false;
         private Session session;
-        private final int maxFloatNumber = 1000000;
-        private String server_ip = "192.168.0.103";
-        private int server_port = 50051;
-        private final String path = "http://52.81.162.253:8000/res/CASIA-WebFace-aligned"; // image url
-        private final String image_txt = "images.txt"; //train images
-        private static String localId = UUID.randomUUID().toString().replaceAll("-", "");
+        //
         private List<Layer> layerList;
+        //
+        private List<LayerFeed> layerFeedList;
+        //
         private List<Layer> trainableLayerList;
-        private int round = 0;
-        private String token = null;
-        private float local_loss = Float.MAX_VALUE;
-        private boolean firstRound = true;
+
 
 
         protected LocalTraining(Activity activity, Context context) {
@@ -72,30 +90,28 @@ public class FrozenTrainer {
         @Override
         protected String doInBackground(String... params) {
             channel = ManagedChannelBuilder
-                    .forAddress(server_ip, server_port)
+                    .forAddress(ServeInfo.server_ip, ServeInfo.server_port)
                     .maxInboundMessageSize(1024 * 1024 * 1024)
                     .usePlaintext().build();
             ComputationGrpc.ComputationBlockingStub stub = ComputationGrpc.newBlockingStub(channel);
-            while (local_loss > 0.01) {
-                ClientRequest.Builder builder = ClientRequest.newBuilder().setId(localId);
+            while (ClientInfo.local_loss > ClientInfo.loss_threshold) {
+                ClientRequest.Builder builder = ClientRequest.newBuilder().setId(ClientInfo.localId);
                 Certificate certificate = stub.callTraining(builder.build());
-                if (token == null) {
-                    token = certificate.getToken();
+                if (ClientInfo.token == null) {
+                    ClientInfo.token = certificate.getToken();
                 } else {
-                    while (token.equals(certificate.getToken())) {
-                        try {
-                            Thread.sleep(3000);
-                        } catch (InterruptedException e) {
-                            e.printStackTrace();
-                        }
+                    while (ClientInfo.token.equals(certificate.getToken())) {
+                        Timer.sleep(3000);
                         certificate = stub.callTraining(builder.build());
                     }
                 }
                 while (!certificate.getServerState().equals("ready")) {
+                    Timer.sleep(3000);
                     certificate = stub.callTraining(builder.build());
                 }
+                ClientInfo.token = certificate.getToken();
                 runOneRound(stub, builder);
-                round +=1;
+                ClientInfo.round +=1;
             }
             return "Training Finished!";
         }
@@ -105,7 +121,7 @@ public class FrozenTrainer {
          * @param initName
          * @return
          */
-        public Session init(Session session, String initName) {
+        public Session initSession(Session session, String initName) {
             session.runner().addTarget(initName).run();
             return session;
         }
@@ -113,60 +129,49 @@ public class FrozenTrainer {
         /**
          * @param stub
          * @param builder
+         *
+         * callModel ->
          */
+        @SuppressLint("CheckResult")
         public void runOneRound(ComputationGrpc.ComputationBlockingStub stub,
                                 ClientRequest.Builder builder) {
             Model model = stub.callModel(builder.build());
             Activity activity = activityReference.get();
-            getModelGraph(model);
-            model = stub.callModel(builder.build());
-            activity = activityReference.get();
-            getModelGraph(model);
-            int layer_size = trainableLayerList.size();
-            session = init(session, initName);
-            if (!firstRound) {
-                System.out.println("***");
-                for (int i = 0; i < layer_size; i++) {
-                    Layer layer = trainableLayerList.get(i);
-                    session.runner().feed(layer.getLayerInitName(),
-                            TrainerStreamUtils.getLayerWeights(localId, i, stub))
-                            .addTarget(layer.getLayerName() + "/Assign")
-                            .run();
+            ModelGraphInit(model);
+            session = initSession(session, MetaInfo.initName);
+            if (!ClientInfo.firstRound) {
+                for (int i = 0; i < layerFeedList.size(); i++) {
+                    LayerFeed layerFeed = layerFeedList.get(i);
+                    Tensor tensor = TrainerStreamUtils.getLayerWeightsByName(ClientInfo.localId,
+                            layerFeed.getLayerFeedWeightsName(), stub);
+                    session.runner().feed(layerFeed.getLayerInitFeedWeightsName(),
+                            tensor).addTarget(layerFeed.getLayerFeedWeightsName()+ "/Assign").run();
                 }
-//                if (epochFinished) {
-//                    for (int i = 0; i < layer_size; i++) {
-//                        Layer layer = layerList.get(i);
-//                        session.runner().feed(layer.getLayerInitName(),
-//                                TrainerStreamUtils.getLayerWeights(localId, i, stub))
-//                                .addTarget(layer.getLayerName() + "/Assign")
-//                                .run();
-//                    }
-//                } else {
-//
-//                    for (String key : modelTrainableWeighs.keySet()) {
-//                        session.runner().feed(key, modelTrainableWeighs.get(key))
-//                                .addTarget(modelTrainableInit.get(key) + "/Assign")
-//                                .run();
-//                    }
-//                }
             }
             TextView train_loss_view = null;
             if (activity != null) {
                 train_loss_view = activity.findViewById(R.id.TrainLoss);
             }
-            float loss = train(train_loss_view);
-            assert train_loss_view != null;
-            train_loss_view.setText("round " + round + ": " + loss);
-            local_loss = loss;
-            computeStream(stub, layerList, layer_size);
+            train(train_loss_view);
+            System.out.println("-------------------------round " +
+                    ClientInfo.round + ": " + TrainInfo.total_loss);
+            ClientInfo.local_loss = TrainInfo.total_loss;
+            computeStream(stub);
             stub.computeFinish(builder.build());
         }
 
-        public void getModelGraph(Model model) {
-            firstRound = model.getFirstRound();
-            dataSplit = model.getMessage();
+        public void ModelGraphInit(Model model) {
+            // check round is the first or not
+            ClientInfo.firstRound = model.getFirstRound();
+            // all layers
             layerList = model.getLayerList();
+            // the layers which weights need to be feed  before training
+            layerFeedList = model.getLayerFeedList();
             List<Meta> metaList = model.getMetaList();
+            MetaInfo.initName = metaList.get(2).getMetaName();
+            MetaInfo.optimizerName = metaList.get(3).getMetaName();
+            MetaInfo.lossName = metaList.get(4).getMetaName();
+            // the trainable layers in current round
             trainableLayerList = new ArrayList<>();
             for (Layer layer : layerList){
                 if (!layer.getLayerName().equals("non_trainable")){
@@ -175,34 +180,31 @@ public class FrozenTrainer {
             }
             Graph graph = new Graph();
             graph.importGraphDef(model.getGraph().toByteArray());
-            initName = metaList.get(2).getMetaName();
-            optimizerName = metaList.get(3).getMetaName();
-            lossName = metaList.get(4).getMetaName();
             session = new Session(graph);
         }
 
         @SuppressLint("SetTextI18n")
-        public float train(TextView train_loss_view) {
-            int batch_size = 16;
-            float total_loss = 0;
+        public void train(TextView train_loss_view) {
+
             ImageInfo imageInfo = new ImageInfo();
             try {
                 // todo: get images from assets
-                InputStreamReader inputReader = new InputStreamReader(context.getAssets().open(image_txt));
+                InputStreamReader inputReader = new InputStreamReader(context.getAssets().open(ServeInfo.image_txt));
                 BufferedReader buffReader = new BufferedReader(inputReader);
                 String line;
                 int line_number = 0;
-                float[][][][] x = new float[batch_size][imageInfo.getHeight()][imageInfo.getWidth()][imageInfo.getChannel()];
+                float[][][][] x = new float[TrainInfo.batch_size][imageInfo.getHeight()]
+                        [imageInfo.getWidth()][imageInfo.getChannel()];
                 int batch_size_iter = 0;
                 while ((line = buffReader.readLine()) != null) {
-                    System.out.println(path + line);
-                    Mat image = TrainerStreamUtils.getImage(path + line, imageInfo);
+                    System.out.println(ServeInfo.path + line);
+                    Mat image = TrainerStreamUtils.getImage(ServeInfo.path + line, imageInfo);
                     int label = Integer.parseInt(line.split("/")[1]);
-                    float[][] label_oneHot = new float[batch_size][imageInfo.getLabel_num()];
+                    float[][] label_oneHot = new float[TrainInfo.batch_size][imageInfo.getLabel_num()];
                     label_oneHot[batch_size_iter][label] = 1;
                     assert image != null;
                     DataConverter.cvMat_batchArray(image, batch_size_iter, x);
-                    if (batch_size_iter < batch_size - 1) {
+                    if (batch_size_iter < TrainInfo.batch_size - 1) {
                         batch_size_iter++;
                         line_number++;
                         System.out.println(line + " " + line_number + " ");
@@ -213,40 +215,33 @@ public class FrozenTrainer {
                     Session.Runner runner = session.runner()
                             .feed("x", Tensor.create(x))
                             .feed("y", Tensor.create(label_oneHot));
-                    runner.addTarget(optimizerName).run();
+                    runner.addTarget(MetaInfo.optimizerName).run();
                     float[] loss = new float[1];
-                    Tensor train_loss = runner.fetch(lossName).run().get(0);
+                    Tensor train_loss = runner.fetch(MetaInfo.lossName).run().get(0);
                     train_loss.copyTo(loss);
-                    total_loss += loss[0];
-                    train_loss_view.setText(line + ": " + line_number + ": " + loss[0]);
+                    TrainInfo.total_loss += loss[0];
+                    System.out.println("--------------"+line + ": " + line_number + ": " + loss[0]);
                 }
-                total_loss = total_loss / ((float) line_number / batch_size);
+                TrainInfo.total_loss = TrainInfo.total_loss /
+                        ((float) line_number / TrainInfo.batch_size);
             } catch (IOException e) {
                 e.printStackTrace();
             }
-            return total_loss;
         }
 
-        public ValueReply computeStream(ComputationGrpc.ComputationBlockingStub stub,
-                                        List<Layer> layerList, int layer_size) {
+        public void computeStream(ComputationGrpc.ComputationBlockingStub stub) {
             ValueReply valueReply = null;
             TrainerStreamUtils trainerStreamUtils = new TrainerStreamUtils();
-            for (int i = 0; i < layer_size; i++) {
-                if (layerList.get(i).getLayerName().equals("non_trainable")) {
-                    continue;
-                }
+            for (Layer layer: trainableLayerList) {
                 Tensor weights = session.runner().
-                        fetch(layerList.get(i).getLayerName()).run().get(0);
-                modelTrainableWeighs.put(layerList.get(i).getLayerInitName(), weights);
-                modelTrainableInit.put(layerList.get(i).getLayerInitName(), layerList.get(i).getLayerName());
+                        fetch(layer.getLayerName()).run().get(0);
                 ClientRequest.Builder clientRequestBuilder = ClientRequest.newBuilder();
-                clientRequestBuilder.setToken(token);
-                clientRequestBuilder.setId(localId);
+                clientRequestBuilder.setToken(ClientInfo.token);
+                clientRequestBuilder.setId(ClientInfo.localId);
                 valueReply = trainerStreamUtils.callLayerWeights(clientRequestBuilder,
-                        maxFloatNumber, i, stub, weights,
-                        layerList.get(i).getLayerTrainableShape());
+                        layer.getLayerName(), stub, weights,
+                        layer.getLayerTrainableShape());
             }
-            return valueReply;
         }
     }
 }

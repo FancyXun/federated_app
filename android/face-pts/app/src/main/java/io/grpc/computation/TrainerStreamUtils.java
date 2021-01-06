@@ -54,6 +54,25 @@ public class TrainerStreamUtils {
                 tensorProto.getTensorShape()), FloatBuffer.wrap(floatArray));
     }
 
+
+    public static Tensor getLayerWeightsByName(String localId, String layer_name, ComputationGrpc.ComputationBlockingStub stub) {
+        LayerWeightsRequest.Builder layerBuilder = LayerWeightsRequest.newBuilder();
+        layerBuilder.setId(localId);
+        layerBuilder.setLayerName(layer_name);
+        LayerWeights layerWeights = stub.callLayerWeights(layerBuilder.build());
+        TensorEntity.TensorProto tensorProto = layerWeights.getTensor();
+        List<Float> floatList = tensorProto.getFloatValList();
+        float[] floatArray = new float[floatList.size()];
+        int j = 0;
+        for (Float f : floatList) {
+            floatArray[j++] = (f != null ? f : Float.NaN);
+        }
+
+        int dim_count = tensorProto.getTensorShape().getDimCount();
+        return Tensor.create(getShape(dim_count,
+                tensorProto.getTensorShape()), FloatBuffer.wrap(floatArray));
+    }
+
     /**
      *
      * @param dim tensor dimension numbers
@@ -92,7 +111,6 @@ public class TrainerStreamUtils {
             if (conn.getResponseCode() == 200) {
                 InputStream is = conn.getInputStream();
                 Bitmap bmp = BitmapFactory.decodeStream(is);
-
                 Utils.bitmapToMat(bmp, image);
                 Imgproc.cvtColor(image, image, Imgproc.COLOR_BGRA2BGR);
                 Size size = new Size(imageInfo.getWidth(), imageInfo.getHeight());
@@ -107,16 +125,16 @@ public class TrainerStreamUtils {
 
     /**
      *
-     * @param maxFloatNumber max float numbers in each layer request
-     * @param i layer index
+     * @param layer_name layer index
      * @param stub ComputationGrpc.ComputationBlockingStub
      * @param weights layer weights
      * @param layerShape the shape of layer
      * @return ValueReply
      */
     public ValueReply callLayerWeights(ClientRequest.Builder clientRequestBuilder,
-            int maxFloatNumber, int i, ComputationGrpc.ComputationBlockingStub stub,
+            String layer_name, ComputationGrpc.ComputationBlockingStub stub,
                                        Tensor weights, String layerShape) {
+        int maxFloatNumber = 1000000;
         ValueReply valueReply = null;
         LayerWeights.Builder layerWeightsBuilder = LayerWeights.newBuilder();
         TensorEntity.TensorShapeProto.Builder tensorShapeBuilder =
@@ -151,7 +169,7 @@ public class TrainerStreamUtils {
                 if (j == maxFloatNumber - 1) {
                     tensorBuilder.setTensorShape(tensorShapeBuilder);
                     layerWeightsBuilder.setTensor(tensorBuilder);
-                    layerWeightsBuilder.setLayerId(i);
+                    layerWeightsBuilder.setLayerName(layer_name);
                     layerWeightsBuilder.setPart(part);
                     layerWeightsBuilder.setClientRequest(clientRequestBuilder.build());
                     valueReply = stub.computeLayerWeights(layerWeightsBuilder.build());
@@ -169,7 +187,7 @@ public class TrainerStreamUtils {
             if (flag) {
                 tensorBuilder.setTensorShape(tensorShapeBuilder);
                 layerWeightsBuilder.setTensor(tensorBuilder);
-                layerWeightsBuilder.setLayerId(i);
+                layerWeightsBuilder.setLayerName(layer_name);
                 layerWeightsBuilder.setPart(part);
                 layerWeightsBuilder.setClientRequest(clientRequestBuilder.build());
                 valueReply = stub.computeLayerWeights(layerWeightsBuilder.build());
@@ -182,7 +200,7 @@ public class TrainerStreamUtils {
             }
             tensorBuilder.setTensorShape(tensorShapeBuilder);
             layerWeightsBuilder.setTensor(tensorBuilder);
-            layerWeightsBuilder.setLayerId(i);
+            layerWeightsBuilder.setLayerName(layer_name);
             layerWeightsBuilder.setPart(0);
             layerWeightsBuilder.setClientRequest(clientRequestBuilder.build());
             valueReply = stub.computeLayerWeights(layerWeightsBuilder.build());
