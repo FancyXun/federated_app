@@ -69,6 +69,9 @@ public class TrainerStreamUtils {
         }
 
         int dim_count = tensorProto.getTensorShape().getDimCount();
+        if (floatArray.length == 359296){
+            System.out.println(tensorProto.getTensorShape());
+        }
         return Tensor.create(getShape(dim_count,
                 tensorProto.getTensorShape()), FloatBuffer.wrap(floatArray));
     }

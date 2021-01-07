@@ -141,6 +141,7 @@ public class ComputationServer {
         public boolean firstRound = true;
         public List<String> AggregationClients = new ArrayList<>();
         public Client client = new Client();
+        public HashMap<String , Integer> FileNames = new HashMap<>();
 
         @Override
         public void callTraining(ClientRequest request, StreamObserver<Certificate> responseObserver) {
@@ -259,24 +260,31 @@ public class ComputationServer {
                 if (!file.exists()) {
                     file.mkdir();
                 }
-                File f = new File("/tmp/model_weights/"+clientRequest.getId()+"/"+request.getLayerName()+".txt");
-                if (!f.exists()) {
-                    try {
-                        f.createNewFile();
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
+                System.out.println("---------------------"+
+                        request.getLayerName()+":"+request.getTensor().getFloatValList().size());
+//                File f = new File("/tmp/model_weights/"+clientRequest.getId()+"/"+request.getLayerName()+".txt");
+//                if (!f.exists()) {
+//                    try {
+//                        f.createNewFile();
+//                    } catch (IOException e) {
+//                        e.printStackTrace();
+//                    }
+//                }
+//                try{
+//                    BufferedWriter bw = new BufferedWriter(new FileWriter(f, true));
+//                    bw.write(String.valueOf(request.getTensor().getFloatValList()));
+//                    bw.close();
+//                }catch(IOException e){
+//                    e.printStackTrace();
+//                }
+                if (FileNames.containsKey(request.getLayerName())){
+                    FileNames.put(request.getLayerName(),FileNames.get(request.getLayerName()) + 1);
                 }
-                try{
-                    BufferedWriter bw = new BufferedWriter(new FileWriter(f, true));
-                    bw.write(String.valueOf(request.getTensor().getFloatValList()));
-                    bw.close();
-                }catch(IOException e){
-                    e.printStackTrace();
+                else{
+                    FileNames.put(request.getLayerName(),0);
                 }
-
                 Path filePath = new File("/tmp/model_weights/"+clientRequest.getId()+"/"+
-                        request.getLayerName()+".npz").toPath();
+                        request.getLayerName() +"__"+FileNames.get(request.getLayerName())+".npz").toPath();
                 NpzFile.Writer writer = NpzFile.write(filePath, true);
                 float[] arr = new float[request.getTensor().getFloatValList().size()];
                 int index = 0;
