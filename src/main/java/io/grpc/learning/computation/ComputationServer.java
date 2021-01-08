@@ -141,7 +141,6 @@ public class ComputationServer {
         public boolean firstRound = true;
         public List<String> AggregationClients = new ArrayList<>();
         public Client client = new Client();
-        public HashMap<String , Integer> FileNames = new HashMap<>();
 
         @Override
         public void callTraining(ClientRequest request, StreamObserver<Certificate> responseObserver) {
@@ -168,7 +167,7 @@ public class ComputationServer {
                 modelHelper = ModelHelper.getInstance();
                 serverBlock.put(currentBlock, modelHelper);
             }
-            System.out.println("Receive callModel request from " + client_id);
+            System.out.println("Receive callModel request from " + client_id + " for block" + currentBlock);
             Graph graph = modelHelper.getGraph();
             LinkedHashMap<String, String> modelTrainableMap = modelHelper.getModelTrainableMap();
             LinkedHashMap<String, String> modelInitMap = modelHelper.getModelInitMap();
@@ -260,8 +259,6 @@ public class ComputationServer {
                 if (!file.exists()) {
                     file.mkdir();
                 }
-                System.out.println("---------------------"+
-                        request.getLayerName()+":"+request.getTensor().getFloatValList().size());
 //                File f = new File("/tmp/model_weights/"+clientRequest.getId()+"/"+request.getLayerName()+".txt");
 //                if (!f.exists()) {
 //                    try {
@@ -277,14 +274,8 @@ public class ComputationServer {
 //                }catch(IOException e){
 //                    e.printStackTrace();
 //                }
-                if (FileNames.containsKey(request.getLayerName())){
-                    FileNames.put(request.getLayerName(),FileNames.get(request.getLayerName()) + 1);
-                }
-                else{
-                    FileNames.put(request.getLayerName(),0);
-                }
                 Path filePath = new File("/tmp/model_weights/"+clientRequest.getId()+"/"+
-                        request.getLayerName() +"__"+FileNames.get(request.getLayerName())+".npz").toPath();
+                        request.getLayerName() +"__"+(int)request.getPart()+".npz").toPath();
                 NpzFile.Writer writer = NpzFile.write(filePath, true);
                 float[] arr = new float[request.getTensor().getFloatValList().size()];
                 int index = 0;
