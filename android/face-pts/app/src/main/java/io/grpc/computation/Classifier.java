@@ -168,8 +168,10 @@ public abstract class Classifier {
 
   /** Initializes a {@code Classifier}. */
   protected Classifier(Activity activity, Device device, int numThreads) throws IOException {
-    String liteModelUrl = "/data/user/0/io.grpc.computation/cache/model";
-    tfliteModel = TFLiteFileUtil.loadMappedFile(activity, liteModelUrl);
+//    String liteModelUrl = "/data/user/0/io.grpc.computation/cache/model";
+    String liteModelUrl = "rec/model_train.tflite";
+//    tfliteModel = TFLiteFileUtil.loadMappedFile(activity, liteModelUrl);
+    tfliteModel = TFLiteFileUtil.loadMapperFileFromContext(activity, liteModelUrl);
     //TODO:GETxxx way
     switch (device) {
       case GPU:

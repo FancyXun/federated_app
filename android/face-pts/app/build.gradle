@@ -76,7 +76,8 @@ dependencies {
     implementation 'io.grpc:grpc-protobuf-lite:1.31.1' // CURRENT_GRPC_VERSION
     implementation 'io.grpc:grpc-stub:1.31.1' // CURRENT_GRPC_VERSION
     implementation 'org.apache.tomcat:annotations-api:6.0.53'
-    implementation 'org.tensorflow:tensorflow-android:+'
+//    implementation 'org.tensorflow:tensorflow-android:+'
+    implementation files('libs/tensorflow-android-1.13.1.aar')
     androidTestImplementation 'com.android.support.test:runner:1.0.2'
     androidTestImplementation 'com.android.support.test.espresso:espresso-core:3.0.2'
     if (Os.isFamily(Os.FAMILY_MAC)) {

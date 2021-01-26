@@ -23,6 +23,7 @@ import org.opencv.android.OpenCVLoader;
 import org.opencv.android.Utils;
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;
+import org.opencv.core.Size;
 import org.opencv.imgcodecs.Imgcodecs;
 import org.opencv.imgproc.Imgproc;
 
@@ -31,10 +32,13 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.sql.Timestamp;
 import java.util.ArrayList;
 
+import io.grpc.tflite.detect.PCNutil.ImageUtil;
 import io.grpc.tflite.detect.PCNutil.Recognition;
 import io.grpc.utils.FileUtils;
+import io.grpc.utils.ImageUtils;
 import io.grpc.utils.TFLiteFileUtil;
 
 public class MainActivity extends AppCompatActivity {
@@ -96,14 +100,25 @@ public class MainActivity extends AppCompatActivity {
 
     public void inference(View view) throws IOException {
         faceRec.setEnabled(false);
-        TFLiteFileUtil.downloadFile(liteModelUrl, new File(localLiteModelUrl));
+//        TFLiteFileUtil.downloadFile(liteModelUrl, new File(localLiteModelUrl));
         classifier = Classifier.create(this, Classifier.Device.CPU, 1);
         Bitmap bit = bitmap.copy(Bitmap.Config.ARGB_8888, false);
         Mat src = new Mat(bit.getHeight(), bit.getWidth(), CvType.CV_8UC(3));
+//        Utils.bitmapToMat(bit, recognition.RecongFunc(this, src).get(0));
+        Utils.bitmapToMat(bit, src);
         Recognition recognition = new Recognition();
-        Utils.bitmapToMat(bit, recognition.RecongFunc(this, src).get(0));
+
+        Size size = new Size(255,255);
+        Imgproc.resize(src, src, size);
+        Timestamp timestamp = new Timestamp(System.currentTimeMillis());
+        System.out.println("检测" + timestamp);
+        System.out.println(recognition.RecongFunc(this, ImageUtil.fourC2threeC(src)));
+        timestamp = new Timestamp(System.currentTimeMillis());
+        System.out.println("检测" + timestamp);
         float[] results =
                 classifier.recognizeImage(bit, 90);
+        timestamp = new Timestamp(System.currentTimeMillis());
+        System.out.println("识别" + timestamp);
         Imgproc.cvtColor(src, src, Imgproc.COLOR_BGR2GRAY);
         StringBuilder res = new StringBuilder();
         for (String filePath : fileList) {

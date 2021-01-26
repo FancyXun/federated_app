@@ -94,7 +94,8 @@ public class ModelHelper {
     public void gen_graph(int block) {
         Process process;
         try {
-            process = Runtime.getRuntime().exec(String.format("%s %s -p %s --unfrozen=%s", pythonExe, pyDir, rootPath, block));
+            System.out.println(String.format("%s %s -p %s --unfrozen=%s", pythonExe, pyDir, rootPath, 0));
+            process = Runtime.getRuntime().exec(String.format("%s %s -p %s --unfrozen=%s", pythonExe, pyDir, rootPath, 0));
             BufferedReader in = new BufferedReader(new InputStreamReader(process.getErrorStream()));
             String line;
             while ((line = in.readLine()) != null) {
@@ -216,7 +217,7 @@ public class ModelHelper {
                     TensorEntity.TensorProto.newBuilder();
             LayerWeights.Builder layerWeightsBuilder = LayerWeights.newBuilder();
             try (BufferedReader br = new BufferedReader(new FileReader("/tmp/model_weights/average/"+
-                    modelTrainableMap.get(key)+".txt"))) {
+                    modelTrainableMap.get(key).replace("/","@")+".txt"))) {
                 try {
                     String line = br.readLine();
                     while (line != null) {

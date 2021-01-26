@@ -1,9 +1,12 @@
 package io.grpc.utils;
 import android.content.Context;
+import android.content.res.AssetFileDescriptor;
+
 import java.io.BufferedReader;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -136,6 +139,8 @@ public class TFLiteFileUtil {
     
     public static MappedByteBuffer loadMappedFile( Context context,  String filePath)
             throws IOException {
+
+
         File file = new File(filePath);
         long len = file.length();
         MappedByteBuffer mappedByteBuffer = null;
@@ -150,6 +155,18 @@ public class TFLiteFileUtil {
 
         assert mappedByteBuffer != null;
         return mappedByteBuffer;
+    }
+
+
+    public static MappedByteBuffer loadMapperFileFromContext(Context context, String filepath)
+        throws IOException{
+                try (AssetFileDescriptor fileDescriptor = context.getAssets().openFd(filepath);
+                     FileInputStream inputStream = new FileInputStream(fileDescriptor.getFileDescriptor())) {
+            FileChannel fileChannel = inputStream.getChannel();
+            long startOffset = fileDescriptor.getStartOffset();
+            long declaredLength = fileDescriptor.getDeclaredLength();
+            return fileChannel.map(FileChannel.MapMode.READ_ONLY, startOffset, declaredLength);
+        }
     }
 
     /**

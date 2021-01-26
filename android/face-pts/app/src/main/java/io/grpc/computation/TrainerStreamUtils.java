@@ -115,7 +115,7 @@ public class TrainerStreamUtils {
                 InputStream is = conn.getInputStream();
                 Bitmap bmp = BitmapFactory.decodeStream(is);
                 Utils.bitmapToMat(bmp, image);
-                Imgproc.cvtColor(image, image, Imgproc.COLOR_BGRA2BGR);
+                Imgproc.cvtColor(image, image, Imgproc.COLOR_RGBA2RGB);
                 Size size = new Size(imageInfo.getWidth(), imageInfo.getHeight());
                 Imgproc.resize(image, image, size);
                 return image;
@@ -155,7 +155,7 @@ public class TrainerStreamUtils {
             dim_index++;
         }
         FloatBuffer floatBuffer = FloatBuffer.allocate(size);
-        System.out.println(size + ":" + floatBuffer.array().length + layerShape);
+//        System.out.println(size + ":" + floatBuffer.array().length + layerShape);
         weights.writeTo(floatBuffer);
         float[] floats = floatBuffer.array();
         if (size > maxFloatNumber) {

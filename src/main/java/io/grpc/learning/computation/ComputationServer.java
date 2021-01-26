@@ -275,7 +275,7 @@ public class ComputationServer {
 //                    e.printStackTrace();
 //                }
                 Path filePath = new File("/tmp/model_weights/"+clientRequest.getId()+"/"+
-                        request.getLayerName() +"__"+(int)request.getPart()+".npz").toPath();
+                        request.getLayerName().replace("/","@") +"__"+(int)request.getPart()+".npz").toPath();
                 NpzFile.Writer writer = NpzFile.write(filePath, true);
                 float[] arr = new float[request.getTensor().getFloatValList().size()];
                 int index = 0;

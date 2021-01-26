@@ -2,11 +2,14 @@ package io.grpc.computation;
 
 import android.annotation.SuppressLint;
 import android.app.Activity;
+import android.app.TaskInfo;
 import android.content.Context;
 import android.widget.TextView;
 
 import org.opencv.core.Mat;
 import org.tensorflow.Graph;
+import org.tensorflow.Operand;
+import org.tensorflow.Operation;
 import org.tensorflow.Session;
 import org.tensorflow.Tensor;
 
@@ -14,7 +17,9 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.lang.ref.WeakReference;
+import java.sql.Timestamp;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.UUID;
 
@@ -39,16 +44,18 @@ public class FrozenTrainer {
         public static String initName;
         public static String optimizerName;
         public static String lossName;
+        public static String learningRate;
+        public static String accName;
     }
 
-    static class ServeInfo{
-        public static String server_ip = "192.168.50.13";
+    static class ServeInfo {
+        public static String server_ip = "192.168.89.249";
         public static int server_port = 50051;
         public static final String path = "http://52.81.162.253:8000/res/CASIA-WebFace-aligned";
         public static final String image_txt = "images.txt";
     }
 
-    static class ClientInfo{
+    static class ClientInfo {
         public static String localId =
                 UUID.randomUUID().toString().replaceAll("-", "");
         public static int round = 0;
@@ -58,8 +65,8 @@ public class FrozenTrainer {
         public static boolean firstRound = true;
     }
 
-    static class TrainInfo{
-        public static int batch_size = 16;
+    static class TrainInfo {
+        public static int batch_size = 8;
         public static float total_loss = 0;
     }
 
@@ -75,6 +82,7 @@ public class FrozenTrainer {
         private List<LayerFeed> layerFeedList;
         //
         private List<Layer> trainableLayerList;
+        public  ArrayList<Operation> fetch_ops = new ArrayList();
 
 
 
@@ -111,7 +119,7 @@ public class FrozenTrainer {
                 }
                 ClientInfo.token = certificate.getToken();
                 runOneRound(stub, builder);
-                ClientInfo.round +=1;
+                ClientInfo.round += 1;
             }
             return "Training Finished!";
         }
@@ -128,9 +136,7 @@ public class FrozenTrainer {
 
         /**
          * @param stub
-         * @param builder
-         *
-         * callModel ->
+         * @param builder callModel ->
          */
         @SuppressLint("CheckResult")
         public void runOneRound(ComputationGrpc.ComputationBlockingStub stub,
@@ -145,7 +151,7 @@ public class FrozenTrainer {
                     Tensor tensor = TrainerStreamUtils.getLayerWeightsByName(ClientInfo.localId,
                             layerFeed.getLayerFeedWeightsName(), stub);
                     session.runner().feed(layerFeed.getLayerInitFeedWeightsName(),
-                            tensor).addTarget(layerFeed.getLayerFeedWeightsName()+ "/Assign").run();
+                            tensor).addTarget(layerFeed.getLayerFeedWeightsName() + "/Assign").run();
                 }
             }
             TextView train_loss_view = null;
@@ -156,7 +162,11 @@ public class FrozenTrainer {
             System.out.println("-------------------------round " +
                     ClientInfo.round + ": " + TrainInfo.total_loss);
             ClientInfo.local_loss = TrainInfo.total_loss;
+            Timestamp timestamp = new Timestamp(System.currentTimeMillis());
+            System.out.println("---------------"+timestamp);
             computeStream(stub);
+            timestamp = new Timestamp(System.currentTimeMillis());
+            System.out.println("----------------"+timestamp);
             stub.computeFinish(builder.build());
         }
 
@@ -171,15 +181,27 @@ public class FrozenTrainer {
             MetaInfo.initName = metaList.get(2).getMetaName();
             MetaInfo.optimizerName = metaList.get(3).getMetaName();
             MetaInfo.lossName = metaList.get(4).getMetaName();
+            MetaInfo.learningRate = metaList.get(5).getMetaName();
+            MetaInfo.accName = metaList.get(6).getMetaName();
             // the trainable layers in current round
             trainableLayerList = new ArrayList<>();
-            for (Layer layer : layerList){
-                if (!layer.getLayerName().equals("non_trainable")){
+            for (Layer layer : layerList) {
+                if (!layer.getLayerName().equals("non_trainable")) {
                     trainableLayerList.add(layer);
                 }
             }
             Graph graph = new Graph();
             graph.importGraphDef(model.getGraph().toByteArray());
+            for (Iterator<Operation> it = graph.operations(); it.hasNext(); ) {
+                Operation op = it.next();
+                System.out.println(op.name());
+                if (op.name().equals(MetaInfo.lossName)){
+                    fetch_ops.add(op);
+                }
+                if (op.name().equals(MetaInfo.accName)){
+                    fetch_ops.add(op);
+                }
+            }
             session = new Session(graph);
         }
 
@@ -196,34 +218,46 @@ public class FrozenTrainer {
                 float[][][][] x = new float[TrainInfo.batch_size][imageInfo.getHeight()]
                         [imageInfo.getWidth()][imageInfo.getChannel()];
                 int batch_size_iter = 0;
+                int [][] label_oneHot = new int[TrainInfo.batch_size][imageInfo.getLabel_num()];
+
+                float[] loss = new float[1];
+                float[] acc = new float[1];
+
                 while ((line = buffReader.readLine()) != null) {
-                    System.out.println(ServeInfo.path + line);
                     Mat image = TrainerStreamUtils.getImage(ServeInfo.path + line, imageInfo);
                     int label = Integer.parseInt(line.split("/")[1]);
-                    float[][] label_oneHot = new float[TrainInfo.batch_size][imageInfo.getLabel_num()];
                     label_oneHot[batch_size_iter][label] = 1;
                     assert image != null;
                     DataConverter.cvMat_batchArray(image, batch_size_iter, x);
                     if (batch_size_iter < TrainInfo.batch_size - 1) {
                         batch_size_iter++;
                         line_number++;
-                        System.out.println(line + " " + line_number + " ");
                         continue;
                     } else {
                         batch_size_iter = 0;
+                        line_number++;
                     }
-                    Session.Runner runner = session.runner()
-                            .feed("x", Tensor.create(x))
-                            .feed("y", Tensor.create(label_oneHot));
-                    runner.addTarget(MetaInfo.optimizerName).run();
-                    float[] loss = new float[1];
-                    Tensor train_loss = runner.fetch(MetaInfo.lossName).run().get(0);
-                    train_loss.copyTo(loss);
-                    TrainInfo.total_loss += loss[0];
-                    System.out.println("--------------"+line + ": " + line_number + ": " + loss[0]);
+                    for (int i = 0 ; i< TrainInfo.batch_size; i++){
+                        System.out.println(x[i][0][0][0]);
+                    }
+                    System.out.println("-----------------------------------------------------");
+                    session.runner()
+                            .feed("input_x", Tensor.create(x))
+                            .feed("input_y", Tensor.create(label_oneHot))
+                            .feed(MetaInfo.learningRate, Tensor.create(0.0001f))
+                            .addTarget(MetaInfo.optimizerName)
+                            .run();
+
+                    List<Tensor<?>> fetched_tensors =  session.runner()
+                            .feed("input_x", Tensor.create(x))
+                            .feed("input_y", Tensor.create(label_oneHot))
+                            .fetch(MetaInfo.lossName)
+                            .fetch(MetaInfo.accName)
+                            .run();
+
+                    System.out.println("-----" + ": " + line_number  + " loss: " + fetched_tensors.get(0).floatValue()+
+                            " acc: " +fetched_tensors.get(1).floatValue());
                 }
-                TrainInfo.total_loss = TrainInfo.total_loss /
-                        ((float) line_number / TrainInfo.batch_size);
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -232,7 +266,7 @@ public class FrozenTrainer {
         public void computeStream(ComputationGrpc.ComputationBlockingStub stub) {
             ValueReply valueReply = null;
             TrainerStreamUtils trainerStreamUtils = new TrainerStreamUtils();
-            for (Layer layer: trainableLayerList) {
+            for (Layer layer : trainableLayerList) {
                 Tensor weights = session.runner().
                         fetch(layer.getLayerName()).run().get(0);
                 ClientRequest.Builder clientRequestBuilder = ClientRequest.newBuilder();
