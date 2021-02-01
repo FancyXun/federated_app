@@ -49,7 +49,7 @@ public class FrozenTrainer {
     }
 
     static class ServeInfo {
-        public static String server_ip = "192.168.89.249";
+        public static String server_ip = "192.168.0.102";
         public static int server_port = 50051;
         public static final String path = "http://52.81.162.253:8000/res/CASIA-WebFace-aligned";
         public static final String image_txt = "images.txt";
@@ -218,17 +218,21 @@ public class FrozenTrainer {
                 float[][][][] x = new float[TrainInfo.batch_size][imageInfo.getHeight()]
                         [imageInfo.getWidth()][imageInfo.getChannel()];
                 int batch_size_iter = 0;
-                int [][] label_oneHot = new int[TrainInfo.batch_size][imageInfo.getLabel_num()];
 
-                float[] loss = new float[1];
-                float[] acc = new float[1];
-
+                int[][] label_oneHot = new int[TrainInfo.batch_size][imageInfo.getLabel_num()];
+                for (int epoch = 0; epoch < 20; epoch++) {
                 while ((line = buffReader.readLine()) != null) {
                     Mat image = TrainerStreamUtils.getImage(ServeInfo.path + line, imageInfo);
                     int label = Integer.parseInt(line.split("/")[1]);
                     label_oneHot[batch_size_iter][label] = 1;
                     assert image != null;
-                    DataConverter.cvMat_batchArray(image, batch_size_iter, x);
+                    try{
+                        DataConverter.cvMat_batchArray(image, batch_size_iter, x);
+                    }
+                    catch (NullPointerException e){
+                        e.printStackTrace();
+                        continue;
+                    }
                     if (batch_size_iter < TrainInfo.batch_size - 1) {
                         batch_size_iter++;
                         line_number++;
@@ -237,30 +241,32 @@ public class FrozenTrainer {
                         batch_size_iter = 0;
                         line_number++;
                     }
-                    for (int i = 0 ; i< TrainInfo.batch_size; i++){
-                        System.out.println(x[i][0][0][0]);
-                    }
-                    System.out.println("-----------------------------------------------------");
-                    session.runner()
+
+                    Session.Runner runner = session.runner();
+                    runner
                             .feed("input_x", Tensor.create(x))
                             .feed("input_y", Tensor.create(label_oneHot))
                             .feed(MetaInfo.learningRate, Tensor.create(0.0001f))
                             .addTarget(MetaInfo.optimizerName)
                             .run();
 
-                    List<Tensor<?>> fetched_tensors =  session.runner()
-                            .feed("input_x", Tensor.create(x))
-                            .feed("input_y", Tensor.create(label_oneHot))
+
+                    List<Tensor<?>> fetched_tensors = runner
+//                            .feed("input_x", Tensor.create(x))
+//                            .feed("input_y", Tensor.create(label_oneHot))
                             .fetch(MetaInfo.lossName)
                             .fetch(MetaInfo.accName)
                             .run();
 
-                    System.out.println("-----" + ": " + line_number  + " loss: " + fetched_tensors.get(0).floatValue()+
-                            " acc: " +fetched_tensors.get(1).floatValue());
+                    System.out.println("-----" + ": " + line_number + " loss: " + fetched_tensors.get(0).floatValue() +
+                            " acc: " + fetched_tensors.get(1).floatValue());
+                    label_oneHot = new int[TrainInfo.batch_size][imageInfo.getLabel_num()];
                 }
-            } catch (IOException e) {
-                e.printStackTrace();
             }
+                } catch(IOException e){
+                    e.printStackTrace();
+                }
+
         }
 
         public void computeStream(ComputationGrpc.ComputationBlockingStub stub) {
