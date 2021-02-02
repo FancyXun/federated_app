@@ -14,7 +14,9 @@ import org.tensorflow.Session;
 import org.tensorflow.Tensor;
 
 import java.io.BufferedReader;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.lang.ref.WeakReference;
 import java.sql.Timestamp;
@@ -97,6 +99,9 @@ public class FrozenTrainer {
          */
         @Override
         protected String doInBackground(String... params) {
+            if (true){
+                local_train();
+            }
             channel = ManagedChannelBuilder
                     .forAddress(ServeInfo.server_ip, ServeInfo.server_port)
                     .maxInboundMessageSize(1024 * 1024 * 1024)
@@ -282,6 +287,84 @@ public class FrozenTrainer {
                         layer.getLayerName(), stub, weights,
                         layer.getLayerTrainableShape());
             }
+        }
+
+        public void local_train() {
+            Graph graph = new Graph();
+            try {
+                String var2 = "train/sphere_unfrozen.pb";
+                InputStream modelStream = context.getAssets().open(var2);
+                ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+                int nRead;
+                byte[] data = new byte[1024];
+                while ((nRead = modelStream.read(data, 0, data.length)) != -1) {
+                    buffer.write(data, 0, nRead);
+                }
+                buffer.flush();
+                byte[] byteArray = buffer.toByteArray();
+                graph.importGraphDef(byteArray);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            session = new Session(graph);
+            session.runner().addTarget("init").run();
+            ImageInfo imageInfo = new ImageInfo();
+            try {
+                // todo: get images from assets
+                InputStreamReader inputReader = new InputStreamReader(context.getAssets().open(ServeInfo.image_txt));
+                BufferedReader buffReader = new BufferedReader(inputReader);
+                String line;
+                int line_number = 0;
+                float[][][][] x = new float[TrainInfo.batch_size][imageInfo.getHeight()]
+                        [imageInfo.getWidth()][imageInfo.getChannel()];
+                int batch_size_iter = 0;
+
+                int[][] label_oneHot = new int[TrainInfo.batch_size][imageInfo.getLabel_num()];
+                for (int epoch = 0; epoch < 20; epoch++) {
+                    while ((line = buffReader.readLine()) != null) {
+                        try{
+                            Mat image = TrainerStreamUtils.getImage(ServeInfo.path + line, imageInfo);
+                            int label = Integer.parseInt(line.split("/")[1]);
+                            label_oneHot[batch_size_iter][label] = 1;
+                            assert image != null;
+                            DataConverter.cvMat_batchArray(image, batch_size_iter, x);
+                        }
+                        catch (Exception e){
+                            e.printStackTrace();
+                            continue;
+                        }
+                        if (batch_size_iter < TrainInfo.batch_size - 1) {
+                            batch_size_iter++;
+                            line_number++;
+                            continue;
+                        } else {
+                            batch_size_iter = 0;
+                            line_number++;
+                        }
+
+                        Session.Runner runner = session.runner();
+                        runner
+                                .feed("input_x", Tensor.create(x))
+                                .feed("input_y", Tensor.create(label_oneHot))
+                                .feed("lr:0", Tensor.create(0.0001f))
+                                .addTarget("Momentum")
+                                .run();
+
+
+                        List<Tensor<?>> fetched_tensors = runner
+                                .fetch("Mean:0")
+                                .fetch("Mean_1:0")
+                                .run();
+
+                        System.out.println("-----" + ": " + line_number + " loss: " + fetched_tensors.get(0).floatValue() +
+                                " acc: " + fetched_tensors.get(1).floatValue());
+                        label_oneHot = new int[TrainInfo.batch_size][imageInfo.getLabel_num()];
+                    }
+                }
+            } catch(IOException e){
+                e.printStackTrace();
+            }
+
         }
     }
 }
