@@ -1,14 +1,13 @@
+import argparse
+import json
 import math
 import os
 import random
-import json
-import argparse
 
-from google.protobuf import json_format
 import numpy as np
 import tensorflow as tf
 from PIL import Image
-
+from google.protobuf import json_format
 
 parser = argparse.ArgumentParser(description='frozen_layers to this script')
 parser.add_argument('--unfrozen', type=int, default=None)
@@ -132,108 +131,125 @@ def get_data(data_block):
     y = np.eye(nb_classes)[y]
     return x, y
 
+
 def gen_graph():
-    weights = {
-        'c1_1': weight_variable([3, 3, 3, 64], name='W_conv11', trainable=block_1),
-        'c1_2': weight_variable([3, 3, 64, 64], name='W_conv12', trainable=block_1),
-        'c1_3': weight_variable([3, 3, 64, 64], name='W_conv13', trainable=block_1),
-
-        'c2_1': weight_variable([3, 3, 64, 128], name='W_conv21', trainable=block_2),
-        'c2_2': weight_variable([3, 3, 128, 128], name='W_conv22', trainable=block_2),
-        'c2_3': weight_variable([3, 3, 128, 128], name='W_conv23', trainable=block_2),
-        'c2_4': weight_variable([3, 3, 128, 128], name='W_conv24', trainable=block_2),
-        'c2_5': weight_variable([3, 3, 128, 128], name='W_conv25', trainable=block_2),
-
-        'c3_1': weight_variable([3, 3, 128, 256], name='W_conv31', trainable=block_3),
-        'c3_2': weight_variable([3, 3, 256, 256], name='W_conv32', trainable=block_3),
-        'c3_3': weight_variable([3, 3, 256, 256], name='W_conv33', trainable=block_3),
-        'c3_4': weight_variable([3, 3, 256, 256], name='W_conv34', trainable=block_3),
-        'c3_5': weight_variable([3, 3, 256, 256], name='W_conv35', trainable=block_3),
-        'c3_6': weight_variable([3, 3, 256, 256], name='W_conv36', trainable=block_3),
-        'c3_7': weight_variable([3, 3, 256, 256], name='W_conv37', trainable=block_3),
-        'c3_8': weight_variable([3, 3, 256, 256], name='W_conv38', trainable=block_3),
-        'c3_9': weight_variable([3, 3, 256, 256], name='W_conv39', trainable=block_3),
-
-        'c4_1': weight_variable([3, 3, 256, 512], name='W_conv41', trainable=block_4),
-        'c4_2': weight_variable([3, 3, 512, 512], name='W_conv42', trainable=block_4),
-        'c4_3': weight_variable([3, 3, 512, 512], name='W_conv43', trainable=block_4),
-
-        'fc5': weight_variable([512 * 7 * 6, 512], name='W_fc5', trainable=block_5),
-    }
-
-    global_step = tf.Variable(0, trainable=False)
-    input_x = tf.placeholder(tf.float32, [None] + [112, 96] + [3], name='input_x')
+    input_x = tf.placeholder(tf.float32, [None, 112, 96, 3], name='input_x')
     input_y = tf.placeholder(tf.int32, [None, nb_classes], name='input_y')
-    learning_rate = tf.placeholder(tf.float32, (), name='lr')
-    stp = tf.placeholder(tf.float32, (), name='stp')
+    learning_rate = tf.placeholder(tf.float32, (), name='learning_rate')
 
-    conv11 = tf.nn.conv2d(input_x, weights['c1_1'], strides=[1, 2, 2, 1], padding='SAME', name='c_11')
-    h_1 = prelu(conv11, name='act_1', trainable=block_1)
+    #
+    conv_11 = tf.nn.conv2d(input_x,
+                           weight_variable([3, 3, 3, 64], name='filter_11', trainable=block_1),
+                           strides=[1, 2, 2, 1], padding='SAME', name='conv_11')
+    prelu_11 = prelu(conv_11, name='prelu_11', trainable=block_1)
 
-    # ResNet-1
-    res_conv_11 = tf.nn.conv2d(h_1, weights['c1_2'], strides=[1, 1, 1, 1], padding='SAME', name='res_c_12')
-    res_h_11 = prelu(res_conv_11, name='res_act_11', trainable=block_1)
-    res_conv_12 = tf.nn.conv2d(res_h_11, weights['c1_3'], strides=[1, 1, 1, 1], padding='SAME', name='res_c_13')
-    res_h_12 = prelu(res_conv_12, name='res_act_12', trainable=block_1)
-    res_1 = h_1 + res_h_12
+    conv_12 = tf.nn.conv2d(prelu_11,
+                           weight_variable([3, 3, 64, 64], name='filter_12', trainable=block_1),
+                           strides=[1, 1, 1, 1], padding='SAME', name='conv_12')
+    prelu_12 = prelu(conv_12, name='prelu_12', trainable=block_1)
 
-    # ResNet-2
-    conv21 = tf.nn.conv2d(res_1, weights['c2_1'], strides=[1, 2, 2, 1], padding='SAME', name='c_21')
-    h_2 = prelu(conv21, name='act_2', trainable=block_2)
-    res_conv_21 = tf.nn.conv2d(h_2, weights['c2_2'], strides=[1, 1, 1, 1], padding='SAME', name='res_c_22')
-    res_h_21 = prelu(res_conv_21, name='res_act_21', trainable=block_2)
-    res_conv_22 = tf.nn.conv2d(res_h_21, weights['c2_3'], strides=[1, 1, 1, 1], padding='SAME', name='res_c_23')
-    res_h_22 = prelu(res_conv_22, name='res_act_22', trainable=block_2)
-    res_21 = h_2 + res_h_22
+    conv_13 = tf.nn.conv2d(prelu_12,
+                           weight_variable([3, 3, 64, 64], name='filter_13', trainable=block_1),
+                           strides=[1, 1, 1, 1], padding='SAME', name='conv_13')
+    prelu_13 = prelu(conv_13, name='res_act_12', trainable=block_1)
+    res_1 = prelu_11 + prelu_13
 
-    res_conv_23 = tf.nn.conv2d(res_21, weights['c2_4'], strides=[1, 1, 1, 1], padding='SAME', name='res_c_24')
-    res_h_23 = prelu(res_conv_23, name='res_act_23', trainable=block_2)
-    res_conv_24 = tf.nn.conv2d(res_h_23, weights['c2_5'], strides=[1, 1, 1, 1], padding='SAME', name='res_c_25')
-    res_h_24 = prelu(res_conv_24, name='res_act_24', trainable=block_2)
-    res_22 = res_21 + res_h_24
+    #
+    conv_21 = tf.nn.conv2d(res_1,
+                           weight_variable([3, 3, 64, 128], name='filter_21', trainable=block_2),
+                           strides=[1, 2, 2, 1], padding='SAME', name='conv_21')
+    prelu_21 = prelu(conv_21, name='prelu_21', trainable=block_2)
 
-    # ResNet-3
-    conv31 = tf.nn.conv2d(res_22, weights['c3_1'], strides=[1, 2, 2, 1], padding='SAME', name='c_31')
-    h_3 = prelu(conv31, name='act_3', trainable=block_3)
-    res_conv_31 = tf.nn.conv2d(h_3, weights['c3_2'], strides=[1, 1, 1, 1], padding='SAME', name='res_c_31')
-    res_h_31 = prelu(res_conv_31, name='res_act_31', trainable=block_3)
-    res_conv_32 = tf.nn.conv2d(res_h_31, weights['c3_3'], strides=[1, 1, 1, 1], padding='SAME', name='res_c_32')
-    res_h_32 = prelu(res_conv_32, name='res_act_32', trainable=block_3)
-    res_31 = h_3 + res_h_32
+    conv_22 = tf.nn.conv2d(prelu_21,
+                           weight_variable([3, 3, 128, 128], name='filter_22', trainable=block_2),
+                           strides=[1, 1, 1, 1], padding='SAME', name='conv_22')
+    prelu_22 = prelu(conv_22, name='prelu_22', trainable=block_2)
 
-    res_conv_33 = tf.nn.conv2d(res_31, weights['c3_4'], strides=[1, 1, 1, 1], padding='SAME', name='res_c_33')
-    res_h_33 = prelu(res_conv_31, name='res_act_33', trainable=block_3)
-    res_conv_34 = tf.nn.conv2d(res_h_33, weights['c3_5'], strides=[1, 1, 1, 1], padding='SAME', name='res_c_34')
-    res_h_34 = prelu(res_conv_34, name='res_act_34', trainable=block_3)
-    res_32 = res_31 + res_h_34
+    conv_23 = tf.nn.conv2d(prelu_22,
+                           weight_variable([3, 3, 128, 128], name='filter_23', trainable=block_2),
+                           strides=[1, 1, 1, 1], padding='SAME', name='conv_23')
+    prelu_23 = prelu(conv_23, name='prelu_23', trainable=block_2)
+    res_21 = prelu_21 + prelu_23
 
-    res_conv_35 = tf.nn.conv2d(res_32, weights['c3_6'], strides=[1, 1, 1, 1], padding='SAME', name='res_c_35')
-    res_h_35 = prelu(res_conv_31, name='res_act_35', trainable=block_3)
-    res_conv_36 = tf.nn.conv2d(res_h_35, weights['c3_7'], strides=[1, 1, 1, 1], padding='SAME', name='res_c_36')
-    res_h_36 = prelu(res_conv_36, name='res_act_36', trainable=block_3)
-    res_33 = res_32 + res_h_36
+    conv_24 = tf.nn.conv2d(res_21,
+                            weight_variable([3, 3, 128, 128], name='filter_24', trainable=block_2),
+                               strides=[1, 1, 1, 1], padding='SAME', name='conv_24')
+    prelu_24 = prelu(conv_24, name='prelu_24', trainable=block_2)
 
-    res_conv_37 = tf.nn.conv2d(res_33, weights['c3_8'], strides=[1, 1, 1, 1], padding='SAME', name='res_c_37')
-    res_h_37 = prelu(res_conv_37, name='res_act_37', trainable=block_3)
-    res_conv_38 = tf.nn.conv2d(res_h_37, weights['c3_9'], strides=[1, 1, 1, 1], padding='SAME', name='res_c_38')
-    res_h_38 = prelu(res_conv_38, name='res_act_38', trainable=block_3)
-    res_34 = res_33 + res_h_38
+    conv_25 = tf.nn.conv2d(prelu_24,
+                               weight_variable([3, 3, 128, 128], name='filter_25', trainable=block_2),
+                               strides=[1, 1, 1, 1], padding='SAME', name='conv_25')
+    prelu_25 = prelu(conv_25, name='prelu_25', trainable=block_2)
+    res_22 = res_21 + prelu_25
 
-    # ResNet-4
-    conv41 = tf.nn.conv2d(res_34, weights['c4_1'], strides=[1, 2, 2, 1], padding='SAME', name='c_41')
-    h_4 = prelu(conv41, name='act_4', trainable=block_4)
-    res_conv_41 = tf.nn.conv2d(h_4, weights['c4_2'], strides=[1, 1, 1, 1], padding='SAME', name='res_c_41')
-    res_h_41 = prelu(res_conv_41, name='res_act_41', trainable=block_4)
-    res_conv_42 = tf.nn.conv2d(res_h_41, weights['c4_3'], strides=[1, 1, 1, 1], padding='SAME', name='res_c_42')
-    res_h_42 = prelu(res_conv_42, name='res_act_42', trainable=block_4)
-    res_41 = h_4 + res_h_42
+    #
+    conv_31 = tf.nn.conv2d(res_22,
+                          weight_variable([3, 3, 128, 256], name='filter_31', trainable=block_3),
+                          strides=[1, 2, 2, 1], padding='SAME', name='conv_31')
+    prelu_31 = prelu(conv_31, name='prelu_31', trainable=block_3)
+
+    conv_32 = tf.nn.conv2d(prelu_31,
+                               weight_variable([3, 3, 256, 256], name='filter_32', trainable=block_3),
+                               strides=[1, 1, 1, 1], padding='SAME', name='conv_32')
+    ########
+    prelu_32_1 = prelu(conv_32, name='prelu_32_1', trainable=block_3)
+    conv_33_1 = tf.nn.conv2d(prelu_32_1,
+                               weight_variable([3, 3, 256, 256], name='filter_33_1', trainable=block_3),
+                               strides=[1, 1, 1, 1], padding='SAME', name='conv_33_1')
+    prelu_33_1 = prelu(conv_33_1, name='prelu_33_1', trainable=block_3)
+    res_31 = prelu_31 + prelu_33_1
+
+    #######
+    prelu_32_2 = prelu(conv_32, name='prelu_32_2', trainable=block_3)
+    conv_33_2 = tf.nn.conv2d(prelu_32_2,
+                            weight_variable([3, 3, 256, 256], name='filter_33_2', trainable=block_3),
+                            strides=[1, 1, 1, 1], padding='SAME', name='conv_33_2')
+    prelu_33_2 = prelu(conv_33_2, name='prelu_33_2', trainable=block_3)
+    res_32 = res_31 + prelu_33_2
+
+    #######
+    prelu_32_3 = prelu(conv_32, name='prelu_32_3', trainable=block_3)
+    conv_33_3 = tf.nn.conv2d(prelu_32_3,
+                               weight_variable([3, 3, 256, 256], name='filter_33_3', trainable=block_3),
+                               strides=[1, 1, 1, 1], padding='SAME', name='conv_33_3')
+    prelu_33_3 = prelu(conv_33_3, name='prelu_33_3', trainable=block_3)
+    res_33 = res_32 + prelu_33_3
+
+
+    conv_34 = tf.nn.conv2d(res_33,
+                               weight_variable([3, 3, 256, 256], name='filter_34', trainable=block_3),
+                               strides=[1, 1, 1, 1], padding='SAME', name='conv_34')
+    prelu_34 = prelu(conv_34, name='prelu_34', trainable=block_3)
+
+    conv_35 = tf.nn.conv2d(prelu_34,
+                               weight_variable([3, 3, 256, 256], name='filter_35', trainable=block_3),
+                               strides=[1, 1, 1, 1], padding='SAME', name='conv_35')
+    prelu_35 = prelu(conv_35, name='prelu_35', trainable=block_3)
+    res_34 = res_33 + prelu_35
+
+    #
+    conv_41 = tf.nn.conv2d(res_34,
+                          weight_variable([3, 3, 256, 512], name='filter_41', trainable=block_4),
+                          strides=[1, 2, 2, 1], padding='SAME', name='conv_41')
+    prelu_41 = prelu(conv_41, name='prelu_41', trainable=block_4)
+
+    conv_42 = tf.nn.conv2d(prelu_41,
+                               weight_variable([3, 3, 512, 512], name='filter_42', trainable=block_4),
+                               strides=[1, 1, 1, 1], padding='SAME', name='conv_42')
+    prelu_42 = prelu(conv_42, name='prelu_42', trainable=block_4)
+
+    conv_43 = tf.nn.conv2d(prelu_42,
+                               weight_variable([3, 3, 512, 512], name='filter_43', trainable=block_4),
+                               strides=[1, 1, 1, 1], padding='SAME', name='conv_43')
+    prelu_43 = prelu(conv_43, name='prelu_43', trainable=block_4)
+    res_41 = prelu_41 + prelu_43
 
     flat1 = tf.layers.flatten(res_41, 'flat_1')
     fc_1 = tf.layers.dense(flat1, 512, name='fc_1', trainable=block_5)
 
-    logits = tf.layers.dense(fc_1, nb_classes, name='pred_logits', trainable=block_5)
-    output_pred = tf.nn.softmax(logits, name='output', axis=1)
-    loss = ce_loss(logits, input_y)
+    predict_logits = tf.layers.dense(fc_1, nb_classes, name='predict_logits', trainable=block_5)
+    output_pred = tf.nn.softmax(predict_logits, name='output_pred', axis=1)
+    loss = ce_loss(predict_logits, input_y)
 
     train_op = tf.train.MomentumOptimizer(learning_rate, momentum=0.9).minimize(loss)
     correct = tf.equal(tf.cast(tf.argmax(output_pred, 1), tf.int32), tf.cast(tf.argmax(input_y, 1), tf.int32))
@@ -292,8 +308,8 @@ with tf.Graph().as_default() as g:
             f.write(acc.name + ";" + "---" + "\n")
     else:
         data_block = get_img_path_and_label(data_path, block_nums)
-        train_block = data_block[: int(block_nums*0.8)]
-        val_block = data_block[int(block_nums*0.8):]
+        train_block = data_block[: int(block_nums * 0.8)]
+        val_block = data_block[int(block_nums * 0.8):]
         with open("train_images.txt", "w") as f:
             for i in train_block:
                 for j in i[0]:
@@ -348,4 +364,4 @@ with tf.Graph().as_default() as g:
                         eval_acc_list.append(eval_acc)
                 print('%d epoch eval loss : %f acc: %f' % (epoch,
                                                            sum(eval_loss_list) / len(eval_loss_list),
-                                                           sum(eval_acc_list)/len(eval_acc_list)))
+                                                           sum(eval_acc_list) / len(eval_acc_list)))
