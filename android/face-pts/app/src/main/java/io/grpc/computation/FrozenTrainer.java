@@ -68,7 +68,7 @@ public class FrozenTrainer {
     }
 
     static class TrainInfo {
-        public static int batch_size = 8;
+        public static int batch_size = 16;
         public static float total_loss = 0;
     }
 
@@ -99,8 +99,13 @@ public class FrozenTrainer {
          */
         @Override
         protected String doInBackground(String... params) {
+            Activity activity = activityReference.get();
+            TextView train_loss_view = null;
+            if (activity != null) {
+                train_loss_view = activity.findViewById(R.id.TrainLoss);
+            }
             if (true){
-                local_train();
+                local_train(train_loss_view);
             }
             channel = ManagedChannelBuilder
                     .forAddress(ServeInfo.server_ip, ServeInfo.server_port)
@@ -289,7 +294,8 @@ public class FrozenTrainer {
             }
         }
 
-        public void local_train() {
+        @SuppressLint("SetTextI18n")
+        public void local_train(TextView train_loss_view) {
             Graph graph = new Graph();
             try {
                 String var2 = "train/sphere_unfrozen.pb";
@@ -343,10 +349,13 @@ public class FrozenTrainer {
                         }
 
                         Session.Runner runner = session.runner();
+                        Tensor x_t = Tensor.create(x);
+                        Tensor label_oneHot_t = Tensor.create(label_oneHot);
+                        Tensor lr_t = Tensor.create(0.0001f);
                         runner
-                                .feed("input_x", Tensor.create(x))
-                                .feed("input_y", Tensor.create(label_oneHot))
-                                .feed("lr:0", Tensor.create(0.0001f))
+                                .feed("input_x", x_t)
+                                .feed("input_y", label_oneHot_t)
+                                .feed("lr:0", lr_t)
                                 .addTarget("Momentum")
                                 .run();
 
@@ -358,7 +367,12 @@ public class FrozenTrainer {
 
                         System.out.println("-----" + ": " + line_number + " loss: " + fetched_tensors.get(0).floatValue() +
                                 " acc: " + fetched_tensors.get(1).floatValue());
+                        train_loss_view.setText(line_number + " loss: " + fetched_tensors.get(0).floatValue() +
+                                " acc: " + fetched_tensors.get(1).floatValue());
                         label_oneHot = new int[TrainInfo.batch_size][imageInfo.getLabel_num()];
+                        x_t.close();
+                        label_oneHot_t.close();
+                        lr_t.close();
                     }
                 }
             } catch(IOException e){

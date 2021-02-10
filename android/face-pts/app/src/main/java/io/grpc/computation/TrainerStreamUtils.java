@@ -118,6 +118,7 @@ public class TrainerStreamUtils {
                 Imgproc.cvtColor(image, image, Imgproc.COLOR_RGBA2RGB);
                 Size size = new Size(imageInfo.getWidth(), imageInfo.getHeight());
                 Imgproc.resize(image, image, size);
+//                bmp.recycle();
                 return image;
             }
         } catch (IOException e) {

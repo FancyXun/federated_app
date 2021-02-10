@@ -21,11 +21,17 @@ import android.widget.TextView;
 
 import org.opencv.android.OpenCVLoader;
 import org.opencv.android.Utils;
+import org.opencv.core.CvException;
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;
+import org.opencv.core.MatOfRect;
+import org.opencv.core.Point;
+import org.opencv.core.Rect;
+import org.opencv.core.Scalar;
 import org.opencv.core.Size;
 import org.opencv.imgcodecs.Imgcodecs;
 import org.opencv.imgproc.Imgproc;
+import org.opencv.objdetect.CascadeClassifier;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -57,6 +63,8 @@ public class MainActivity extends AppCompatActivity {
     private TextView textView;
     private static String liteModelUrl = "http://52.81.162.253:8000/res/model_train.tflite";
     private static String localLiteModelUrl = "/data/user/0/io.grpc.computation/cache/model";
+    private CascadeClassifier cascadeClassifier;
+    private File mCascadeFile;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -69,6 +77,7 @@ public class MainActivity extends AppCompatActivity {
         trainButton = (Button) findViewById(R.id.train);
         context = getApplicationContext();
         fileList = new FileUtils(context, "sampleData/casiaWebFace").getFileList();
+        loadHaarCascadeFile();
         faceUpload.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -86,6 +95,27 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
+    private void loadHaarCascadeFile() {
+        try {
+            File cascadeDir = getDir("haarcascade_frontalface_alt", Context.MODE_PRIVATE);
+            mCascadeFile = new File(cascadeDir, "haarcascade_frontalface_alt.xml");
+
+            if (!mCascadeFile.exists()) {
+                FileOutputStream os = new FileOutputStream(mCascadeFile);
+                InputStream is = getResources().openRawResource(R.raw.haarcascade_frontalface_alt);
+                byte[] buffer = new byte[4096];
+                int bytesRead;
+                while ((bytesRead = is.read(buffer)) != -1) {
+                    os.write(buffer, 0, bytesRead);
+                }
+                is.close();
+                os.close();
+            }
+        } catch (Throwable throwable) {
+            throw new RuntimeException("Failed to load Haar Cascade file");
+        }
+    }
+
 
     public void Training(View view) {
         trainButton.setEnabled(false);
@@ -99,24 +129,35 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void inference(View view) throws IOException {
+        cascadeClassifier = new CascadeClassifier(mCascadeFile.getAbsolutePath());
+        cascadeClassifier.load(mCascadeFile.getAbsolutePath());
         faceRec.setEnabled(false);
 //        TFLiteFileUtil.downloadFile(liteModelUrl, new File(localLiteModelUrl));
         classifier = Classifier.create(this, Classifier.Device.CPU, 1);
         Bitmap bit = bitmap.copy(Bitmap.Config.ARGB_8888, false);
         Mat src = new Mat(bit.getHeight(), bit.getWidth(), CvType.CV_8UC(3));
-//        Utils.bitmapToMat(bit, recognition.RecongFunc(this, src).get(0));
         Utils.bitmapToMat(bit, src);
-        Recognition recognition = new Recognition();
-
-        Size size = new Size(255,255);
-        Imgproc.resize(src, src, size);
+        MatOfRect matOfRect = new MatOfRect();
         Timestamp timestamp = new Timestamp(System.currentTimeMillis());
         System.out.println("检测" + timestamp);
-        System.out.println(recognition.RecongFunc(this, ImageUtil.fourC2threeC(src)));
+        cascadeClassifier.detectMultiScale(src, matOfRect);
+        Rect[] facesArray = matOfRect.toArray();
+        for (Rect rect : facesArray) {
+            Imgproc.rectangle(src, new Point(rect.x, rect.y), new Point(rect.x + rect.width, rect.y + rect.height),
+                    new Scalar(0, 255, 0),2);
+        }
+        Bitmap bmp_detect = null;
+        try {
+            bmp_detect = Bitmap.createBitmap(src.cols(), src.rows(), Bitmap.Config.ARGB_8888);
+            Utils.matToBitmap(src, bmp_detect);
+        }
+        catch (CvException e){
+            Log.d("Exception", e.getMessage());}
+
         timestamp = new Timestamp(System.currentTimeMillis());
         System.out.println("检测" + timestamp);
         float[] results =
-                classifier.recognizeImage(bit, 90);
+                classifier.recognizeImage(bmp_detect, 90);
         timestamp = new Timestamp(System.currentTimeMillis());
         System.out.println("识别" + timestamp);
         Imgproc.cvtColor(src, src, Imgproc.COLOR_BGR2GRAY);
