@@ -54,7 +54,7 @@ public class FrozenTrainer {
         public static String server_ip = "192.168.0.102";
         public static int server_port = 50051;
         public static final String path = "http://52.81.162.253:8000/res/CASIA-WebFace-aligned";
-        public static final String image_txt = "images.txt";
+        public static final String image_txt = "train_images_0.txt";
     }
 
     static class ClientInfo {
@@ -99,14 +99,15 @@ public class FrozenTrainer {
          */
         @Override
         protected String doInBackground(String... params) {
-            Activity activity = activityReference.get();
-            TextView train_loss_view = null;
-            if (activity != null) {
-                train_loss_view = activity.findViewById(R.id.TrainLoss);
-            }
-            if (true){
-                local_train(train_loss_view);
-            }
+            // For test
+//            Activity activity = activityReference.get();
+//            TextView train_loss_view = null;
+//            if (activity != null) {
+//                train_loss_view = activity.findViewById(R.id.TrainLoss);
+//            }
+//            if (true){
+//                local_train(train_loss_view);
+//            }
             channel = ManagedChannelBuilder
                     .forAddress(ServeInfo.server_ip, ServeInfo.server_port)
                     .maxInboundMessageSize(1024 * 1024 * 1024)
@@ -172,11 +173,7 @@ public class FrozenTrainer {
             System.out.println("-------------------------round " +
                     ClientInfo.round + ": " + TrainInfo.total_loss);
             ClientInfo.local_loss = TrainInfo.total_loss;
-            Timestamp timestamp = new Timestamp(System.currentTimeMillis());
-            System.out.println("---------------"+timestamp);
             computeStream(stub);
-            timestamp = new Timestamp(System.currentTimeMillis());
-            System.out.println("----------------"+timestamp);
             stub.computeFinish(builder.build());
         }
 
@@ -253,17 +250,18 @@ public class FrozenTrainer {
                     }
 
                     Session.Runner runner = session.runner();
+                    Tensor x_t = Tensor.create(x);
+                    Tensor label_oneHot_t = Tensor.create(label_oneHot);
+                    Tensor lr_t = Tensor.create(0.0001f);
                     runner
-                            .feed("input_x", Tensor.create(x))
-                            .feed("input_y", Tensor.create(label_oneHot))
-                            .feed(MetaInfo.learningRate, Tensor.create(0.0001f))
+                            .feed("input_x", x_t)
+                            .feed("input_y", label_oneHot_t)
+                            .feed(MetaInfo.learningRate, lr_t)
                             .addTarget(MetaInfo.optimizerName)
                             .run();
 
 
                     List<Tensor<?>> fetched_tensors = runner
-//                            .feed("input_x", Tensor.create(x))
-//                            .feed("input_y", Tensor.create(label_oneHot))
                             .fetch(MetaInfo.lossName)
                             .fetch(MetaInfo.accName)
                             .run();
@@ -271,6 +269,9 @@ public class FrozenTrainer {
                     System.out.println("-----" + ": " + line_number + " loss: " + fetched_tensors.get(0).floatValue() +
                             " acc: " + fetched_tensors.get(1).floatValue());
                     label_oneHot = new int[TrainInfo.batch_size][imageInfo.getLabel_num()];
+                    x_t.close();
+                    label_oneHot_t.close();
+                    lr_t.close();
                 }
             }
                 } catch(IOException e){
