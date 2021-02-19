@@ -375,7 +375,7 @@ def train_distill():
                         feed_dict=val_feed_dict)
                     eval_acc_list.append(val_accuracy)
             print('%d epoch eval acc: %f' % (epoch, sum(eval_acc_list) / len(eval_acc_list)))
-            saver1.save(sess, './models/student.ckpt')
+            saver2.save(sess, './models/student.ckpt')
 
 
 # local distill training

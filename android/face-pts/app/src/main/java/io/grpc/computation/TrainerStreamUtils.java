@@ -156,7 +156,6 @@ public class TrainerStreamUtils {
             dim_index++;
         }
         FloatBuffer floatBuffer = FloatBuffer.allocate(size);
-//        System.out.println(size + ":" + floatBuffer.array().length + layerShape);
         weights.writeTo(floatBuffer);
         float[] floats = floatBuffer.array();
         if (size > maxFloatNumber) {
@@ -209,6 +208,7 @@ public class TrainerStreamUtils {
             layerWeightsBuilder.setClientRequest(clientRequestBuilder.build());
             valueReply = stub.computeLayerWeights(layerWeightsBuilder.build());
         }
+        weights.close();
         return valueReply;
     }
 }

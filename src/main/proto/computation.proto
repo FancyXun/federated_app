@@ -39,6 +39,7 @@ service Computation {
   rpc CallModel (ClientRequest) returns (Model) {}
   rpc CallLayerWeights (LayerWeightsRequest) returns (LayerWeights) {}
   rpc ComputeLayerWeights(LayerWeights) returns(ValueReply){}
+  rpc ComputeMetrics(TrainMetrics) returns(ValueReply){}
   rpc ComputeFinish(ClientRequest) returns(ValueReply){}
 
 
@@ -182,6 +183,15 @@ message Metrics{
   repeated string name = 1;
   repeated float value = 2;
   float weights = 3;
+}
+
+message TrainMetrics{
+  string id = 1;
+  int32 round = 6;
+  repeated float lossValue = 2;
+  repeated float evalLossValue = 4;
+  repeated float accValue = 3;
+  repeated float evalAccValue = 5;
 }
 
 message Certificate{

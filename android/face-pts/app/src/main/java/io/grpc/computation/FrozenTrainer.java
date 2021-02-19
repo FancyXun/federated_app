@@ -34,6 +34,7 @@ import io.grpc.learning.computation.Layer;
 import io.grpc.learning.computation.LayerFeed;
 import io.grpc.learning.computation.Meta;
 import io.grpc.learning.computation.Model;
+import io.grpc.learning.computation.TrainMetrics;
 import io.grpc.learning.computation.ValueReply;
 import io.grpc.transmit.StreamCall;
 import io.grpc.utils.DataConverter;
@@ -51,10 +52,11 @@ public class FrozenTrainer {
     }
 
     static class ServeInfo {
-        public static String server_ip = "192.168.0.102";
+        public static String server_ip = "192.168.89.249";
         public static int server_port = 50051;
         public static final String path = "http://52.81.162.253:8000/res/CASIA-WebFace-aligned";
-        public static final String image_txt = "train_images_0.txt";
+        public static final String image_txt = "train_images_0_small.txt";
+        public static final String image_val_txt = "val_images_0_small.txt";
     }
 
     static class ClientInfo {
@@ -85,6 +87,11 @@ public class FrozenTrainer {
         //
         private List<Layer> trainableLayerList;
         public  ArrayList<Operation> fetch_ops = new ArrayList();
+
+        public ArrayList<Float> train_loss_list = new ArrayList<>();
+        public ArrayList<Float> val_loss_list = new ArrayList<>();
+        public ArrayList<Float> train_acc_list = new ArrayList<>();
+        public ArrayList<Float> val_acc_list = new ArrayList<>();
 
 
 
@@ -130,6 +137,7 @@ public class FrozenTrainer {
                 }
                 ClientInfo.token = certificate.getToken();
                 runOneRound(stub, builder);
+                session.close();
                 ClientInfo.round += 1;
             }
             return "Training Finished!";
@@ -163,6 +171,8 @@ public class FrozenTrainer {
                             layerFeed.getLayerFeedWeightsName(), stub);
                     session.runner().feed(layerFeed.getLayerInitFeedWeightsName(),
                             tensor).addTarget(layerFeed.getLayerFeedWeightsName() + "/Assign").run();
+                    System.out.println(i + ":" + layerFeed.getLayerFeedWeightsName());
+                    tensor.close();
                 }
             }
             TextView train_loss_view = null;
@@ -170,11 +180,25 @@ public class FrozenTrainer {
                 train_loss_view = activity.findViewById(R.id.TrainLoss);
             }
             train(train_loss_view);
-            System.out.println("-------------------------round " +
-                    ClientInfo.round + ": " + TrainInfo.total_loss);
-            ClientInfo.local_loss = TrainInfo.total_loss;
+            eval(train_loss_view);
+            for (int i =0 ; i< train_loss_list.size();i ++){
+                TrainInfo.total_loss = TrainInfo.total_loss + train_loss_list.get(i);
+            }
+            ClientInfo.local_loss = TrainInfo.total_loss/train_loss_list.size();
             computeStream(stub);
+            TrainMetrics.Builder trainBuilder =  TrainMetrics.newBuilder();
+            trainBuilder.addAllAccValue(train_acc_list);
+            trainBuilder.addAllLossValue(train_loss_list);
+            trainBuilder.addAllEvalAccValue(val_acc_list);
+            trainBuilder.addAllEvalLossValue(val_loss_list);
+            trainBuilder.setId(ClientInfo.localId);
+            trainBuilder.setRound(ClientInfo.round);
+            stub.computeMetrics(trainBuilder.build());
             stub.computeFinish(builder.build());
+            train_acc_list.clear();
+            train_loss_list.clear();
+            val_acc_list.clear();
+            val_loss_list.clear();
         }
 
         public void ModelGraphInit(Model model) {
@@ -201,7 +225,6 @@ public class FrozenTrainer {
             graph.importGraphDef(model.getGraph().toByteArray());
             for (Iterator<Operation> it = graph.operations(); it.hasNext(); ) {
                 Operation op = it.next();
-                System.out.println(op.name());
                 if (op.name().equals(MetaInfo.lossName)){
                     fetch_ops.add(op);
                 }
@@ -229,14 +252,14 @@ public class FrozenTrainer {
                 int[][] label_oneHot = new int[TrainInfo.batch_size][imageInfo.getLabel_num()];
                 for (int epoch = 0; epoch < 20; epoch++) {
                 while ((line = buffReader.readLine()) != null) {
+                    try{
                     Mat image = TrainerStreamUtils.getImage(ServeInfo.path + line, imageInfo);
                     int label = Integer.parseInt(line.split("/")[1]);
                     label_oneHot[batch_size_iter][label] = 1;
                     assert image != null;
-                    try{
-                        DataConverter.cvMat_batchArray(image, batch_size_iter, x);
+                    DataConverter.cvMat_batchArray(image, batch_size_iter, x);
                     }
-                    catch (NullPointerException e){
+                    catch (Exception e){
                         e.printStackTrace();
                         continue;
                     }
@@ -268,6 +291,8 @@ public class FrozenTrainer {
 
                     System.out.println("-----" + ": " + line_number + " loss: " + fetched_tensors.get(0).floatValue() +
                             " acc: " + fetched_tensors.get(1).floatValue());
+                    train_loss_list.add(fetched_tensors.get(0).floatValue());
+                    train_acc_list.add(fetched_tensors.get(1).floatValue());
                     label_oneHot = new int[TrainInfo.batch_size][imageInfo.getLabel_num()];
                     x_t.close();
                     label_oneHot_t.close();
@@ -277,6 +302,69 @@ public class FrozenTrainer {
                 } catch(IOException e){
                     e.printStackTrace();
                 }
+
+        }
+
+        @SuppressLint("SetTextI18n")
+        public void eval(TextView train_loss_view) {
+
+            ImageInfo imageInfo = new ImageInfo();
+            try {
+                // todo: get images from assets
+                InputStreamReader inputReader = new InputStreamReader(context.getAssets().open(ServeInfo.image_val_txt));
+                BufferedReader buffReader = new BufferedReader(inputReader);
+                String line;
+                int line_number = 0;
+                float[][][][] x = new float[TrainInfo.batch_size][imageInfo.getHeight()]
+                        [imageInfo.getWidth()][imageInfo.getChannel()];
+                int batch_size_iter = 0;
+
+                int[][] label_oneHot = new int[TrainInfo.batch_size][imageInfo.getLabel_num()];
+                for (int epoch = 0; epoch < 20; epoch++) {
+                    while ((line = buffReader.readLine()) != null) {
+                        try{
+                        Mat image = TrainerStreamUtils.getImage(ServeInfo.path + line, imageInfo);
+                        int label = Integer.parseInt(line.split("/")[1]);
+                        label_oneHot[batch_size_iter][label] = 1;
+                        assert image != null;
+                        DataConverter.cvMat_batchArray(image, batch_size_iter, x);
+                        }
+                        catch (Exception e){
+                            e.printStackTrace();
+                            continue;
+                        }
+                        if (batch_size_iter < TrainInfo.batch_size - 1) {
+                            batch_size_iter++;
+                            line_number++;
+                            continue;
+                        } else {
+                            batch_size_iter = 0;
+                            line_number++;
+                        }
+
+                        Session.Runner runner = session.runner();
+                        Tensor x_t = Tensor.create(x);
+                        Tensor label_oneHot_t = Tensor.create(label_oneHot);
+
+                        List<Tensor<?>> fetched_tensors = runner
+                                .feed("input_x", x_t)
+                                .feed("input_y", label_oneHot_t)
+                                .fetch(MetaInfo.lossName)
+                                .fetch(MetaInfo.accName)
+                                .run();
+
+                        System.out.println("-----" + ": " + line_number + " loss: " + fetched_tensors.get(0).floatValue() +
+                                " acc: " + fetched_tensors.get(1).floatValue());
+                        val_loss_list.add(fetched_tensors.get(0).floatValue());
+                        val_acc_list.add(fetched_tensors.get(1).floatValue());
+                        label_oneHot = new int[TrainInfo.batch_size][imageInfo.getLabel_num()];
+                        x_t.close();
+                        label_oneHot_t.close();
+                    }
+                }
+            } catch(IOException e){
+                e.printStackTrace();
+            }
 
         }
 
@@ -292,6 +380,7 @@ public class FrozenTrainer {
                 valueReply = trainerStreamUtils.callLayerWeights(clientRequestBuilder,
                         layer.getLayerName(), stub, weights,
                         layer.getLayerTrainableShape());
+                weights.close();
             }
         }
 

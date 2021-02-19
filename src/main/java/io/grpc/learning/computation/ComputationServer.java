@@ -131,7 +131,7 @@ public class ComputationServer {
     }
 
     static class ComputationImpl extends ComputationGrpc.ComputationImplBase {
-        public int minRequestNum = 1;
+        public int minRequestNum = 2;
         public int finished =0;
         public int maxBlock = 4;
         public int currentBlock = 1;
@@ -141,6 +141,7 @@ public class ComputationServer {
         public boolean firstRound = true;
         public List<String> AggregationClients = new ArrayList<>();
         public Client client = new Client();
+        public String rootPath = "/tmp/model_weights/";
 
         @Override
         public void callTraining(ClientRequest request, StreamObserver<Certificate> responseObserver) {
@@ -255,11 +256,11 @@ public class ComputationServer {
             client.getComputeLayerWeightsClients().add(request.getId());
             if (client_token.equals(token) && state.equals("ready")){
                 // valid token
-                File file=new File("/tmp/model_weights/"+clientRequest.getId());
+                File file=new File(rootPath+clientRequest.getId());
                 if (!file.exists()) {
                     file.mkdir();
                 }
-//                File f = new File("/tmp/model_weights/"+clientRequest.getId()+"/"+request.getLayerName()+".txt");
+//                File f = new File(rootPath+clientRequest.getId()+"/"+request.getLayerName()+".txt");
 //                if (!f.exists()) {
 //                    try {
 //                        f.createNewFile();
@@ -274,8 +275,9 @@ public class ComputationServer {
 //                }catch(IOException e){
 //                    e.printStackTrace();
 //                }
-                Path filePath = new File("/tmp/model_weights/"+clientRequest.getId()+"/"+
-                        request.getLayerName().replace("/","@") +"__"+(int)request.getPart()+".npz").toPath();
+                Path filePath = new File(rootPath+clientRequest.getId()+"/"+
+                        request.getLayerName().replace("/","@")
+                        +"__"+(int)request.getPart()+".npz").toPath();
                 NpzFile.Writer writer = NpzFile.write(filePath, true);
                 float[] arr = new float[request.getTensor().getFloatValList().size()];
                 int index = 0;
@@ -295,6 +297,65 @@ public class ComputationServer {
         }
 
         @Override
+        public void computeMetrics(TrainMetrics request, StreamObserver<ValueReply> responseObserver) {
+            ValueReply.Builder valueReplyBuilder = ValueReply.newBuilder();
+            List<Float> accFloatList = request.getAccValueList();
+            List<Float> lossFloatList = request.getLossValueList();
+            List<Float> accEvalFloatList = request.getEvalAccValueList();
+            List<Float> lossEvalFloatList = request.getEvalLossValueList();
+            String client_id = request.getId();
+            int round = request.getRound();
+            File file=new File(rootPath+client_id+"/"+round);
+            if (!file.exists()) {
+                file.mkdir();
+            }
+
+            FileWriter writer = null;
+            try {
+                writer = new FileWriter(rootPath+client_id+"/"+round + "/accFloat.txt");
+                for(Float acc: accFloatList) {
+                    writer.write(acc + System.lineSeparator());
+                }
+                writer.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
+            try {
+                writer = new FileWriter(rootPath+client_id+"/"+round + "/lossFloat.txt");
+                for(Float loss: lossFloatList) {
+                    writer.write(loss + System.lineSeparator());
+                }
+                writer.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
+            try {
+                writer = new FileWriter(rootPath+client_id+"/"+round + "/accEvalFloat.txt");
+                for(Float accEval: accEvalFloatList) {
+                    writer.write(accEval + System.lineSeparator());
+                }
+                writer.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
+            try {
+                writer = new FileWriter(rootPath+client_id+"/"+round + "/lossEvalFloat.txt");
+                for(Float lossEval: lossEvalFloatList) {
+                    writer.write(lossEval + System.lineSeparator());
+                }
+                writer.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
+            responseObserver.onNext(valueReplyBuilder.build());
+            responseObserver.onCompleted();
+        }
+
+        @Override
         public void computeFinish(ClientRequest request, StreamObserver<ValueReply> responseObserver) {
             ValueReply.Builder valueReplyBuilder = ValueReply.newBuilder();
             valueReplyBuilder.setMessage(true);
@@ -308,7 +369,7 @@ public class ComputationServer {
             synchronized(this){
                 if (AggregationClients.size() >= minRequestNum){
                     state = "wait";
-                    File f = new File("/tmp/model_weights/aggClients.txt");
+                    File f = new File(rootPath +"aggClients.txt");
                     try{
                         BufferedWriter bw = new BufferedWriter(new FileWriter(f, false));
                         bw.write(AggregationClients.stream()
