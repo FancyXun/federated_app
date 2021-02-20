@@ -55,8 +55,8 @@ public class FrozenTrainer {
         public static String server_ip = "192.168.89.249";
         public static int server_port = 50051;
         public static final String path = "http://52.81.162.253:8000/res/CASIA-WebFace-aligned";
-        public static final String image_txt = "train_images_0_small.txt";
-        public static final String image_val_txt = "val_images_0_small.txt";
+        public static final String image_txt = "train_images_0.txt";
+        public static final String image_val_txt = "val_images_0.txt";
     }
 
     static class ClientInfo {
@@ -291,6 +291,8 @@ public class FrozenTrainer {
 
                     System.out.println("-----" + ": " + line_number + " loss: " + fetched_tensors.get(0).floatValue() +
                             " acc: " + fetched_tensors.get(1).floatValue());
+                    train_loss_view.setText(line_number + " loss: " + fetched_tensors.get(0).floatValue() +
+                            " acc: " + fetched_tensors.get(1).floatValue());
                     train_loss_list.add(fetched_tensors.get(0).floatValue());
                     train_acc_list.add(fetched_tensors.get(1).floatValue());
                     label_oneHot = new int[TrainInfo.batch_size][imageInfo.getLabel_num()];
@@ -353,8 +355,10 @@ public class FrozenTrainer {
                                 .fetch(MetaInfo.accName)
                                 .run();
 
-                        System.out.println("-----" + ": " + line_number + " loss: " + fetched_tensors.get(0).floatValue() +
-                                " acc: " + fetched_tensors.get(1).floatValue());
+                        System.out.println("-----" + ": " + line_number + "eval loss: " + fetched_tensors.get(0).floatValue() +
+                                "eval acc: " + fetched_tensors.get(1).floatValue());
+                        train_loss_view.setText(line_number + " eval loss: " + fetched_tensors.get(0).floatValue() +
+                                "eval acc: " + fetched_tensors.get(1).floatValue());
                         val_loss_list.add(fetched_tensors.get(0).floatValue());
                         val_acc_list.add(fetched_tensors.get(1).floatValue());
                         label_oneHot = new int[TrainInfo.batch_size][imageInfo.getLabel_num()];

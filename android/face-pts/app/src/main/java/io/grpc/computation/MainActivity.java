@@ -32,6 +32,7 @@ import org.opencv.core.Size;
 import org.opencv.imgcodecs.Imgcodecs;
 import org.opencv.imgproc.Imgproc;
 import org.opencv.objdetect.CascadeClassifier;
+import org.tensorflow.lite.Interpreter;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -46,6 +47,10 @@ import io.grpc.tflite.detect.PCNutil.Recognition;
 import io.grpc.utils.FileUtils;
 import io.grpc.utils.ImageUtils;
 import io.grpc.utils.TFLiteFileUtil;
+
+import static io.grpc.utils.ImageTools.l2Normalize;
+import static io.grpc.utils.ImageTools.loadModelFile;
+import static io.grpc.utils.ImageTools.normalizeImage;
 
 public class MainActivity extends AppCompatActivity {
     static {
@@ -65,6 +70,8 @@ public class MainActivity extends AppCompatActivity {
     private static String localLiteModelUrl = "/data/user/0/io.grpc.computation/cache/model";
     private CascadeClassifier cascadeClassifier;
     private File mCascadeFile;
+
+    private Interpreter interpreter;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -171,9 +178,68 @@ public class MainActivity extends AppCompatActivity {
             double similarity = cosineSimilarity(results, results1);
             System.out.println("similarity：" + similarity);
             res.append(similarity).append(";");
+            compare(bmp, bmp_detect);
         }
         textView.setText(res.toString());
         faceRec.setEnabled(true);
+    }
+
+    public float compare(Bitmap bitmap1, Bitmap bitmap2) {
+        // 将人脸resize为112X112大小的，因为下面需要feed数据的placeholder的形状是(2, 112, 112, 3)
+        String MODEL_FILE = "rec/MobileFaceNet.tflite";
+        Interpreter.Options options = new Interpreter.Options();
+        options.setNumThreads(4);
+        try {
+            interpreter = new Interpreter(loadModelFile(getAssets(), MODEL_FILE), options);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        int INPUT_IMAGE_SIZE = 112;
+        Bitmap bitmapScale1 = Bitmap.createScaledBitmap(bitmap1, INPUT_IMAGE_SIZE, INPUT_IMAGE_SIZE, true);
+        Bitmap bitmapScale2 = Bitmap.createScaledBitmap(bitmap2, INPUT_IMAGE_SIZE, INPUT_IMAGE_SIZE, true);
+
+        float[][][][] datasets = getTwoImageDatasets(bitmapScale1, bitmapScale2);
+        float[][] embeddings = new float[2][192];
+        Timestamp timestamp = new Timestamp(System.currentTimeMillis());
+        System.out.println("识别1" + timestamp);
+        interpreter.run(datasets, embeddings);
+        l2Normalize(embeddings, 1e-10);
+        timestamp = new Timestamp(System.currentTimeMillis());
+        System.out.println("识别1" + timestamp);
+        float same = evaluate(embeddings);
+        System.out.println("end...");
+        return same;
+    }
+
+    private float[][][][] getTwoImageDatasets(Bitmap bitmap1, Bitmap bitmap2) {
+        Bitmap[] bitmaps = {bitmap1, bitmap2};
+        int INPUT_IMAGE_SIZE = 112;
+        int[] ddims = {bitmaps.length, INPUT_IMAGE_SIZE, INPUT_IMAGE_SIZE, 3};
+        float[][][][] datasets = new float[ddims[0]][ddims[1]][ddims[2]][ddims[3]];
+
+        for (int i = 0; i < ddims[0]; i++) {
+            Bitmap bitmap = bitmaps[i];
+            datasets[i] = normalizeImage(bitmap);
+        }
+        return datasets;
+    }
+
+    private float evaluate(float[][] embeddings) {
+        float[] embeddings1 = embeddings[0];
+        float[] embeddings2 = embeddings[1];
+        float dist = 0;
+        for (int i = 0; i < 192; i++) {
+            dist += Math.pow(embeddings1[i] - embeddings2[i], 2);
+        }
+        float same = 0;
+        for (int i = 0; i < 400; i++) {
+            float threshold = 0.01f * (i + 1);
+            if (dist < threshold) {
+                same += 1.0 / 400;
+            }
+        }
+        return same;
     }
 
     private File cacheFile(String filename) {
