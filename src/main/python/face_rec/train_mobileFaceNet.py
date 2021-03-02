@@ -108,7 +108,7 @@ def get_parser():
                         default='mobileFaceNet',
                         help='model name.')
     parser.add_argument('--only_gen_graph', type=bool,
-                        default=True,
+                        default=False,
                         help='combine_loss loss margin b.')
 
     args = parser.parse_args()
