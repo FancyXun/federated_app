@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 # /usr/bin/env/python3
 
-'''
-Tensorflow implementation for MobileFaceNet.
-'''
+"""
+TensorFlow implementation for MobileFaceNet.
+"""
 import argparse
 import os
 import time
@@ -27,28 +27,11 @@ slim = tf.contrib.slim
 
 def get_parser():
     parser = argparse.ArgumentParser(description='parameters to train net')
-    parser.add_argument('--max_epoch', default=12, help='epoch to train the network')
-    parser.add_argument('--image_size', default=[112, 112], help='the image size')
-    parser.add_argument('--class_number', type=int, default=85742,
-                        help='class number depend on your training data sets, MS1M-V1: 85164, MS1M-V2: 85742')
-    parser.add_argument('--embedding_size', type=int,
-                        help='Dimensionality of the embedding.', default=128)
-    parser.add_argument('--weight_decay', default=5e-5, help='L2 weight regularization.')
-    parser.add_argument('--lr_schedule', help='Number of epochs for learning rate piecewise.', default=[4, 7, 9, 11])
-    parser.add_argument('--train_batch_size', default=90, help='batch size to train network')
-    parser.add_argument('--test_batch_size', type=int,
-                        help='Number of images to process in a batch in the test set.', default=100)
-    parser.add_argument('--eval_data_sets', default=['lfw', 'cfp_ff', 'cfp_fp', 'agedb_30'], help='evluation datasets')
-    parser.add_argument('--eval_db_path', default='./datasets/faces_ms1m_112x112', help='evluate datasets base path')
-    parser.add_argument('--eval_nrof_folds', type=int,
-                        help='Number of folds to use for cross validation. Mainly used for testing.', default=10)
-    parser.add_argument('--tf_records_file_path', default='./datasets/faces_ms1m_112x112/tfrecords', type=str,
-                        help='path to the output of tf records file path')
     parser.add_argument('--summary_path', default='./output/summary', help='the summary file save path')
     parser.add_argument('--ckpt_path', default='./output/ckpt', help='the ckpt file save path')
     parser.add_argument('--ckpt_best_path', default='./output/ckpt_best', help='the best ckpt file save path')
     parser.add_argument('--log_file_path', default='./output/logs', help='the ckpt file save path')
-    parser.add_argument('--saver_maxkeep', default=50, help='tf.train.Saver max keep ckpt files')
+    parser.add_argument('--saver_max_keep', default=50, help='tf.train.Saver max keep ckpt files')
     parser.add_argument('--summary_interval', default=400, help='interval to save summary')
     parser.add_argument('--ckpt_interval', default=2000, help='intervals to save ckpt file')
     parser.add_argument('--validate_interval', default=2000, help='intervals to save ckpt file')
@@ -76,14 +59,56 @@ def get_parser():
                         help='combine_loss loss margin a.', default=1.0)
     parser.add_argument('--margin_b', type=float,
                         help='combine_loss loss margin b.', default=0.2)
-    parser.add_argument('--img_txt', type=str,
+    ######################################################################################################
+    parser.add_argument('--max_epoch', default=12, help='epoch to train the network')
+    parser.add_argument('--image_size', default=[112, 112], help='the image size')
+    parser.add_argument('--img_txt',
+                        type=str,
                         default='/data/zhangxun/data/faces_ms1m_112x112/imgs.txt',
                         help='combine_loss loss margin b.')
+    parser.add_argument('--img_root_path',
+                        type=str,
+                        default='/data/zhangxun/data/faces_ms1m_112x112/imgs',
+                        help='combine_loss loss margin b.')
+    parser.add_argument('--class_number', type=int, default=85742,
+                        help='class number depend on your training data sets, '
+                             'MS1M-V1: 85164 ,'
+                             'MS1M-V2: 85742 ,'
+                             'CASIA-WebFace:1006')
+    parser.add_argument('--embedding_size', type=int,
+                        help='Dimensionality of the embedding.',
+                        default=128)
+    parser.add_argument('--weight_decay',
+                        default=5e-5, help='L2 weight regularization.')
+    parser.add_argument('--lr_schedule', help='Number of epochs for learning rate piecewise.',
+                        default=[4, 7, 9, 11])
+    parser.add_argument('--train_batch_size',
+                        default=90, help='batch size to train network')
+    parser.add_argument('--test_batch_size', type=int,
+                        help='Number of images to process in a batch in the test set.',
+                        default=100)
+    parser.add_argument('--eval_data_sets',
+                        default=['lfw', 'cfp_ff', 'cfp_fp', 'agedb_30'],
+                        help='evluation datasets')
+    parser.add_argument('--eval_db_path',
+                        default='/data/zhangxun/data/faces_ms1m_112x112',
+                        help='evluate datasets base path')
+    parser.add_argument('--eval_nrof_folds',
+                        type=int,
+                        help='Number of folds to use for cross validation. Mainly used for testing.',
+                        default=10)
+    parser.add_argument('--tf_records_file_path',
+                        default='/data/zhangxun/data/faces_ms1m_112x112/tfrecords',
+                        type=str,
+                        help='path to the output of tf records file path')
     parser.add_argument('--graph_path', type=str,
                         default='./graph/mobileFaceNet',
-                        help='combine_loss loss margin b.')
+                        help='graph path.')
     parser.add_argument('--model_name', type=str,
                         default='mobileFaceNet',
+                        help='model name.')
+    parser.add_argument('--only_gen_graph', type=bool,
+                        default=True,
                         help='combine_loss loss margin b.')
 
     args = parser.parse_args()
@@ -95,7 +120,7 @@ def read_img(batch_img_pt):
     img = np.zeros(shape=(size, 112, 112, 3), dtype=np.float32)
     label = np.zeros(shape=(size,), dtype=np.int64)
     for idx, path in enumerate(batch_img_pt):
-        tmp = "/data/zhangxun/MobileFaceNet_TF-master/datasets/faces_ms1m_112x112/imgs/" + str(path.replace("\n", ""))
+        tmp = os.path.join(args.img_root_path,str(path.replace("\n", "")))
         img[idx] = np.array(Image.open(tmp).resize((112, 112)))
         label[idx] = path.split("/")[0]
     img = (img - 127.5) / 128
@@ -103,38 +128,38 @@ def read_img(batch_img_pt):
 
 
 def write_graph_netInfo(net_info):
-    init = tf.global_variables_initializer()
-    sess = tf.Session()
-    sess.run(init)
     tf.compat.v1.train.write_graph(sess.graph, args.graph_path, args.model_name + ".pb", as_text=False)
 
     # generate net info
     trainable_var = tf.trainable_variables()
     global_var = tf.global_variables()
-    with open(args.graph_path + args.model_name + "_trainable_var" + ".txt", "w") as f:
+    with open(args.graph_path + "/" + args.model_name + "_trainable_var" + ".txt", "w") as f:
         variables_sum = 0
         for t_var in trainable_var:
             accumulate = 1
             for i in range(len(t_var.shape)):
                 accumulate = t_var.shape[i] * accumulate
+            print(t_var.shape, t_var.initial_value.op.name, ":", accumulate)
             variables_sum = accumulate + variables_sum
-            f.write(t_var.initial_value.op.name + ";" + str(t_var.op.name) + "\n")
+            if "MobileFaceNet" in t_var.initial_value.op.name:
+                f.write(t_var.initial_value.op.name + ";" + str(t_var.op.name) + "\n")
         print(variables_sum)
 
-    with open(args.graph_path + args.model_name + "_global_var" + ".txt", "w") as f:
+    with open(args.graph_path + "/" + args.model_name + "_global_var" + ".txt", "w") as f:
         variables_sum = 0
         for t_var in global_var:
             accumulate = 1
             for i in range(len(t_var.shape)):
                 accumulate = t_var.shape[i] * accumulate
             variables_sum = accumulate + variables_sum
-            f.write(t_var.initial_value.op.name + ";" + str(t_var.shape) + "\n")
+            if "MobileFaceNet" in t_var.initial_value.op.name:
+                f.write(t_var.initial_value.op.name + ";" + str(t_var.shape) + "\n")
         print(variables_sum)
 
-    with open(args.graph_path + args.model_name + "_train_info" + ".txt", "w") as f:
+    with open(args.graph_path + "/" + args.model_name + "_train_info" + ".txt", "w") as f:
         f.write(net_info["y"].op.name + ";" + str(net_info["y"].shape) + "\n")
         f.write(net_info["x"].op.name + ";" + str(net_info["x"].shape) + "\n")
-        f.write(init.name + ";" + "---" + "\n")
+        f.write(net_info['global_var_init'].name + ";" + "---" + "\n")
         f.write(net_info["train_op"].name + ";" + "---" + "\n")
         f.write(net_info["loss_op"].name + ";" + "---" + "\n")
         f.write(net_info["accuracy_op"].name + ";" + "---" + "\n")
@@ -159,40 +184,13 @@ if __name__ == '__main__':
         phase_train_placeholder = tf.placeholder_with_default(tf.constant(False, dtype=tf.bool), shape=None,
                                                               name='phase_train')
 
-        # prepare train dataset
-        # the image is substracted 127.5 and multiplied 1/128.
-        with open(args.img_txt, "r") as f:
-            img_txt_pt = f.readlines()
-            chunks_img = [img_txt_pt[i:i + args.train_batch_size]
-                          for i in range(0, len(img_txt_pt), args.train_batch_size)]
-
-        # prepare validate datasets
-        ver_list = []
-        ver_name_list = []
-        for db in args.eval_data_sets:
-            print('begin db %s convert.' % db)
-            data_set = load_data(db, args.image_size, args)
-            ver_list.append(data_set)
-            ver_name_list.append(db)
-
-        # pre_trained model path
-        pre_trained_model = None
-        if args.pre_trained_model:
-            pre_trained_model = os.path.expanduser(args.pre_trained_model)
-            print('Pre-trained model: %s' % pre_trained_model)
-
         # identity the input, for inference
         inputs = tf.identity(inputs, 'input')
 
-        pre_logits, net_points = inference(inputs, bottleneck_layer_size=args.embedding_size,
-                                           phase_train=phase_train_placeholder, weight_decay=args.weight_decay)
-
-        # record the network architecture
-        hd = open("model/txt/MobileFaceNet_Arch.txt", 'w')
-        for key in net_points.keys():
-            info = '{}:{}\n'.format(key, net_points[key].get_shape().as_list())
-            hd.write(info)
-        hd.close()
+        pre_logits, net_points = inference(inputs,
+                                           bottleneck_layer_size=args.embedding_size,
+                                           phase_train=phase_train_placeholder,
+                                           weight_decay=args.weight_decay)
 
         embeddings = tf.nn.l2_normalize(pre_logits, 1, 1e-10, name='embeddings')
 
@@ -240,6 +238,7 @@ if __name__ == '__main__':
         summaries = [tf.summary.scalar('inference_loss', inference_loss),
                      tf.summary.scalar('total_loss', total_loss),
                      tf.summary.scalar('leraning_rate', learning_rate)]
+
         # add train info to tensor board summary
         summary_op = tf.summary.merge(summaries)
 
@@ -249,6 +248,27 @@ if __name__ == '__main__':
         inc_global_step_op = tf.assign_add(global_step, 1, name='increment_global_step')
         inc_epoch_op = tf.assign_add(epoch, 1, name='increment_epoch')
 
+        # saver to load pre trained model or save model
+        saver = tf.train.Saver(tf.trainable_variables(), max_to_keep=args.saver_max_keep)
+
+        # init all variables
+        global_var_init = tf.global_variables_initializer()
+        local_var_init = tf.local_variables_initializer()
+        sess.run(global_var_init)
+        sess.run(local_var_init)
+
+        net_info = {"x": inputs,
+                    "y": labels,
+                    "global_var_init": global_var_init,
+                    "train_op": train_op,
+                    "loss_op": total_loss,
+                    "accuracy_op": Accuracy_Op}
+
+        write_graph_netInfo(net_info)
+
+        if args.only_gen_graph:
+            exit()
+
         # record trainable variable
         hd = open("model/txt/trainable_var.txt", "w")
         for var in tf.trainable_variables():
@@ -256,25 +276,29 @@ if __name__ == '__main__':
             hd.write('\n')
         hd.close()
 
-        # saver to load pretrained model or save model
-        # MobileFaceNet_vars = [v for v in tf.trainable_variables() if v.name.startswith('MobileFaceNet')]
-        saver = tf.train.Saver(tf.trainable_variables(), max_to_keep=args.saver_maxkeep)
+        # record the network architecture
+        hd = open("model/txt/MobileFaceNet_Arch.txt", 'w')
+        for key in net_points.keys():
+            info = '{}:{}\n'.format(key, net_points[key].get_shape().as_list())
+            hd.write(info)
+        hd.close()
 
-        # init all variables
-        sess.run(tf.global_variables_initializer())
-        sess.run(tf.local_variables_initializer())
+        # prepare train dataset
+        # the image is substracted 127.5 and multiplied 1/128.
+        with open(args.img_txt, "r") as f:
+            img_txt_pt = f.readlines()
+            chunks_img = [img_txt_pt[i:i + args.train_batch_size]
+                          for i in range(0, len(img_txt_pt), args.train_batch_size)]
 
-        net_info = {"x":inputs,
-                    "y":labels,
-                    "train_op":train_op,
-                    "loss_op":total_loss,
-                    "accuracy_op":Accuracy_Op}
-
-        write_graph_netInfo(net_info)
+        # pre_trained model path
+        pre_trained_model = None
+        if args.pre_trained_model:
+            pre_trained_model = os.path.expanduser(args.pre_trained_model)
+            print('Pre-trained model: %s' % pre_trained_model)
 
         # load pre trained model
         if pre_trained_model:
-            print('Restoring pretrained model: %s' % pre_trained_model)
+            print('Restoring pre trained model: %s' % pre_trained_model)
             ckpt = tf.train.get_checkpoint_state(pre_trained_model)
             print(ckpt)
             saver.restore(sess, ckpt.model_checkpoint_path)
@@ -284,6 +308,15 @@ if __name__ == '__main__':
             os.makedirs(args.log_file_path)
         if not os.path.exists(args.ckpt_best_path):
             os.makedirs(args.ckpt_best_path)
+
+        # prepare validate datasets
+        ver_list = []
+        ver_name_list = []
+        for db in args.eval_data_sets:
+            print('begin db %s convert.' % db)
+            data_set = load_data(db, args.image_size, args)
+            ver_list.append(data_set)
+            ver_name_list.append(db)
 
         count = 0
         total_accuracy = {}
