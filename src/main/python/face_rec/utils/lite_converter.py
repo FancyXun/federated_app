@@ -1,8 +1,8 @@
 import tensorflow as tf
 
 
-in_path = "../arch/pb/mobileFaceNet_pts.pb"
-out_path = "../arch/pb/mobileFaceNet_pts.tflite"
+in_path = "../model/pb/mobileFaceNet_pts.pb"
+out_path = "../model/pb/mobileFaceNet_pts.tflite"
 
 input_tensor_name = ["input"]
 input_tensor_shape = {"input": [1, 112, 112, 3]}

@@ -3,7 +3,7 @@ import tensorflow as tf
 from nets.MobileFaceNet import inference
 
 training_checkpoint = "../arch/pretrained_model/MobileFaceNet_TF.ckpt"
-output_dir = '../arch/pb/mobileFaceNet_pts.pb'
+output_dir = '../model/pb/mobileFaceNet_pts.pb'
 
 
 def freeze_graph_def(sess, output_node_names):

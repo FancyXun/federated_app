@@ -3,25 +3,24 @@
 
 '''
 Tensorflow implementation for MobileFaceNet.
-Author: aiboy.wei@outlook.com .
 '''
+import argparse
+import os
+import time
+from datetime import datetime
+
+import numpy as np
+import tensorflow as tf
 from PIL import Image
+from scipy import interpolate
+from scipy.optimize import brentq
+from sklearn import metrics
 
 from losses.face_losses import insightface_loss, cosineface_loss, combine_loss
-from utils.data_process import parse_function, load_data
 from nets.MobileFaceNet import inference
-# from losses.face_losses import cos_loss
-from verification import evaluate
-from scipy.optimize import brentq
 from utils.common import train
-from scipy import interpolate
-from datetime import datetime
-from sklearn import metrics
-import tensorflow as tf
-import numpy as np
-import argparse
-import time
-import os
+from utils.data_process import load_data
+from verification import evaluate
 
 slim = tf.contrib.slim
 
@@ -31,7 +30,7 @@ def get_parser():
     parser.add_argument('--max_epoch', default=12, help='epoch to train the network')
     parser.add_argument('--image_size', default=[112, 112], help='the image size')
     parser.add_argument('--class_number', type=int, default=85742,
-                        help='class number depend on your training datasets, MS1M-V1: 85164, MS1M-V2: 85742')
+                        help='class number depend on your training data sets, MS1M-V1: 85164, MS1M-V2: 85742')
     parser.add_argument('--embedding_size', type=int,
                         help='Dimensionality of the embedding.', default=128)
     parser.add_argument('--weight_decay', default=5e-5, help='L2 weight regularization.')
@@ -39,24 +38,22 @@ def get_parser():
     parser.add_argument('--train_batch_size', default=90, help='batch size to train network')
     parser.add_argument('--test_batch_size', type=int,
                         help='Number of images to process in a batch in the test set.', default=100)
-    parser.add_argument('--eval_datasets', default=['lfw', 'cfp_ff', 'cfp_fp', 'agedb_30'], help='evluation datasets')
-    # parser.add_argument('--eval_datasets', default=['lfw'], help='evluation datasets')
+    parser.add_argument('--eval_data_sets', default=['lfw', 'cfp_ff', 'cfp_fp', 'agedb_30'], help='evluation datasets')
     parser.add_argument('--eval_db_path', default='./datasets/faces_ms1m_112x112', help='evluate datasets base path')
     parser.add_argument('--eval_nrof_folds', type=int,
                         help='Number of folds to use for cross validation. Mainly used for testing.', default=10)
-    parser.add_argument('--tfrecords_file_path', default='./datasets/faces_ms1m_112x112/tfrecords', type=str,
-                        help='path to the output of tfrecords file path')
+    parser.add_argument('--tf_records_file_path', default='./datasets/faces_ms1m_112x112/tfrecords', type=str,
+                        help='path to the output of tf records file path')
     parser.add_argument('--summary_path', default='./output/summary', help='the summary file save path')
     parser.add_argument('--ckpt_path', default='./output/ckpt', help='the ckpt file save path')
     parser.add_argument('--ckpt_best_path', default='./output/ckpt_best', help='the best ckpt file save path')
     parser.add_argument('--log_file_path', default='./output/logs', help='the ckpt file save path')
     parser.add_argument('--saver_maxkeep', default=50, help='tf.train.Saver max keep ckpt files')
-    # parser.add_argument('--buffer_size', default=10000, help='tf dataset api buffer size')
     parser.add_argument('--summary_interval', default=400, help='interval to save summary')
     parser.add_argument('--ckpt_interval', default=2000, help='intervals to save ckpt file')
     parser.add_argument('--validate_interval', default=2000, help='intervals to save ckpt file')
     parser.add_argument('--show_info_interval', default=50, help='intervals to save ckpt file')
-    parser.add_argument('--pretrained_model', type=str, default='',
+    parser.add_argument('--pre_trained_model', type=str, default='',
                         help='Load a pretrained model before training starts.')
     parser.add_argument('--optimizer', type=str, choices=['ADAGRAD', 'ADADELTA', 'ADAM', 'RMSPROP', 'MOM'],
                         help='The optimization algorithm to use', default='ADAM')
@@ -66,9 +63,9 @@ def get_parser():
     parser.add_argument('--log_histograms',
                         help='Enables logging of weight/bias histograms in tensorboard.', action='store_true')
     parser.add_argument('--prelogits_norm_loss_factor', type=float,
-                        help='Loss based on the norm of the activations in the prelogits layer.', default=2e-5)
+                        help='Loss based on the norm of the activations in the pre_logits layer.', default=2e-5)
     parser.add_argument('--prelogits_norm_p', type=float,
-                        help='Norm to use for prelogits norm loss.', default=1.0)
+                        help='Norm to use for pre_logits norm loss.', default=1.0)
     parser.add_argument('--loss_type', default='insightface',
                         help='loss type, choice type are insightface/cosine/combine')
     parser.add_argument('--margin_s', type=float,
@@ -80,29 +77,71 @@ def get_parser():
     parser.add_argument('--margin_b', type=float,
                         help='combine_loss loss margin b.', default=0.2)
     parser.add_argument('--img_txt', type=str,
-                        default='/data/zhangxun/MobileFaceNet_TF-master/datasets/faces_ms1m_112x112/imgs.txt',
+                        default='/data/zhangxun/data/faces_ms1m_112x112/imgs.txt',
+                        help='combine_loss loss margin b.')
+    parser.add_argument('--graph_path', type=str,
+                        default='./graph/mobileFaceNet',
+                        help='combine_loss loss margin b.')
+    parser.add_argument('--model_name', type=str,
+                        default='mobileFaceNet',
                         help='combine_loss loss margin b.')
 
     args = parser.parse_args()
     return args
 
 
-def read_img(batch_img_pt, ):
+def read_img(batch_img_pt):
     size = len(batch_img_pt)
     img = np.zeros(shape=(size, 112, 112, 3), dtype=np.float32)
     label = np.zeros(shape=(size,), dtype=np.int64)
     for idx, path in enumerate(batch_img_pt):
-        tmp = "/data/zhangxun/MobileFaceNet_TF-master/datasets/faces_ms1m_112x112/imgs/"+ str(path.replace("\n", ""))
+        tmp = "/data/zhangxun/MobileFaceNet_TF-master/datasets/faces_ms1m_112x112/imgs/" + str(path.replace("\n", ""))
         img[idx] = np.array(Image.open(tmp).resize((112, 112)))
         label[idx] = path.split("/")[0]
-    # img = tf.py_func(random_rotate_image, [img], tf.uint8)
     img = (img - 127.5) / 128
     return img, label
 
 
+def write_graph_netInfo(net_info):
+    init = tf.global_variables_initializer()
+    sess = tf.Session()
+    sess.run(init)
+    tf.compat.v1.train.write_graph(sess.graph, args.graph_path, args.model_name + ".pb", as_text=False)
+
+    # generate net info
+    trainable_var = tf.trainable_variables()
+    global_var = tf.global_variables()
+    with open(args.graph_path + args.model_name + "_trainable_var" + ".txt", "w") as f:
+        variables_sum = 0
+        for t_var in trainable_var:
+            accumulate = 1
+            for i in range(len(t_var.shape)):
+                accumulate = t_var.shape[i] * accumulate
+            variables_sum = accumulate + variables_sum
+            f.write(t_var.initial_value.op.name + ";" + str(t_var.op.name) + "\n")
+        print(variables_sum)
+
+    with open(args.graph_path + args.model_name + "_global_var" + ".txt", "w") as f:
+        variables_sum = 0
+        for t_var in global_var:
+            accumulate = 1
+            for i in range(len(t_var.shape)):
+                accumulate = t_var.shape[i] * accumulate
+            variables_sum = accumulate + variables_sum
+            f.write(t_var.initial_value.op.name + ";" + str(t_var.shape) + "\n")
+        print(variables_sum)
+
+    with open(args.graph_path + args.model_name + "_train_info" + ".txt", "w") as f:
+        f.write(net_info["y"].op.name + ";" + str(net_info["y"].shape) + "\n")
+        f.write(net_info["x"].op.name + ";" + str(net_info["x"].shape) + "\n")
+        f.write(init.name + ";" + "---" + "\n")
+        f.write(net_info["train_op"].name + ";" + "---" + "\n")
+        f.write(net_info["loss_op"].name + ";" + "---" + "\n")
+        f.write(net_info["accuracy_op"].name + ";" + "---" + "\n")
+
+
 if __name__ == '__main__':
     with tf.Graph().as_default():
-        os.environ["CUDA_VISIBLE_DEVICES"] = "0"
         args = get_parser()
 
         # create log dir
@@ -122,55 +161,47 @@ if __name__ == '__main__':
 
         # prepare train dataset
         # the image is substracted 127.5 and multiplied 1/128.
-        # random flip left right
-        # tfrecords_f = os.path.join(args.tfrecords_file_path, 'tran.tfrecords')
-        # dataset = tf.data.TFRecordDataset(tfrecords_f)
-        # dataset = dataset.map(parse_function)
-        # # dataset = dataset.shuffle(buffer_size=args.buffer_size)
-        # dataset = dataset.batch(args.train_batch_size)
-        # iterator = dataset.make_initializable_iterator()
-        # next_element = iterator.get_next()
         with open(args.img_txt, "r") as f:
             img_txt_pt = f.readlines()
-            chunks_img = [img_txt_pt[i:i+args.train_batch_size]
+            chunks_img = [img_txt_pt[i:i + args.train_batch_size]
                           for i in range(0, len(img_txt_pt), args.train_batch_size)]
 
         # prepare validate datasets
         ver_list = []
         ver_name_list = []
-        for db in args.eval_datasets:
+        for db in args.eval_data_sets:
             print('begin db %s convert.' % db)
             data_set = load_data(db, args.image_size, args)
             ver_list.append(data_set)
             ver_name_list.append(db)
 
-        # pretrained model path
-        pretrained_model = None
-        if args.pretrained_model:
-            pretrained_model = os.path.expanduser(args.pretrained_model)
-            print('Pre-trained model: %s' % pretrained_model)
+        # pre_trained model path
+        pre_trained_model = None
+        if args.pre_trained_model:
+            pre_trained_model = os.path.expanduser(args.pre_trained_model)
+            print('Pre-trained model: %s' % pre_trained_model)
 
         # identity the input, for inference
         inputs = tf.identity(inputs, 'input')
 
-        prelogits, net_points = inference(inputs, bottleneck_layer_size=args.embedding_size,
-                                          phase_train=phase_train_placeholder, weight_decay=args.weight_decay)
+        pre_logits, net_points = inference(inputs, bottleneck_layer_size=args.embedding_size,
+                                           phase_train=phase_train_placeholder, weight_decay=args.weight_decay)
 
         # record the network architecture
-        hd = open("./arch/txt/MobileFaceNet_Arch.txt", 'w')
+        hd = open("model/txt/MobileFaceNet_Arch.txt", 'w')
         for key in net_points.keys():
             info = '{}:{}\n'.format(key, net_points[key].get_shape().as_list())
             hd.write(info)
         hd.close()
 
-        embeddings = tf.nn.l2_normalize(prelogits, 1, 1e-10, name='embeddings')
+        embeddings = tf.nn.l2_normalize(pre_logits, 1, 1e-10, name='embeddings')
 
-        # Norm for the prelogits
+        # Norm for the pre_logits
         eps = 1e-5
-        prelogits_norm = tf.reduce_mean(tf.norm(tf.abs(prelogits) + eps, ord=args.prelogits_norm_p, axis=1))
-        tf.add_to_collection(tf.GraphKeys.REGULARIZATION_LOSSES, prelogits_norm * args.prelogits_norm_loss_factor)
+        pre_logits_norm = tf.reduce_mean(tf.norm(tf.abs(pre_logits) + eps, ord=args.prelogits_norm_p, axis=1))
+        tf.add_to_collection(tf.GraphKeys.REGULARIZATION_LOSSES, pre_logits_norm * args.prelogits_norm_loss_factor)
 
-        # inference_loss, logit = cos_loss(prelogits, labels, args.class_number)
+        # inference_loss, logit = cos_loss(pre_logits, labels, args.class_number)
         w_init_method = slim.initializers.xavier_initializer()
         if args.loss_type == 'insightface':
             inference_loss, logit = insightface_loss(embeddings, labels, args.class_number, w_init_method)
@@ -206,11 +237,10 @@ if __name__ == '__main__':
 
         # summary writer
         summary = tf.summary.FileWriter(args.summary_path, sess.graph)
-        summaries = []
-        # add train info to tensorboard summary
-        summaries.append(tf.summary.scalar('inference_loss', inference_loss))
-        summaries.append(tf.summary.scalar('total_loss', total_loss))
-        summaries.append(tf.summary.scalar('leraning_rate', learning_rate))
+        summaries = [tf.summary.scalar('inference_loss', inference_loss),
+                     tf.summary.scalar('total_loss', total_loss),
+                     tf.summary.scalar('leraning_rate', learning_rate)]
+        # add train info to tensor board summary
         summary_op = tf.summary.merge(summaries)
 
         # train op
@@ -220,7 +250,7 @@ if __name__ == '__main__':
         inc_epoch_op = tf.assign_add(epoch, 1, name='increment_epoch')
 
         # record trainable variable
-        hd = open("./arch/txt/trainable_var.txt", "w")
+        hd = open("model/txt/trainable_var.txt", "w")
         for var in tf.trainable_variables():
             hd.write(str(var))
             hd.write('\n')
@@ -234,10 +264,18 @@ if __name__ == '__main__':
         sess.run(tf.global_variables_initializer())
         sess.run(tf.local_variables_initializer())
 
-        # load pretrained model
-        if pretrained_model:
-            print('Restoring pretrained model: %s' % pretrained_model)
-            ckpt = tf.train.get_checkpoint_state(pretrained_model)
+        net_info = {"x":inputs,
+                    "y":labels,
+                    "train_op":train_op,
+                    "loss_op":total_loss,
+                    "accuracy_op":Accuracy_Op}
+
+        write_graph_netInfo(net_info)
+
+        # load pre trained model
+        if pre_trained_model:
+            print('Restoring pretrained model: %s' % pre_trained_model)
+            ckpt = tf.train.get_checkpoint_state(pre_trained_model)
             print(ckpt)
             saver.restore(sess, ckpt.model_checkpoint_path)
 
@@ -250,7 +288,6 @@ if __name__ == '__main__':
         count = 0
         total_accuracy = {}
         for i in range(args.max_epoch):
-            # sess.run(iterator.initializer)
             _ = sess.run(inc_epoch_op)
             for j in chunks_img:
                 images_train, labels_train = read_img(j)
@@ -267,7 +304,9 @@ if __name__ == '__main__':
                 # print training information
                 if count > 0 and count % args.show_info_interval == 0:
                     print(
-                        'epoch %d, total_step %d, total loss is %.2f , inference loss is %.2f, reg_loss is %.2f, training accuracy is %.6f, time %.3f samples/sec' %
+                        'epoch %d, total_step %d, total loss is %.2f , '
+                        'inference loss is %.2f, reg_loss is %.2f, '
+                        'training accuracy is %.6f, time %.3f samples/sec' %
                         (i, count, total_loss_val, inference_loss_val, np.sum(reg_loss_val), acc_val, pre_sec))
 
                 # save summary
@@ -287,7 +326,7 @@ if __name__ == '__main__':
                     print('\nIteration', count, 'testing...')
                     for db_index in range(len(ver_list)):
                         start_time = time.time()
-                        data_sets, issame_list = ver_list[db_index]
+                        data_sets, is_same_list = ver_list[db_index]
                         emb_array = np.zeros((data_sets.shape[0], args.embedding_size))
                         nrof_batches = data_sets.shape[0] // args.test_batch_size
                         for index in range(nrof_batches):  # actual is same multiply 2, test data total
@@ -298,21 +337,20 @@ if __name__ == '__main__':
                                          phase_train_placeholder: False}
                             emb_array[start_index:end_index, :] = sess.run(embeddings, feed_dict=feed_dict)
 
-                        tpr, fpr, accuracy, val, val_std, far = evaluate(emb_array, issame_list,
+                        tpr, fpr, accuracy, val, val_std, far = evaluate(emb_array, is_same_list,
                                                                          nrof_folds=args.eval_nrof_folds)
                         duration = time.time() - start_time
 
                         print("total time %.3fs to evaluate %d images of %s" % (
-                        duration, data_sets.shape[0], ver_name_list[db_index]))
+                            duration, data_sets.shape[0], ver_name_list[db_index]))
                         print('Accuracy: %1.3f+-%1.3f' % (np.mean(accuracy), np.std(accuracy)))
                         print('Validation rate: %2.5f+-%2.5f @ FAR=%2.5f' % (val, val_std, far))
                         print('fpr and tpr: %1.3f %1.3f' % (np.mean(fpr, 0), np.mean(tpr, 0)))
 
                         auc = metrics.auc(fpr, tpr)
                         print('Area Under Curve (AUC): %1.3f' % auc)
-                        # eer = brentq(lambda x: 1. - x - interpolate.interp1d(fpr, tpr)(x), 0., 1.)
-                        eer = brentq(lambda x: 1. - x - interpolate.interp1d(fpr, tpr, fill_value="extrapolate")(x), 0.,
-                                     1.)
+                        eer = brentq(lambda x: 1. - x - interpolate.interp1d(
+                            fpr, tpr, fill_value="extrapolate")(x), 0., 1.)
                         print('Equal Error Rate (EER): %1.3f\n' % eer)
 
                         with open(os.path.join(log_dir, '{}_result.txt'.format(ver_name_list[db_index])),
