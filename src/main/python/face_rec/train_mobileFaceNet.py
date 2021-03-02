@@ -75,6 +75,9 @@ def get_parser():
                              'MS1M-V1: 85164 ,'
                              'MS1M-V2: 85742 ,'
                              'CASIA-WebFace:1006')
+    parser.add_argument('--dataset_name', type=str,
+                        default="CASIA_WebFace",
+                        help='dataset name')
     parser.add_argument('--embedding_size', type=int,
                         help='Dimensionality of the embedding.',
                         default=128)
@@ -109,7 +112,7 @@ def get_parser():
                         help='model name.')
     parser.add_argument('--only_gen_graph', type=bool,
                         default=False,
-                        help='combine_loss loss margin b.')
+                        help='generate graph ')
 
     args = parser.parse_args()
     return args
@@ -170,10 +173,11 @@ if __name__ == '__main__':
         args = get_parser()
 
         # create log dir
-        subdir = datetime.strftime(datetime.now(), '%Y%m%d-%H%M%S')
+        subdir = args.dataset_name + "_ " + datetime.strftime(datetime.now(), '%Y%m%d-%H%M%S')
         log_dir = os.path.join(os.path.expanduser(args.log_file_path), subdir)
         if not os.path.isdir(log_dir):  # Create the log directory if it doesn't exist
             os.makedirs(log_dir)
+        summary_dir = os.path.join(args.summary_path, args.dataset_name)
 
         # define global parameters
         global_step = tf.Variable(name='global_step', initial_value=0, trainable=False)
@@ -234,7 +238,7 @@ if __name__ == '__main__':
         Accuracy_Op = tf.reduce_mean(correct_prediction)
 
         # summary writer
-        summary = tf.summary.FileWriter(args.summary_path, sess.graph)
+        summary = tf.summary.FileWriter(summary_dir, sess.graph)
         summaries = [tf.summary.scalar('inference_loss', inference_loss),
                      tf.summary.scalar('total_loss', total_loss),
                      tf.summary.scalar('leraning_rate', learning_rate)]
