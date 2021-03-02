@@ -64,13 +64,13 @@ def get_parser():
     parser.add_argument('--image_size', default=[112, 112], help='the image size')
     parser.add_argument('--img_txt',
                         type=str,
-                        default='/data/zhangxun/data/faces_ms1m_112x112/imgs.txt',
+                        default='/data/zhangxun/data/CASIA-WebFace-aligned/imgs.txt',
                         help='combine_loss loss margin b.')
     parser.add_argument('--img_root_path',
                         type=str,
-                        default='/data/zhangxun/data/faces_ms1m_112x112/imgs',
+                        default='/data/zhangxun/data/CASIA-WebFace-aligned/imgs',
                         help='combine_loss loss margin b.')
-    parser.add_argument('--class_number', type=int, default=85742,
+    parser.add_argument('--class_number', type=int, default=1006,
                         help='class number depend on your training data sets, '
                              'MS1M-V1: 85164 ,'
                              'MS1M-V2: 85742 ,'
@@ -89,10 +89,10 @@ def get_parser():
                         default=100)
     parser.add_argument('--eval_data_sets',
                         default=['lfw', 'cfp_ff', 'cfp_fp', 'agedb_30'],
-                        help='evluation datasets')
+                        help='evaluation datasets')
     parser.add_argument('--eval_db_path',
-                        default='/data/zhangxun/data/faces_ms1m_112x112',
-                        help='evluate datasets base path')
+                        default='/data/zhangxun/data/evaluation',
+                        help='evaluate datasets base path')
     parser.add_argument('--eval_nrof_folds',
                         type=int,
                         help='Number of folds to use for cross validation. Mainly used for testing.',
