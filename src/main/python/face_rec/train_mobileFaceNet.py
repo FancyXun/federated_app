@@ -60,7 +60,7 @@ def get_parser():
     parser.add_argument('--margin_b', type=float,
                         help='combine_loss loss margin b.', default=0.2)
     ######################################################################################################
-    parser.add_argument('--max_epoch', default=12, help='epoch to train the network')
+    parser.add_argument('--max_epoch', default=30, help='epoch to train the network')
     parser.add_argument('--image_size', default=[112, 112], help='the image size')
     parser.add_argument('--img_txt',
                         type=str,
@@ -109,7 +109,9 @@ def get_parser():
                         help='graph path.')
     parser.add_argument('--model_name', type=str,
                         default='mobileFaceNet',
-                        help='model name.')
+                        help='model name:'
+                             'MS1M-V2'
+                             'mobileFaceNet')
     parser.add_argument('--only_gen_graph', type=bool,
                         default=False,
                         help='generate graph ')
@@ -173,7 +175,7 @@ if __name__ == '__main__':
         args = get_parser()
 
         # create log dir
-        subdir = args.dataset_name + "_ " + datetime.strftime(datetime.now(), '%Y%m%d-%H%M%S')
+        subdir = args.dataset_name + "_" + datetime.strftime(datetime.now(), '%Y%m%d-%H%M%S')
         log_dir = os.path.join(os.path.expanduser(args.log_file_path), subdir)
         if not os.path.isdir(log_dir):  # Create the log directory if it doesn't exist
             os.makedirs(log_dir)
