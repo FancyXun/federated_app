@@ -356,7 +356,8 @@ if __name__ == '__main__':
 
                 # save ckpt files
                 if count > 0 and count % args.ckpt_interval == 0:
-                    filename = 'MobileFaceNet_iter_{:d}'.format(count) + '.ckpt'
+                    filename = 'MobileFaceNet_iter_{:d}'.format(count) \
+                               + "_" + args.dataset_name + '.ckpt'
                     filename = os.path.join(args.ckpt_path, filename)
                     saver.save(sess, filename)
 
@@ -398,6 +399,7 @@ if __name__ == '__main__':
 
                         if ver_name_list == 'lfw' and np.mean(accuracy) > 0.992:
                             print('best accuracy is %.5f' % np.mean(accuracy))
-                            filename = 'MobileFaceNet_iter_best_{:d}'.format(count) + '.ckpt'
+                            filename = 'MobileFaceNet_iter_best_{:d}'.format(count) + \
+                                       "_" + args.dataset_name + '.ckpt'
                             filename = os.path.join(args.ckpt_best_path, filename)
                             saver.save(sess, filename)
