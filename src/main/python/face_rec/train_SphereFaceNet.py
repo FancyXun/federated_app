@@ -31,7 +31,7 @@ def get_parser():
                         help='Number of folds to use for cross validation. Mainly used for testing.', default=10)
     parser.add_argument('--batch_size', type=int, default=16)
     parser.add_argument('--checkpoints_dir', default='./arch/sphereFace', help='model path')
-    parser.add_argument('--data_path', default='/data/zhangxun/data/CASIA-WebFace-aligned', help='model path')
+    parser.add_argument('--data_path', default='/data/zhangxun/data/CASIA-WebFace-aligned/imgs', help='model path')
     parser.add_argument('--only_gen_graph', type=bool,
                         default=True,
                         help='generate graph ')
