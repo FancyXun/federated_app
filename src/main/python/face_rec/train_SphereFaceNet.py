@@ -26,11 +26,11 @@ def get_parser():
                         help='Number of images to process in a batch in the test set.', default=1)
     # parser.add_argument('--eval_datasets', default=['lfw', 'cfp_ff', 'cfp_fp', 'agedb_30'], help='evluation datasets')
     parser.add_argument('--eval_datasets', default='lfw', help='evluation datasets')
-    parser.add_argument('--eval_db_path', default='./datasets/faces_ms1m_112x112', help='evluate datasets base path')
+    parser.add_argument('--eval_db_path', default='/data/zhangxun/data/evaluation', help='evluate datasets base path')
     parser.add_argument('--eval_nrof_folds', type=int,
                         help='Number of folds to use for cross validation. Mainly used for testing.', default=10)
     parser.add_argument('--batch_size', type=int, default=16)
-    parser.add_argument('--checkpoints_dir', default='./arch/sphereFace', help='model path')
+    parser.add_argument('--checkpoints_dir', default='output/SphereFace', help='model path')
     parser.add_argument('--data_path', default='/data/zhangxun/data/CASIA-WebFace-aligned/imgs', help='model path')
     parser.add_argument('--only_gen_graph', type=bool,
                         default=True,
@@ -133,5 +133,5 @@ if __name__ == '__main__':
                         if step % 50 == 0:
                             print('%d epoch %d step train loss : %f acc: %f' % (epoch, step, train_loss, train_acc))
                         if step % 2000 == 0:
-                            path = saver.save(sess, args.checkpoints_dir + '/model.ckpt', global_step=step)
+                            path = saver.save(sess, args.checkpoints_dir + '/SphereFace.ckpt', global_step=step)
                             print('Save model in step:{}, path:{}'.format(step, path))
