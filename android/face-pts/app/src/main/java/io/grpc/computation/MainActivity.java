@@ -28,12 +28,15 @@ import org.opencv.core.MatOfRect;
 import org.opencv.core.Point;
 import org.opencv.core.Rect;
 import org.opencv.core.Scalar;
-import org.opencv.core.Size;
 import org.opencv.imgcodecs.Imgcodecs;
 import org.opencv.imgproc.Imgproc;
 import org.opencv.objdetect.CascadeClassifier;
+import org.tensorflow.Graph;
+import org.tensorflow.Session;
+import org.tensorflow.Tensor;
 import org.tensorflow.lite.Interpreter;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
@@ -42,11 +45,7 @@ import java.io.InputStream;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 
-import io.grpc.tflite.detect.PCNutil.ImageUtil;
-import io.grpc.tflite.detect.PCNutil.Recognition;
 import io.grpc.utils.FileUtils;
-import io.grpc.utils.ImageUtils;
-import io.grpc.utils.TFLiteFileUtil;
 
 import static io.grpc.utils.ImageTools.l2Normalize;
 import static io.grpc.utils.ImageTools.loadModelFile;
@@ -179,14 +178,74 @@ public class MainActivity extends AppCompatActivity {
             System.out.println("similarity：" + similarity);
             res.append(similarity).append(";");
             compare(bmp, bmp_detect);
+            mobileFaceNetinference(bmp_detect);
+            localPbTest(bmp_detect);
         }
         textView.setText(res.toString());
         faceRec.setEnabled(true);
     }
 
+    public void mobileFaceNetinference(Bitmap bitmap){
+        String MODEL_FILE = "rec/mobileFaceNet.tflite";
+        Interpreter.Options options = new Interpreter.Options();
+        options.setNumThreads(4);
+        try {
+            interpreter = new Interpreter(loadModelFile(getAssets(), MODEL_FILE), options);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        int INPUT_IMAGE_SIZE = 112;
+        Bitmap bitmapScale = Bitmap.createScaledBitmap(bitmap, INPUT_IMAGE_SIZE, INPUT_IMAGE_SIZE, true);
+        float[][][][] datasets = new float[1][INPUT_IMAGE_SIZE][INPUT_IMAGE_SIZE][3];
+        datasets[0] = normalizeImage(bitmapScale);
+        float[][] embeddings = new float[1][192];
+        Timestamp timestamp = new Timestamp(System.currentTimeMillis());
+        System.out.println("识别1" + timestamp);
+        interpreter.run(datasets, embeddings);
+        l2Normalize(embeddings, 1e-10);
+        timestamp = new Timestamp(System.currentTimeMillis());
+        System.out.println("识别1" + timestamp);
+    }
+
+    public void localPbTest(Bitmap bitmap){
+        Graph graph = new Graph();
+        InputStream modelStream = null;
+        String pbPath = "protobuffer/mobileFaceNet.pb";
+        int INPUT_IMAGE_SIZE = 112;
+        Bitmap bitmapScale = Bitmap.createScaledBitmap(bitmap, INPUT_IMAGE_SIZE, INPUT_IMAGE_SIZE, true);
+        float[][][][] datasets = new float[1][INPUT_IMAGE_SIZE][INPUT_IMAGE_SIZE][3];
+        datasets[0] = normalizeImage(bitmapScale);
+        try {
+            boolean var1 = pbPath.startsWith("file:///android_asset/");
+            String var2 = var1 ? pbPath.split("file:///android_asset/")[1] : pbPath;
+            modelStream = context.getAssets().open(var2);
+            ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+            int nRead;
+            byte[] data = new byte[1024];
+            while ((nRead = modelStream.read(data, 0, data.length)) != -1) {
+                buffer.write(data, 0, nRead);
+            }
+            buffer.flush();
+            byte[] byteArray = buffer.toByteArray();
+            graph.importGraphDef(byteArray);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        Session session = new Session(graph);
+        session.runner().addTarget("init").run();
+        Timestamp timestamp = new Timestamp(System.currentTimeMillis());
+        System.out.println("识别pb" + timestamp);
+        session.runner().feed("input", Tensor.create(datasets)).fetch("embeddings").run();
+        timestamp = new Timestamp(System.currentTimeMillis());
+        System.out.println("识别pb" + timestamp);
+        System.out.println("end..." );
+
+    }
+
     public float compare(Bitmap bitmap1, Bitmap bitmap2) {
         // 将人脸resize为112X112大小的，因为下面需要feed数据的placeholder的形状是(2, 112, 112, 3)
-        String MODEL_FILE = "rec/MobileFaceNet.tflite";
+        String MODEL_FILE = "rec/MobileFaceNet2Img.tflite";
         Interpreter.Options options = new Interpreter.Options();
         options.setNumThreads(4);
         try {
@@ -208,7 +267,7 @@ public class MainActivity extends AppCompatActivity {
         timestamp = new Timestamp(System.currentTimeMillis());
         System.out.println("识别1" + timestamp);
         float same = evaluate(embeddings);
-        System.out.println("end...");
+        System.out.println("识别1..." + same);
         return same;
     }
 

@@ -45,6 +45,8 @@ public class FrozenTrainer {
 
     static class MetaInfo {
         public static String initName;
+        public static String x;
+        public static String y;
         public static String optimizerName;
         public static String lossName;
         public static String learningRate;
@@ -55,7 +57,7 @@ public class FrozenTrainer {
         public static String server_ip = "192.168.89.249";
         public static int server_port = 50051;
         public static final String path = "http://52.81.162.253:8000/res/CASIA-WebFace-aligned";
-        public static final String image_txt = "train_images_0.txt";
+        public static final String image_txt = "images_all.txt";
         public static final String image_val_txt = "val_images_0.txt";
     }
 
@@ -179,6 +181,9 @@ public class FrozenTrainer {
             if (activity != null) {
                 train_loss_view = activity.findViewById(R.id.TrainLoss);
             }
+            for (int local_round =0 ; local_round< 100; local_round++){
+                train(train_loss_view);
+            }
             train(train_loss_view);
             eval(train_loss_view);
             for (int i =0 ; i< train_loss_list.size();i ++){
@@ -209,11 +214,12 @@ public class FrozenTrainer {
             // the layers which weights need to be feed  before training
             layerFeedList = model.getLayerFeedList();
             List<Meta> metaList = model.getMetaList();
+            MetaInfo.y = metaList.get(0).getMetaName();
+            MetaInfo.x = metaList.get(1).getMetaName();
             MetaInfo.initName = metaList.get(2).getMetaName();
             MetaInfo.optimizerName = metaList.get(3).getMetaName();
             MetaInfo.lossName = metaList.get(4).getMetaName();
-            MetaInfo.learningRate = metaList.get(5).getMetaName();
-            MetaInfo.accName = metaList.get(6).getMetaName();
+            MetaInfo.accName = metaList.get(5).getMetaName();
             // the trainable layers in current round
             trainableLayerList = new ArrayList<>();
             for (Layer layer : layerList) {
@@ -277,9 +283,8 @@ public class FrozenTrainer {
                     Tensor label_oneHot_t = Tensor.create(label_oneHot);
                     Tensor lr_t = Tensor.create(0.0001f);
                     runner
-                            .feed("input_x", x_t)
-                            .feed("input_y", label_oneHot_t)
-                            .feed(MetaInfo.learningRate, lr_t)
+                            .feed(MetaInfo.x, x_t)
+                            .feed(MetaInfo.y, label_oneHot_t)
                             .addTarget(MetaInfo.optimizerName)
                             .run();
 

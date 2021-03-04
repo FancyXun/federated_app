@@ -6,7 +6,7 @@ public class ImageInfo {
     int height = 112;
     int width = 96;
     int channel = 3;
-    int label_num = 10575;
+    int label_num = 1006;
 
     public int getBatch_size() {
         return batch_size;
