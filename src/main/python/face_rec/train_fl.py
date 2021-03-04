@@ -1,6 +1,7 @@
-import tensorflow as tf
 import numpy as np
+import tensorflow as tf
 from sklearn import metrics
+
 from train_SphereFaceNet import train_pipe, get_parser
 from utils.data_process import load_val_data, get_img_path_and_label, get_data, random_mini_batches
 from verification import evaluate
@@ -51,7 +52,8 @@ if __name__ == '__main__':
                         #############################################################
                         eval_flag = False
 
-                    client_data_block = data_block[client_id * data_block_per_client: (client_id + 1) * data_block_per_client]
+                    client_data_block = data_block[
+                                        client_id * data_block_per_client: (client_id + 1) * data_block_per_client]
                     for block_idx in range(len(client_data_block)):
                         block = client_data_block[block_idx]
                         x, y = get_data(block, args.class_number)
@@ -63,7 +65,7 @@ if __name__ == '__main__':
                             step += 1
                             if step % 50 == 0:
                                 print('%d epoch %d step train loss : %f acc: %f' % (epoch, step, train_loss, train_acc))
-                                with open("client"+str(client_id)+".txt", "a+") as f:
+                                with open("client" + str(client_id) + ".txt", "a+") as f:
                                     f.write('%d epoch %d step train loss : %f acc: %f' %
                                             (epoch, step, train_loss, train_acc))
                                     f.write("\n")
@@ -73,10 +75,12 @@ if __name__ == '__main__':
 
                     trainable_var = tf.trainable_variables()
                     c = []
+                    noise_scaling_parameter = 1e3
                     for var in trainable_var:
                         tmp = sess.run(var)
+                        tmp += tf.random.normal(
+                            tmp.shape, stddev=tf.reduce_mean(tmp) / noise_scaling_parameter)
                         c.append(tmp)
                     clients_weights[client_id] = c
                 for idx, weights_cli in enumerate(clients_weights):
                     update_weights[idx] = weights_cli
-
