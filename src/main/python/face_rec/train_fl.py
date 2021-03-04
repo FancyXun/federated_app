@@ -7,8 +7,7 @@ from verification import evaluate
 
 if __name__ == '__main__':
     args = get_parser()
-    client = 2
-    lr = 0.0001
+    client = 3
     update_weights = [[] for _ in range(client)]
     clients_weights = [[] for _ in range(client)]
     data_block = get_img_path_and_label(args.data_path, 10)
@@ -18,7 +17,7 @@ if __name__ == '__main__':
         tf.contrib.keras.backend.clear_session()
         eval_flag = True
         with tf.Graph().as_default():
-            input_x, input_y, learning_rate, train_op, loss, acc, embeddings_l2 = train_pipe()
+            input_x, input_y, train_op, loss, acc, embeddings_l2 = train_pipe()
             saver = tf.train.Saver(max_to_keep=5)
             with tf.Session() as sess:
                 sess.run(tf.global_variables_initializer())
@@ -59,7 +58,7 @@ if __name__ == '__main__':
                         mini_batch = random_mini_batches(x, y, args.batch_size)
                         for batch in mini_batch:
                             x_batch, y_batch = batch
-                            train_feed_dict = {input_x: (x_batch - 127.5) / 128, input_y: y_batch, learning_rate: lr}
+                            train_feed_dict = {input_x: (x_batch - 127.5) / 128, input_y: y_batch}
                             _, train_loss, train_acc = sess.run([train_op, loss, acc], train_feed_dict)
                             step += 1
                             if step % 50 == 0:
