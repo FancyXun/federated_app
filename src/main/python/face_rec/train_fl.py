@@ -78,8 +78,9 @@ if __name__ == '__main__':
                     noise_scaling_parameter = 1e3
                     for var in trainable_var:
                         tmp = sess.run(var)
-                        tmp += tf.random.normal(
+                        dp = tf.random.normal(
                             tmp.shape, stddev=tf.reduce_mean(tmp) / noise_scaling_parameter)
+                        tmp += sess.run(dp)
                         c.append(tmp)
                     clients_weights[client_id] = c
                 for idx, weights_cli in enumerate(clients_weights):
