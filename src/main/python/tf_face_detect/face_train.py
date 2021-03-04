@@ -8,6 +8,7 @@ from google.protobuf import json_format
 import numpy as np
 import tensorflow as tf
 from PIL import Image
+import cv2 as cv
 
 
 parser = argparse.ArgumentParser(description='frozen_layers to this script')

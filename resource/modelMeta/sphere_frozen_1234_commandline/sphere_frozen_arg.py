@@ -32,7 +32,7 @@ elif block_idx == 5:
 else:
     block_1, block_2, block_3, block_4, block_5 = True, True, True, True, True
 
-nb_classes = 10575
+nb_classes = 1006
 BATCH_SIZE = 64
 LambdaMin = 5.0
 LambdaMax = 1500.0

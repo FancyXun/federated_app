@@ -35,15 +35,17 @@ public class ModelHelper {
     private LinkedHashMap<String, String> metaMap;
     private ResourceBundle rb = ResourceBundle.getBundle("resource", Locale.getDefault());
     private String pythonExe = (String) rb.getObject("pythonExe");
-    private String rootPath = (String) rb.getObject("pyRootPath");
-    private final String var2 = rootPath + "sphere_unfrozen.pb";
-    private final String pyDir = rootPath + "sphere_frozen_arg.py";
-    private final String trainable_var = rootPath + "sphere2_trainable_var_unfrozen.txt";
-    private final String  trainable_init_var = rootPath + "sphere2_trainable_init_var_unfrozen.txt";
-    private final String  feed_fetch_var = rootPath + "sphere2_feed_fetch_unfrozen.txt";
+    private String pyDir = (String) rb.getObject("pyRootPath");
+
+    // model info
+    private String graphPath = (String) rb.getObject("graphPath");
+    private String graphGlobalVarPath = (String) rb.getObject("graphGlobalVarPath");
+    private String graphTrainableVarPath = (String) rb.getObject("graphTrainableVarPath");
+    private String graphTrainInfoPath = (String) rb.getObject("graphTrainInfoPath");
+
+    // agg
     private final String pyDirAgg = (String) rb.getObject("pyAggRootPath");
     private Graph graph;
-    private int blockInit;
 
     private HashMap <String, LayerWeights.Builder> layerWeightsHashMap = new HashMap<>();
     private HashMap <String, String> layerWeightsShapeHashMap = new HashMap<>();
@@ -91,11 +93,11 @@ public class ModelHelper {
         return InitializerHolder.instance;
     }
 
-    public void gen_graph(int block) {
+    public void gen_graph() {
         Process process;
         try {
-            System.out.println(String.format("%s %s -p %s --unfrozen=%s", pythonExe, pyDir, rootPath, 0));
-            process = Runtime.getRuntime().exec(String.format("%s %s -p %s --unfrozen=%s", pythonExe, pyDir, rootPath, 0));
+            System.out.println(String.format("%s %s ", pythonExe, pyDir));
+            process = Runtime.getRuntime().exec(String.format("%s %s ", pythonExe, pyDir));
             BufferedReader in = new BufferedReader(new InputStreamReader(process.getErrorStream()));
             String line;
             while ((line = in.readLine()) != null) {
@@ -128,13 +130,13 @@ public class ModelHelper {
         }
     }
 
-    public void loadModel(int block) {
-        gen_graph(block);
+    public void loadModel() {
+        gen_graph();
         graph = new Graph();
         InputStream modelStream = null;
 
         try {
-            modelStream = new FileInputStream(var2);
+            modelStream = new FileInputStream(graphPath);
             ByteArrayOutputStream buffer = new ByteArrayOutputStream();
             int nRead;
             byte[] data = new byte[1024];
@@ -148,9 +150,9 @@ public class ModelHelper {
             e.printStackTrace();
         }
 
-        modelTrainableMap = loadModelMeta(trainable_var);
-        modelInitMap = loadModelMeta(trainable_init_var);
-        metaMap = loadModelMeta(feed_fetch_var);
+        modelTrainableMap = loadModelMeta(graphTrainableVarPath);
+        modelInitMap = loadModelMeta(graphGlobalVarPath);
+        metaMap = loadModelMeta(graphTrainInfoPath);
     }
 
 

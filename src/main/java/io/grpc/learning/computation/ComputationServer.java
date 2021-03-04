@@ -66,6 +66,8 @@ public class ComputationServer {
 
     private void start() throws IOException {
         /* initialize the model and graph */
+        modelHelper = new ModelHelper();
+        modelHelper.loadModel();
         ch.qos.logback.classic.Logger logbackLogger =
                 (ch.qos.logback.classic.Logger) logger;
         logbackLogger.setLevel(Level.INFO);
@@ -88,7 +90,7 @@ public class ComputationServer {
         int port = 50051;
         logger.info(ComputationServer.class.getName() +": " +localIP + ":" + port);
         server = ServerBuilder.forPort(port)
-                .addService(new ComputationImpl())
+                .addService(new ComputationImpl(modelHelper))
                 .build()
                 .start();
         Runtime.getRuntime().addShutdownHook(new Thread() {
@@ -135,13 +137,17 @@ public class ComputationServer {
         public int finished =0;
         public int maxBlock = 4;
         public int currentBlock = 1;
-        public HashMap<Integer, ModelHelper> serverBlock = new HashMap<>();
         public String token = UUID.randomUUID().toString();
         public String state = "ready";
         public boolean firstRound = true;
         public List<String> AggregationClients = new ArrayList<>();
         public Client client = new Client();
         public String rootPath = "/tmp/model_weights/";
+        public ModelHelper modelHelper;
+
+        public ComputationImpl(ModelHelper modelHelper){
+            this.modelHelper = modelHelper;
+        }
 
         @Override
         public void callTraining(ClientRequest request, StreamObserver<Certificate> responseObserver) {
@@ -159,16 +165,7 @@ public class ComputationServer {
         public void callModel(ClientRequest request, StreamObserver<Model> responseObserver) {
             String client_id = request.getId();
             client.getCallModelClients().add(client_id);
-            ModelHelper modelHelper;
-            if (serverBlock.containsKey(currentBlock)){
-                modelHelper = serverBlock.get(currentBlock);
-            }
-            else{
-                ModelHelper.getInstance().loadModel(currentBlock);
-                modelHelper = ModelHelper.getInstance();
-                serverBlock.put(currentBlock, modelHelper);
-            }
-            System.out.println("Receive callModel request from " + client_id + " for block" + currentBlock);
+            System.out.println("Receive callModel request from " + client_id );
             Graph graph = modelHelper.getGraph();
             LinkedHashMap<String, String> modelTrainableMap = modelHelper.getModelTrainableMap();
             LinkedHashMap<String, String> modelInitMap = modelHelper.getModelInitMap();

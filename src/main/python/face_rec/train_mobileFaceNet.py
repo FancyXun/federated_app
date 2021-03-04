@@ -21,16 +21,19 @@ from nets.MobileFaceNet import inference
 from utils.common import train
 from utils.data_process import load_data
 from verification import evaluate
+from utils.write_pb_mobile import write_graph_netInfo
 
 slim = tf.contrib.slim
+
+prj_path="/Users/voyager/code/android-demo/federated_app/src/main/python/face_rec"
 
 
 def get_parser():
     parser = argparse.ArgumentParser(description='parameters to train net')
-    parser.add_argument('--summary_path', default='./output/summary', help='the summary file save path')
-    parser.add_argument('--ckpt_path', default='./output/ckpt', help='the ckpt file save path')
-    parser.add_argument('--ckpt_best_path', default='./output/ckpt_best', help='the best ckpt file save path')
-    parser.add_argument('--log_file_path', default='./output/logs', help='the ckpt file save path')
+    parser.add_argument('--summary_path', default=prj_path+'/output/summary', help='the summary file save path')
+    parser.add_argument('--ckpt_path', default=prj_path+'/output/ckpt', help='the ckpt file save path')
+    parser.add_argument('--ckpt_best_path', default=prj_path+'/output/ckpt_best', help='the best ckpt file save path')
+    parser.add_argument('--log_file_path', default=prj_path+'/output/logs', help='the ckpt file save path')
     parser.add_argument('--saver_max_keep', default=50, help='tf.train.Saver max keep ckpt files')
     parser.add_argument('--summary_interval', default=400, help='interval to save summary')
     parser.add_argument('--ckpt_interval', default=2000, help='intervals to save ckpt file')
@@ -105,15 +108,14 @@ def get_parser():
                         type=str,
                         help='path to the output of tf records file path')
     parser.add_argument('--graph_path', type=str,
-                        default='./graph/mobileFaceNet',
+                        default=prj_path+'/graph/mobileFaceNet',
                         help='graph path.')
     parser.add_argument('--model_name', type=str,
                         default='mobileFaceNet',
                         help='model name:'
-                             'MS1M-V2'
                              'mobileFaceNet')
     parser.add_argument('--only_gen_graph', type=bool,
-                        default=False,
+                        default=True,
                         help='generate graph ')
 
     args = parser.parse_args()
@@ -130,44 +132,6 @@ def read_img(batch_img_pt):
         label[idx] = path.split("/")[0]
     img = (img - 127.5) / 128
     return img, label
-
-
-def write_graph_netInfo(net_info):
-    tf.compat.v1.train.write_graph(sess.graph, args.graph_path, args.model_name + ".pb", as_text=False)
-
-    # generate net info
-    trainable_var = tf.trainable_variables()
-    global_var = tf.global_variables()
-    with open(args.graph_path + "/" + args.model_name + "_trainable_var" + ".txt", "w") as f:
-        variables_sum = 0
-        for t_var in trainable_var:
-            accumulate = 1
-            for i in range(len(t_var.shape)):
-                accumulate = t_var.shape[i] * accumulate
-            print(t_var.shape, t_var.initial_value.op.name, ":", accumulate)
-            variables_sum = accumulate + variables_sum
-            if "MobileFaceNet" in t_var.initial_value.op.name:
-                f.write(t_var.initial_value.op.name + ";" + str(t_var.op.name) + "\n")
-        print(variables_sum)
-
-    with open(args.graph_path + "/" + args.model_name + "_global_var" + ".txt", "w") as f:
-        variables_sum = 0
-        for t_var in global_var:
-            accumulate = 1
-            for i in range(len(t_var.shape)):
-                accumulate = t_var.shape[i] * accumulate
-            variables_sum = accumulate + variables_sum
-            if "MobileFaceNet" in t_var.initial_value.op.name:
-                f.write(t_var.initial_value.op.name + ";" + str(t_var.shape) + "\n")
-        print(variables_sum)
-
-    with open(args.graph_path + "/" + args.model_name + "_train_info" + ".txt", "w") as f:
-        f.write(net_info["y"].op.name + ";" + str(net_info["y"].shape) + "\n")
-        f.write(net_info["x"].op.name + ";" + str(net_info["x"].shape) + "\n")
-        f.write(net_info['global_var_init'].name + ";" + "---" + "\n")
-        f.write(net_info["train_op"].name + ";" + "---" + "\n")
-        f.write(net_info["loss_op"].name + ";" + "---" + "\n")
-        f.write(net_info["accuracy_op"].name + ";" + "---" + "\n")
 
 
 if __name__ == '__main__':
@@ -270,7 +234,7 @@ if __name__ == '__main__':
                     "loss_op": total_loss,
                     "accuracy_op": Accuracy_Op}
 
-        write_graph_netInfo(net_info)
+        write_graph_netInfo(args, sess, net_info, "MobileFaceNet")
 
         if args.only_gen_graph:
             exit()

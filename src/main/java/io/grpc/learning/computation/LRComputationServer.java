@@ -56,7 +56,7 @@ public class LRComputationServer {
         /* initialize the model and graph */
         logger.setLevel(Level.WARNING);
         Logger.getLogger("io.grpc.netty.shaded").setLevel(Level.OFF);
-        ModelHelper.getInstance().loadModel(1);
+        ModelHelper.getInstance().loadModel();
         System.out.println("-----" + modelHelper);
         /* The port on which the server should run */
         String localIP;
