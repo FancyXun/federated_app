@@ -187,8 +187,7 @@ public class ModelHelper {
         layerWeightsHashMap.clear();
         layerWeightsShapeHashMap.clear();
         layerWeightsInitHashMap.clear();
-        ModelHelper modelHelper = ModelHelper.getInstance();
-        LinkedHashMap<String, String> modelTrainableMap = modelHelper.getModelTrainableMap();
+        LinkedHashMap<String, String> modelTrainableMap = this.getModelTrainableMap();
         Pattern p = Pattern.compile("\\d+");
         ModelWeights.Builder modelWeightsBuilder = ModelWeights.newBuilder();
         ArrayList<TensorEntity.TensorShapeProto.Builder> tensorShapeArrayList = new ArrayList<>();

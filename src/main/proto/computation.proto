@@ -42,8 +42,18 @@ service Computation {
   rpc ComputeMetrics(TrainMetrics) returns(ValueReply){}
   rpc ComputeFinish(ClientRequest) returns(ValueReply){}
 
+  // update architecture
+  rpc Register(ClientRequest) returns(Model){}
+  rpc RegisterState(ClientRequest) returns(RegisterStateResponse){}
+
 
 }
+
+message RegisterStateResponse{
+  bool stateResponse = 1;
+}
+
+
 
 message ClientRequest{
   string id = 1;

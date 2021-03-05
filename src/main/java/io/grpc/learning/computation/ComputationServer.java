@@ -144,6 +144,7 @@ public class ComputationServer {
         public Client client = new Client();
         public String rootPath = "/tmp/model_weights/";
         public ModelHelper modelHelper;
+        public int currentRound = 0;
 
         public ComputationImpl(ModelHelper modelHelper){
             this.modelHelper = modelHelper;
@@ -218,7 +219,7 @@ public class ComputationServer {
             client.getCallLayerWeightsClients().add(client_id);
             System.out.println("Receive callLayerWeights request from " + client_id);
             String layer_name = request.getLayerName();
-            responseObserver.onNext(ModelHelper.getInstance().getLayerWeightsHashMap().get(layer_name).build());
+            responseObserver.onNext(modelHelper.getLayerWeightsHashMap().get(layer_name).build());
             responseObserver.onCompleted();
         }
 
@@ -376,9 +377,9 @@ public class ComputationServer {
                     }catch(IOException e){
                         e.printStackTrace();
                     }
-                    ModelHelper.getInstance().updateWeights();
+                    modelHelper.updateWeights();
                     AggregationClients.clear();
-                    ModelHelper.getInstance().ModelWeightsUpdate();
+                    modelHelper.ModelWeightsUpdate();
                     firstRound = false;
                     token = UUID.randomUUID().toString();
                     state = "ready";

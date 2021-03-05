@@ -57,8 +57,8 @@ public class FrozenTrainer {
         public static String server_ip = "192.168.89.249";
         public static int server_port = 50051;
         public static final String path = "http://52.81.162.253:8000/res/CASIA-WebFace-aligned";
-        public static final String image_txt = "images_all.txt";
-        public static final String image_val_txt = "val_images_0.txt";
+        public static final String image_txt = "train_images_0_small.txt";
+        public static final String image_val_txt = "val_images_0_small.txt";
     }
 
     static class ClientInfo {
@@ -141,6 +141,7 @@ public class FrozenTrainer {
                 runOneRound(stub, builder);
                 session.close();
                 ClientInfo.round += 1;
+                System.out.println(ClientInfo.round);
             }
             return "Training Finished!";
         }
@@ -180,9 +181,6 @@ public class FrozenTrainer {
             TextView train_loss_view = null;
             if (activity != null) {
                 train_loss_view = activity.findViewById(R.id.TrainLoss);
-            }
-            for (int local_round =0 ; local_round< 100; local_round++){
-                train(train_loss_view);
             }
             train(train_loss_view);
             eval(train_loss_view);

@@ -70,17 +70,23 @@ if __name__ == '__main__':
                                             (epoch, step, train_loss, train_acc))
                                     f.write("\n")
                             if step % 2000 == 0:
-                                path = saver.save(sess, args.checkpoints_dir + '/model.ckpt', global_step=step)
+                                path = saver.save(sess, args.checkpoints_dir + '/SphereFace_fl.ckpt', global_step=step)
                                 print('Save model in step:{}, path:{}'.format(step, path))
 
                     trainable_var = tf.trainable_variables()
                     c = []
                     noise_scaling_parameter = 1e3
+                    flag_print = True
                     for var in trainable_var:
                         tmp = sess.run(var)
+                        if flag_print:
+                            print(tmp)
                         dp = tf.random.normal(
                             tmp.shape, stddev=tf.reduce_mean(tmp) / noise_scaling_parameter)
                         tmp += sess.run(dp)
+                        if flag_print:
+                            print(tmp)
+                            flag_print=False
                         c.append(tmp)
                     clients_weights[client_id] = c
                 for idx, weights_cli in enumerate(clients_weights):
