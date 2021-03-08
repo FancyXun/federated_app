@@ -115,7 +115,7 @@ def get_parser():
                         help='model name:'
                              'mobileFaceNet')
     parser.add_argument('--only_gen_graph', type=bool,
-                        default=True,
+                        default=False,
                         help='generate graph ')
 
     args = parser.parse_args()

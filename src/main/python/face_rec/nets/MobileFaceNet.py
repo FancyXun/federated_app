@@ -69,7 +69,7 @@ def inverted_block(net, input_filters, output_filters, expand_ratio, stride, sco
         res_block = slim.conv2d(inputs=net, num_outputs=input_filters * expand_ratio, kernel_size=[1, 1])
         # depthwise conv2d
         if mobile:
-            res_block = separable_conv2d_mobile(res_block, [3, 3], stride)
+            res_block = separable_conv2d_mobile(res_block, [3, 3], stride, name="res_block_depthwise")
             # res_block = slim.conv2d(net, int(net.get_shape()[-1]), [3, 3],
             #                         stride=stride, normalizer_fn=slim.batch_norm)
         else:
@@ -156,9 +156,9 @@ def mobilenet_v2_base(inputs,
                     to produce the end result.
                     '''
                     if mobile:
-                        net = separable_conv2d_mobile(net, conv_def.kernel, conv_def.stride)
+                        net = separable_conv2d_mobile(net, conv_def.kernel, conv_def.stride, name="DepthwiseConv")
                         # net = slim.conv2d(net, int(net.get_shape()[-1]), conv_def.kernel,
-                                          # stride=conv_def.stride, normalizer_fn=slim.batch_norm)
+                        # stride=conv_def.stride, normalizer_fn=slim.batch_norm)
                     else:
                         net = slim.separable_conv2d(inputs=net, num_outputs=None, kernel_size=conv_def.kernel,
                                                     stride=conv_def.stride,
@@ -254,7 +254,7 @@ def mobilenet_v2(inputs,
 
                     # Global depthwise conv2d
                     if mobile:
-                        net = separable_conv2d_mobile(net, kernel_size, stride=1, padding='VALID')
+                        net = separable_conv2d_mobile(net, kernel_size, stride=1, padding='VALID', name="Globaldepthwise")
                         # net = slim.conv2d(net, int(net.get_shape()[-1]), kernel_size, stride=1, padding='VALID')
                     else:
                         net = slim.separable_conv2d(inputs=net, num_outputs=None, kernel_size=kernel_size, stride=1,
@@ -281,12 +281,15 @@ mobilenet_v2.default_image_size = 112
 
 
 # too slow
-def separable_conv2d_mobile(net, kernel, stride, padding='SAME'):
+def separable_conv2d_mobile(net, kernel, stride, padding='SAME', name=None):
     net_list = []
+    initial = tf.glorot_uniform_initializer()
     for channel in range(int(net.get_shape()[-1])):
         net_fm = tf.expand_dims(net[:, :, :, channel], axis=3)
-        net_list.append(slim.conv2d(net_fm, 1, kernel, stride=stride,
-                                    normalizer_fn=slim.batch_norm, padding=padding))
+        # net_list.append(slim.conv2d(net_fm, 1, kernel, stride=stride,
+        #                             normalizer_fn=slim.batch_norm, padding=padding))
+        filter = tf.get_variable(name+"_"+str(channel), shape=kernel + [1] + [1], initializer=initial)
+        net_list.append(tf.nn.conv2d(net_fm, filter, strides=[stride, stride, stride, stride], padding=padding))
     net = net_list[0]
     for conv_fm in net_list[1:]:
         net = tf.concat([net, conv_fm], axis=3)
