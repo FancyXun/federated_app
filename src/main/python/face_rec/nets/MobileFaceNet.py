@@ -69,9 +69,9 @@ def inverted_block(net, input_filters, output_filters, expand_ratio, stride, sco
         res_block = slim.conv2d(inputs=net, num_outputs=input_filters * expand_ratio, kernel_size=[1, 1])
         # depthwise conv2d
         if mobile:
-            # res_block = separable_conv2d_mobile(res_block, [3, 3], stride)
-            res_block = slim.conv2d(net, int(net.get_shape()[-1]), [3, 3],
-                                    stride=stride, normalizer_fn=slim.batch_norm)
+            res_block = separable_conv2d_mobile(res_block, [3, 3], stride)
+            # res_block = slim.conv2d(net, int(net.get_shape()[-1]), [3, 3],
+            #                         stride=stride, normalizer_fn=slim.batch_norm)
         else:
             res_block = slim.separable_conv2d(inputs=res_block, num_outputs=None, kernel_size=[3, 3], stride=stride,
                                               depth_multiplier=1.0, normalizer_fn=slim.batch_norm)
@@ -156,9 +156,9 @@ def mobilenet_v2_base(inputs,
                     to produce the end result.
                     '''
                     if mobile:
-                        # net = separable_conv2d_mobile(net, conv_def.kernel, conv_def.stride)
-                        net = slim.conv2d(net, int(net.get_shape()[-1]), conv_def.kernel,
-                                          stride=conv_def.stride, normalizer_fn=slim.batch_norm)
+                        net = separable_conv2d_mobile(net, conv_def.kernel, conv_def.stride)
+                        # net = slim.conv2d(net, int(net.get_shape()[-1]), conv_def.kernel,
+                                          # stride=conv_def.stride, normalizer_fn=slim.batch_norm)
                     else:
                         net = slim.separable_conv2d(inputs=net, num_outputs=None, kernel_size=conv_def.kernel,
                                                     stride=conv_def.stride,
@@ -254,8 +254,8 @@ def mobilenet_v2(inputs,
 
                     # Global depthwise conv2d
                     if mobile:
-                        # net = separable_conv2d_mobile(net, kernel_size, stride=1, padding='VALID')
-                        net = slim.conv2d(net, int(net.get_shape()[-1]), kernel_size, stride=1, padding='VALID')
+                        net = separable_conv2d_mobile(net, kernel_size, stride=1, padding='VALID')
+                        # net = slim.conv2d(net, int(net.get_shape()[-1]), kernel_size, stride=1, padding='VALID')
                     else:
                         net = slim.separable_conv2d(inputs=net, num_outputs=None, kernel_size=kernel_size, stride=1,
                                                     depth_multiplier=1.0, activation_fn=None, padding='VALID')

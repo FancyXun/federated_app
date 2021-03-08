@@ -135,7 +135,7 @@ def read_img(batch_img_pt):
 
 
 if __name__ == '__main__':
-    mobile = False
+    mobile = True
     with tf.Graph().as_default():
         args = get_parser()
 
