@@ -135,6 +135,7 @@ def read_img(batch_img_pt):
 
 
 if __name__ == '__main__':
+    mobile = True
     with tf.Graph().as_default():
         args = get_parser()
 
@@ -160,7 +161,8 @@ if __name__ == '__main__':
         pre_logits, net_points = inference(inputs,
                                            bottleneck_layer_size=args.embedding_size,
                                            phase_train=phase_train_placeholder,
-                                           weight_decay=args.weight_decay)
+                                           weight_decay=args.weight_decay,
+                                           mobile=mobile)
 
         embeddings = tf.nn.l2_normalize(pre_logits, 1, 1e-10, name='embeddings')
 

@@ -63,13 +63,16 @@ _CONV_DEFS = [
 ]
 
 
-def inverted_block(net, input_filters, output_filters, expand_ratio, stride, scope=None):
+def inverted_block(net, input_filters, output_filters, expand_ratio, stride, scope=None, mobile=False):
     '''fundamental network struture of inverted residual block'''
     with tf.name_scope(scope):
         res_block = slim.conv2d(inputs=net, num_outputs=input_filters * expand_ratio, kernel_size=[1, 1])
         # depthwise conv2d
-        res_block = slim.separable_conv2d(inputs=res_block, num_outputs=None, kernel_size=[3, 3], stride=stride,
-                                          depth_multiplier=1.0, normalizer_fn=slim.batch_norm)
+        if mobile:
+            res_block = separable_conv2d_mobile(res_block, [3, 3], stride)
+        else:
+            res_block = slim.separable_conv2d(inputs=res_block, num_outputs=None, kernel_size=[3, 3], stride=stride,
+                                              depth_multiplier=1.0, normalizer_fn=slim.batch_norm)
         res_block = slim.conv2d(inputs=res_block, num_outputs=output_filters, kernel_size=[1, 1], activation_fn=None)
         # stride 2 blocks
         if stride == 2:
@@ -85,7 +88,8 @@ def mobilenet_v2_base(inputs,
                       final_endpoint='Conv2d_7',
                       min_depth=8,
                       conv_defs=None,
-                      scope=None):
+                      scope=None,
+                      mobile=False):
     """Mobilenet v2.
 
     Constructs a Mobilenet v2 network from inputs to the given final endpoint.
@@ -100,6 +104,7 @@ def mobilenet_v2_base(inputs,
         Enforced output depth to min_depth.
       conv_defs: A list of ConvDef namedtuples specifying the net architecture.
       scope: Optional variable_scope.
+      mobile: Using mobile or not
 
     Returns:
       tensor_out: output tensor corresponding to the final_endpoint.
@@ -136,9 +141,24 @@ def mobilenet_v2_base(inputs,
                 elif isinstance(conv_def, DepthwiseConv):
                     end_point = 'DepthwiseConv'
                     # depthwise conv2d
-                    net = slim.separable_conv2d(inputs=net, num_outputs=None, kernel_size=conv_def.kernel,
-                                                stride=conv_def.stride,
-                                                depth_multiplier=1.0, normalizer_fn=slim.batch_norm)
+                    # 56 56 64 -> 56 56 64
+                    '''
+                    Adds a depth-separable 2D convolution with optional batch_norm layer.
+
+                    This op first performs a depthwise convolution that acts separately on
+                    channels, creating a variable called `depthwise_weights`. If `num_outputs`
+                    is not None, it adds a pointwise convolution that mixes channels, creating a
+                    variable called `pointwise_weights`. Then, if `normalizer_fn` is None,
+                    it adds bias to the result, creating a variable called 'biases', otherwise,
+                    the `normalizer_fn` is applied. It finally applies an activation function
+                    to produce the end result.
+                    '''
+                    if mobile:
+                        net = separable_conv2d_mobile(net, conv_def.kernel, conv_def.stride)
+                    else:
+                        net = slim.separable_conv2d(inputs=net, num_outputs=None, kernel_size=conv_def.kernel,
+                                                    stride=conv_def.stride,
+                                                    depth_multiplier=1.0, normalizer_fn=slim.batch_norm)
                     net = slim.conv2d(inputs=net, num_outputs=conv_def.depth, kernel_size=[1, 1], activation_fn=None)
                     end_points[end_point] = net
                     if end_point == final_endpoint:
@@ -174,7 +194,8 @@ def mobilenet_v2(inputs,
                  spatial_squeeze=True,
                  reuse=None,
                  scope='MobileFaceNet',
-                 global_pool=False):
+                 global_pool=False,
+                 mobile=False):
     """Mobilenet v2 model for classification.
 
     Args:
@@ -195,6 +216,7 @@ def mobilenet_v2(inputs,
         logits layer. If false or unset, pooling is done with a fixed window
         that reduces default-sized inputs to 1x1, while larger inputs lead to
         larger outputs. If true, any input size is pooled down to 1x1.
+      mobile: Using mobile or not
 
     Returns:
       net: a 2D Tensor with the logits (pre-softmax activations) if bottleneck_layer_size
@@ -213,7 +235,9 @@ def mobilenet_v2(inputs,
 
     with tf.variable_scope(scope, 'MobileFaceNet', [inputs], reuse=reuse) as scope:
         with slim.arg_scope([slim.batch_norm, slim.dropout], is_training=is_training):
-            net, end_points = mobilenet_v2_base(inputs, scope=scope, min_depth=min_depth, conv_defs=conv_defs)
+            net, end_points = mobilenet_v2_base(inputs, scope=scope,
+                                                min_depth=min_depth,
+                                                conv_defs=conv_defs, mobile=mobile)
 
             with tf.variable_scope('Logits'):
                 if global_pool:
@@ -225,8 +249,11 @@ def mobilenet_v2(inputs,
                     kernel_size = _reduced_kernel_size_for_small_input(net, [7, 7])
 
                     # Global depthwise conv2d
-                    net = slim.separable_conv2d(inputs=net, num_outputs=None, kernel_size=kernel_size, stride=1,
-                                                depth_multiplier=1.0, activation_fn=None, padding='VALID')
+                    if mobile:
+                        net = separable_conv2d_mobile(net, kernel_size, stride=1, padding='VALID')
+                    else:
+                        net = slim.separable_conv2d(inputs=net, num_outputs=None, kernel_size=kernel_size, stride=1,
+                                                    depth_multiplier=1.0, activation_fn=None, padding='VALID')
                     net = slim.conv2d(inputs=net, num_outputs=512, kernel_size=[1, 1], stride=1, activation_fn=None,
                                       padding='VALID')
                     end_points['GDConv'] = net
@@ -246,6 +273,20 @@ def mobilenet_v2(inputs,
 
 
 mobilenet_v2.default_image_size = 112
+
+
+# too slow
+def separable_conv2d_mobile(net, kernel, stride, padding='SAME'):
+    net_list = []
+    for channel in range(int(net.get_shape()[-1])):
+        net_fm = tf.expand_dims(net[:, :, :, channel], axis=3)
+        net_list.append(slim.conv2d(net_fm, 1, kernel, stride=stride,
+                                    normalizer_fn=slim.batch_norm, padding=padding))
+    net = net_list[0]
+    for conv_fm in net_list[1:]:
+        net = tf.concat([net, conv_fm], axis=3)
+
+    return net
 
 
 def wrapped_partial(func, *args, **kwargs):
@@ -331,7 +372,7 @@ def mobilenet_v2_arg_scope(is_training=True,
 
 
 def inference(images, bottleneck_layer_size=128, phase_train=False,
-              weight_decay=0.00005, reuse=False):
+              weight_decay=0.00005, reuse=False, mobile=False):
     '''build a mobilenet_v2 graph to training or inference.
 
     Args:
@@ -343,6 +384,7 @@ def inference(images, bottleneck_layer_size=128, phase_train=False,
         weight_decay: The weight decay to use for regularizing the model.
         reuse: whether or not the network and its variables should be reused. To be
           able to reuse 'scope' must be given.
+        mobile: Using mobile or not.
 
     Returns:
         net: a 2D Tensor with the logits (pre-softmax activations) if bottleneck_layer_size
@@ -356,4 +398,5 @@ def inference(images, bottleneck_layer_size=128, phase_train=False,
     '''
     arg_scope = mobilenet_v2_arg_scope(is_training=phase_train, weight_decay=weight_decay)
     with slim.arg_scope(arg_scope):
-        return mobilenet_v2(images, bottleneck_layer_size=bottleneck_layer_size, is_training=phase_train, reuse=reuse)
+        return mobilenet_v2(images, bottleneck_layer_size=bottleneck_layer_size,
+                            is_training=phase_train, reuse=reuse, mobile=mobile)
