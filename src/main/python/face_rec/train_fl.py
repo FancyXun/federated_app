@@ -79,13 +79,13 @@ if __name__ == '__main__':
                     flag_print = True
                     for var in trainable_var:
                         tmp = sess.run(var)
-                        if flag_print:
-                            print(tmp)
+                        # if flag_print:
+                        #     print(tmp)
                         dp = tf.random.normal(
                             tmp.shape, stddev=tf.reduce_mean(tmp) / noise_scaling_parameter)
                         tmp += sess.run(dp)
                         if flag_print:
-                            print(tmp)
+                            # print(tmp)
                             flag_print=False
                         c.append(tmp)
                     clients_weights[client_id] = c
