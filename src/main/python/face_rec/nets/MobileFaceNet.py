@@ -62,14 +62,24 @@ _CONV_DEFS = [
     Conv(kernel=[1, 1], stride=1, depth=512, ratio=1),
 ]
 
+initial = tf.glorot_uniform_initializer()
 
-def inverted_block(net, input_filters, output_filters, expand_ratio, stride, scope=None, mobile=False):
+
+def inverted_block(net, input_filters, output_filters, expand_ratio, stride, scope=None, mobile=False, idx=0):
     '''fundamental network struture of inverted residual block'''
     with tf.name_scope(scope):
         res_block = slim.conv2d(inputs=net, num_outputs=input_filters * expand_ratio, kernel_size=[1, 1])
         # depthwise conv2d
         if mobile:
-            res_block = separable_conv2d_mobile(res_block, [3, 3], stride, name="res_block_depthwise")
+            input_channel = int(res_block.get_shape()[-1])
+            res_block = tf.nn.depthwise_conv2d(res_block,
+                                         tf.get_variable("res_block_depthwise_"+str(idx),
+                                                         shape=[3, 3] +
+                                                               [input_channel, 1],
+                                                         initializer=initial),
+                                         strides=[1, stride, stride, 1],
+                                         padding="SAME")
+            # res_block = separable_conv2d_mobile(res_block, [3, 3], stride, name="res_block_depthwise_"+str(idx))
             # res_block = slim.conv2d(net, int(net.get_shape()[-1]), [3, 3],
             #                         stride=stride, normalizer_fn=slim.batch_norm)
         else:
@@ -119,6 +129,7 @@ def mobilenet_v2_base(inputs,
     """
     depth = lambda d: max(int(d), min_depth)
     end_points = {}
+    block_idx = 0
 
     if conv_defs is None:
         conv_defs = _CONV_DEFS
@@ -156,7 +167,16 @@ def mobilenet_v2_base(inputs,
                     to produce the end result.
                     '''
                     if mobile:
-                        net = separable_conv2d_mobile(net, conv_def.kernel, conv_def.stride, name="DepthwiseConv")
+                        input_channel = int(net.get_shape()[-1])
+                        net = tf.nn.depthwise_conv2d(net,
+                                                     tf.get_variable("DepthwiseConv",
+                                                                     shape=conv_def.kernel +
+                                                                           [input_channel, 1],
+                                                                     initializer=initial),
+                                                     strides=[1, conv_def.stride,
+                                                              conv_def.stride, 1],
+                                                     padding="SAME")
+                        # net = separable_conv2d_mobile(net, conv_def.kernel, conv_def.stride, name="DepthwiseConv")
                         # net = slim.conv2d(net, int(net.get_shape()[-1]), conv_def.kernel,
                         # stride=conv_def.stride, normalizer_fn=slim.batch_norm)
                     else:
@@ -174,12 +194,13 @@ def mobilenet_v2_base(inputs,
                     input_filters = net.shape[3].value
                     # first layer needs to consider stride
                     net = inverted_block(net, input_filters, depth(conv_def.depth), conv_def.ratio, conv_def.stride,
-                                         end_point + '_0')
+                                         end_point + '_0', mobile=mobile, idx=block_idx)
+                    block_idx += 1
                     for index in range(1, conv_def.repeate):
                         suffix = '_' + str(index)
                         net = inverted_block(net, input_filters, depth(conv_def.depth), conv_def.ratio, 1,
-                                             end_point + suffix)
-
+                                             end_point + suffix, mobile=mobile, idx=block_idx)
+                        block_idx += 1
                     end_points[end_point] = net
                     if end_point == final_endpoint:
                         return net, end_points
@@ -254,7 +275,16 @@ def mobilenet_v2(inputs,
 
                     # Global depthwise conv2d
                     if mobile:
-                        net = separable_conv2d_mobile(net, kernel_size, stride=1, padding='VALID', name="Globaldepthwise")
+                        # net = separable_conv2d_mobile(net, kernel_size, stride=1,
+                        #                               padding='VALID', name="Globaldepthwise")
+                        input_channel = int(net.get_shape()[-1])
+                        net = tf.nn.depthwise_conv2d(net,
+                                                     tf.get_variable("Globaldepthwise",
+                                                                     shape=kernel_size +
+                                                                           [input_channel, 1],
+                                                                     initializer=initial),
+                                                     strides=[1, 1, 1, 1],
+                                                     padding="VALID")
                         # net = slim.conv2d(net, int(net.get_shape()[-1]), kernel_size, stride=1, padding='VALID')
                     else:
                         net = slim.separable_conv2d(inputs=net, num_outputs=None, kernel_size=kernel_size, stride=1,
@@ -283,22 +313,21 @@ mobilenet_v2.default_image_size = 112
 # too slow
 def separable_conv2d_mobile(net, kernel, stride, padding='SAME', name=None):
     net_list = []
-    initial = tf.glorot_uniform_initializer()
-    filter_all = tf.expand_dims(
-        tf.expand_dims(
-            tf.get_variable(
-                name, shape=kernel + [int(net.get_shape()[-1])], initializer=initial), axis=3), axis=4)
+    channel_dim = int(net.get_shape()[-1])
+    filter_all = tf.get_variable(name, shape=kernel + [channel_dim, 1, 1], initializer=initial)
     net = tf.expand_dims(net, axis=4)
-    for channel in range(int(net.get_shape()[-1])):
+    print(channel_dim)
+    for channel in range(channel_dim):
         net_fm = net[:, :, :, channel]
         # net_list.append(slim.conv2d(net_fm, 1, kernel, stride=stride,
         #                             normalizer_fn=slim.batch_norm, padding=padding))
-        net_list.append(tf.nn.conv2d(net_fm,filter_all[:, :, channel],
-                                     strides=[stride, stride, stride, stride], padding=padding))
-    net = net_list[0]
-    for conv_fm in net_list[1:]:
-        net = tf.concat([net, conv_fm], axis=3)
-
+        net_list.append(
+                tf.nn.conv2d(
+                    net_fm, filter_all[:, :, channel],
+                    strides=[stride, stride, stride, stride],
+                    padding=padding))
+    net = tf.nn.bias_add(tf.squeeze(tf.stack(net_list, axis=3), axis=4),
+                         tf.get_variable(name+"_bias", shape=[channel_dim], initializer=initial))
     return net
 
 

@@ -26,6 +26,7 @@ from utils.write_pb_mobile import write_graph_netInfo
 slim = tf.contrib.slim
 
 prj_path="/data/zhangxun/federated_app/src/main/python/face_rec"
+# prj_path="/Users/voyager/code/android-demo/federated_app/src/main/python/face_rec"
 
 
 def get_parser():
