@@ -284,14 +284,16 @@ mobilenet_v2.default_image_size = 112
 def separable_conv2d_mobile(net, kernel, stride, padding='SAME', name=None):
     net_list = []
     initial = tf.glorot_uniform_initializer()
-    filter_all = tf.get_variable(name, shape=kernel + [int(net.get_shape()[-1])], initializer=initial)
+    filter_all = tf.expand_dims(
+        tf.expand_dims(
+            tf.get_variable(
+                name, shape=kernel + [int(net.get_shape()[-1])], initializer=initial), axis=3), axis=4)
+    net = tf.expand_dims(net, axis=4)
     for channel in range(int(net.get_shape()[-1])):
-        net_fm = tf.expand_dims(net[:, :, :, channel], axis=3)
+        net_fm = net[:, :, :, channel]
         # net_list.append(slim.conv2d(net_fm, 1, kernel, stride=stride,
         #                             normalizer_fn=slim.batch_norm, padding=padding))
-        net_list.append(tf.nn.conv2d(net_fm,
-                                     tf.expand_dims(
-                                         tf.expand_dims(filter_all[:, :, channel], axis=2), axis=3),
+        net_list.append(tf.nn.conv2d(net_fm,filter_all[:, :, channel],
                                      strides=[stride, stride, stride, stride], padding=padding))
     net = net_list[0]
     for conv_fm in net_list[1:]:

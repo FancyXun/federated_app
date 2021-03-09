@@ -94,7 +94,8 @@ def get_parser():
                         help='Number of images to process in a batch in the test set.',
                         default=100)
     parser.add_argument('--eval_data_sets',
-                        default=['lfw', 'cfp_ff', 'cfp_fp', 'agedb_30'],
+                        # default=['lfw', 'cfp_ff', 'cfp_fp', 'agedb_30'],
+                        default=['lfw'],
                         help='evaluation datasets')
     parser.add_argument('--eval_db_path',
                         default='/data/zhangxun/data/evaluation',
@@ -199,7 +200,6 @@ if __name__ == '__main__':
                                 gpu_options=gpu_options)
         config.gpu_options.allow_growth = True
         sess = tf.Session(config=config)
-
         # calculate accuracy
         pred = tf.nn.softmax(logit)
         correct_prediction = tf.cast(tf.equal(tf.argmax(pred, 1), tf.cast(labels, tf.int64)), tf.float32)
