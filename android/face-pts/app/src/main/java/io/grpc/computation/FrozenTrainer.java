@@ -51,14 +51,15 @@ public class FrozenTrainer {
         public static String lossName;
         public static String learningRate;
         public static String accName;
+        public static Boolean oneHot=false;
     }
 
     static class ServeInfo {
-        public static String server_ip = "192.168.89.249";
+        public static String server_ip = "192.168.51.13";
         public static int server_port = 50051;
         public static final String path = "http://52.81.162.253:8000/res/CASIA-WebFace-aligned";
-        public static final String image_txt = "train_images_0_small.txt";
-        public static final String image_val_txt = "val_images_0_small.txt";
+        public static final String image_txt = "train_images_1.txt";
+        public static final String image_val_txt = "val_images_1_small.txt";
     }
 
     static class ClientInfo {
@@ -72,7 +73,7 @@ public class FrozenTrainer {
     }
 
     static class TrainInfo {
-        public static int batch_size = 16;
+        public static int batch_size = 4;
         public static float total_loss = 0;
     }
 
@@ -252,14 +253,27 @@ public class FrozenTrainer {
                 float[][][][] x = new float[TrainInfo.batch_size][imageInfo.getHeight()]
                         [imageInfo.getWidth()][imageInfo.getChannel()];
                 int batch_size_iter = 0;
-
-                int[][] label_oneHot = new int[TrainInfo.batch_size][imageInfo.getLabel_num()];
+                int[][] label_batch_onehot = null;
+                int[]label_batch = null;
+                if (MetaInfo.oneHot){
+                    label_batch_onehot = new int[TrainInfo.batch_size][imageInfo.getLabel_num()];
+                }
+                else{
+                    label_batch = new int[TrainInfo.batch_size];
+                }
                 for (int epoch = 0; epoch < 20; epoch++) {
                 while ((line = buffReader.readLine()) != null) {
                     try{
                     Mat image = TrainerStreamUtils.getImage(ServeInfo.path + line, imageInfo);
                     int label = Integer.parseInt(line.split("/")[1]);
-                    label_oneHot[batch_size_iter][label] = 1;
+
+                    if (MetaInfo.oneHot){
+                        label_batch_onehot[batch_size_iter][label] = 1;
+                    }
+                    else{
+                        label_batch[batch_size_iter] = label;
+                    }
+
                     assert image != null;
                     DataConverter.cvMat_batchArray(image, batch_size_iter, x);
                     }
@@ -278,15 +292,19 @@ public class FrozenTrainer {
 
                     Session.Runner runner = session.runner();
                     Tensor x_t = Tensor.create(x);
-                    Tensor label_oneHot_t = Tensor.create(label_oneHot);
+                    Tensor label_batch_tensor;
+                    if (MetaInfo.oneHot) {
+                        label_batch_tensor = Tensor.create(label_batch_onehot);
+                    }
+                    else{
+                        label_batch_tensor = Tensor.create(label_batch);
+                    }
                     Tensor lr_t = Tensor.create(0.0001f);
                     runner
                             .feed(MetaInfo.x, x_t)
-                            .feed(MetaInfo.y, label_oneHot_t)
+                            .feed(MetaInfo.y, label_batch_tensor)
                             .addTarget(MetaInfo.optimizerName)
                             .run();
-
-
                     List<Tensor<?>> fetched_tensors = runner
                             .fetch(MetaInfo.lossName)
                             .fetch(MetaInfo.accName)
@@ -298,9 +316,14 @@ public class FrozenTrainer {
                             " acc: " + fetched_tensors.get(1).floatValue());
                     train_loss_list.add(fetched_tensors.get(0).floatValue());
                     train_acc_list.add(fetched_tensors.get(1).floatValue());
-                    label_oneHot = new int[TrainInfo.batch_size][imageInfo.getLabel_num()];
+                    if (MetaInfo.oneHot) {
+                        label_batch_onehot = new int[TrainInfo.batch_size][imageInfo.getLabel_num()];
+                    }
+                    else{
+                        label_batch = new int[TrainInfo.batch_size];
+                    }
                     x_t.close();
-                    label_oneHot_t.close();
+                    label_batch_tensor.close();
                     lr_t.close();
                 }
             }

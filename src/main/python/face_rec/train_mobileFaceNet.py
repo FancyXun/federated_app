@@ -25,8 +25,8 @@ from utils.write_pb_mobile import write_graph_netInfo
 
 slim = tf.contrib.slim
 
-prj_path="/data/zhangxun/federated_app/src/main/python/face_rec"
-# prj_path="/Users/voyager/code/android-demo/federated_app/src/main/python/face_rec"
+# prj_path="/data/zhangxun/federated_app/src/main/python/face_rec"
+prj_path="/Users/voyager/code/android-demo/federated_app/src/main/python/face_rec"
 
 
 def get_parser():
@@ -117,7 +117,7 @@ def get_parser():
                         help='model name:'
                              'mobileFaceNet')
     parser.add_argument('--only_gen_graph', type=bool,
-                        default=False,
+                        default=True,
                         help='generate graph ')
 
     args = parser.parse_args()
@@ -137,7 +137,7 @@ def read_img(batch_img_pt):
 
 
 if __name__ == '__main__':
-    mobile = True
+    mobile = False
     with tf.Graph().as_default():
         args = get_parser()
 
@@ -153,7 +153,7 @@ if __name__ == '__main__':
         epoch = tf.Variable(name='epoch', initial_value=-1, trainable=False)
         # define placeholder
         inputs = tf.placeholder(name='img_inputs', shape=[None, *args.image_size, 3], dtype=tf.float32)
-        labels = tf.placeholder(name='img_labels', shape=[None, ], dtype=tf.int64)
+        labels = tf.placeholder(name='img_labels', shape=[None, ], dtype=tf.int32)
         phase_train_placeholder = tf.placeholder_with_default(tf.constant(False, dtype=tf.bool), shape=None,
                                                               name='phase_train')
 

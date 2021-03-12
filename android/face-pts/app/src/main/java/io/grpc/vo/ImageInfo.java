@@ -4,7 +4,7 @@ public class ImageInfo {
     int batch_size = 16;
     float total_loss = 0;
     int height = 112;
-    int width = 96;
+    int width = 112;
     int channel = 3;
     int label_num = 1006;
 

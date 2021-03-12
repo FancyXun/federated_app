@@ -47,9 +47,9 @@ def insightface_loss(embedding, labels, out_num, w_init=None, s=64., m=0.5):
         s_cos_t = tf.multiply(s, cos_t, name='scalar_cos_t')
 
         logit = tf.add(tf.multiply(s_cos_t, inv_mask), tf.multiply(cos_mt_temp, mask), name='arcface_loss_output')
-        # not support in android
         inference_loss = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(logits=logit, labels=labels))
-        # inference_loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=logit, labels=labels))
+        # labels_one_hot = tf.one_hot(labels, depth=out_num, name='labels_one_hot')
+        # inference_loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=logit, labels=labels_one_hot))
 
     return inference_loss, logit
 
