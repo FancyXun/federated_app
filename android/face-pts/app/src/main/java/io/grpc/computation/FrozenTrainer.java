@@ -55,7 +55,7 @@ public class FrozenTrainer {
     }
 
     static class ServeInfo {
-        public static String server_ip = "192.168.51.13";
+        public static String server_ip = "192.168.0.100";
         public static int server_port = 50051;
         public static final String path = "http://52.81.162.253:8000/res/CASIA-WebFace-aligned";
         public static final String image_txt = "train_images_1.txt";

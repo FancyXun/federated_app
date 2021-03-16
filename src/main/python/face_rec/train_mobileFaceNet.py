@@ -74,7 +74,7 @@ def get_parser():
                         type=str,
                         default='/data/zhangxun/data/CASIA-WebFace-aligned/imgs',
                         help='combine_loss loss margin b.')
-    parser.add_argument('--class_number', type=int, default=1006,
+    parser.add_argument('--class_number', type=int, default=85742,
                         help='class number depend on your training data sets, '
                              'MS1M-V1: 85164 ,'
                              'MS1M-V2: 85742 ,'
@@ -84,7 +84,7 @@ def get_parser():
                         help='dataset name')
     parser.add_argument('--embedding_size', type=int,
                         help='Dimensionality of the embedding.',
-                        default=128)
+                        default=192)
     parser.add_argument('--weight_decay',
                         default=5e-5, help='L2 weight regularization.')
     parser.add_argument('--lr_schedule', help='Number of epochs for learning rate piecewise.',

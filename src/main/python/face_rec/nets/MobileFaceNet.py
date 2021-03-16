@@ -413,7 +413,7 @@ def mobilenet_v2_arg_scope(is_training=True,
                     return sc
 
 
-def inference(images, bottleneck_layer_size=128, phase_train=False,
+def inference(images, bottleneck_layer_size=192, phase_train=False,
               weight_decay=0.00005, reuse=False, mobile=False):
     '''build a mobilenet_v2 graph to training or inference.
 

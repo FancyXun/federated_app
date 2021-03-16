@@ -93,15 +93,22 @@ def main(args):
 
             # Load the model
             load_model(args.model)
-            # global_var = tf.global_variables()
-            # for var in global_var:
-            #     try:
-            #         v = sess.run(var)
-            #         np.save("./weights_numpy/"+
-            #                 var.initial_value.op.name.replace("/", "_")+".npy", v)
-            #         # print(var.initial_value.op.name + ";" + str(var.shape) + "\n")
-            #     except Exception as e:
-            #         print(e)
+            trainable_var = tf.trainable_variables()
+            for var in trainable_var:
+                try:
+                    v = sess.run(var)
+                    v_ravel = v.ravel()
+                    np.save("./weights_numpy/"+
+                            var.op.name.replace("/", "_")+".npy", v)
+                    with open("./weights_numpy/"+
+                            var.op.name.replace("/", "_")+".txt", "w") as f:
+                        for i in v_ravel:
+                            f.write(str(float(i)))
+                            f.write("\n")
+
+                    # print(var.initial_value.op.name + ";" + str(var.shape) + "\n")
+                except Exception as e:
+                    print(e)
 
 
             # Get input and output tensors, ignore phase_train_placeholder for it have default value.
@@ -168,7 +175,7 @@ def parse_arguments(argv):
     parser = argparse.ArgumentParser()
     parser.add_argument('--model', type=str,
                         help='Could be either a directory containing the meta_file and ckpt_file or a model protobuf (.pb) file',
-                        default='./arch/pretrained_model')
+                        default='./model/pretrained_model')
     parser.add_argument('--image_size', default=[112, 112], help='the image size')
     parser.add_argument('--test_batch_size', type=int,
                         help='Number of images to process in a batch in the test set.', default=1)

@@ -76,28 +76,28 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        faceUpload = findViewById(R.id.faceUpload);
-        faceImg = findViewById(R.id.faceImg);
+//        faceUpload = findViewById(R.id.faceUpload);
+//        faceImg = findViewById(R.id.faceImg);
         faceRec = findViewById(R.id.faceRec);
-        textView = findViewById(R.id.Similarity);
+//        textView = findViewById(R.id.Similarity);
         trainButton = (Button) findViewById(R.id.train);
         context = getApplicationContext();
-        fileList = new FileUtils(context, "sampleData/casiaWebFace").getFileList();
+        fileList = new FileUtils(context, "inference").getFileList();
         loadHaarCascadeFile();
-        faceUpload.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                Intent intent = new Intent();
-                intent.setType("image/*");
-                intent.setAction(Intent.ACTION_GET_CONTENT);
-                /*
-                Starting another activity, whether one within your app or from another app,
-                doesn't need to be a one-way operation. You can also start another activity
-                and receive a result back.
-                 */
-                startActivityForResult(intent, 1);
-            }
-        });
+//        faceUpload.setOnClickListener(new View.OnClickListener() {
+//            @Override
+//            public void onClick(View view) {
+//                Intent intent = new Intent();
+//                intent.setType("image/*");
+//                intent.setAction(Intent.ACTION_GET_CONTENT);
+//                /*
+//                Starting another activity, whether one within your app or from another app,
+//                doesn't need to be a one-way operation. You can also start another activity
+//                and receive a result back.
+//                 */
+//                startActivityForResult(intent, 1);
+//            }
+//        });
 
     }
 
@@ -128,10 +128,55 @@ public class MainActivity extends AppCompatActivity {
 //        new TrainerStream.LocalTraining(this, this.context).execute(
 //                "NULL"
 //        );
-        new FrozenTrainer.LocalTraining(this, this.context).execute(
-                "NULL"
-        );
+//        new FrozenTrainer.LocalTraining(this, this.context).execute(
+//                "NULL"
+//        );
 
+        new BackgroundTrainer.LocalTraining(this, this.context).execute();
+
+    }
+
+    public void inference_local(View view) throws IOException {
+        cascadeClassifier = new CascadeClassifier(mCascadeFile.getAbsolutePath());
+        cascadeClassifier.load(mCascadeFile.getAbsolutePath());
+        faceRec.setEnabled(false);
+        classifier = Classifier.create(this, Classifier.Device.CPU, 1);
+        MatOfRect matOfRect = new MatOfRect();
+        Bitmap bmp_detect = null;
+        float[][] emb = new float[1][];
+        for (String filePath : fileList) {
+            if (filePath.contains("test")){
+                Mat image = Imgcodecs.imread(cacheFile(filePath).getAbsolutePath(), Imgcodecs.IMREAD_COLOR);
+                Bitmap bmp = Bitmap.createBitmap(image.cols(), image.rows(), Bitmap.Config.ARGB_8888);
+                Utils.matToBitmap(image, bmp);
+                cascadeClassifier.detectMultiScale(image, matOfRect);
+                Rect[] facesArray = matOfRect.toArray();
+                for (Rect rect : facesArray) {
+                    Imgproc.rectangle(image, new Point(rect.x, rect.y), new Point(rect.x + rect.width, rect.y + rect.height),
+                            new Scalar(0, 255, 0),2);
+                }
+                try {
+                    bmp_detect = Bitmap.createBitmap(image.cols(), image.rows(), Bitmap.Config.ARGB_8888);
+                    Utils.matToBitmap(image, bmp_detect);
+                }
+                catch (CvException e){
+                    Log.d("Exception", e.getMessage());}
+                emb = mobileFaceNetinference(bmp_detect);
+            }
+        }
+
+        for (String filePath : fileList) {
+            if (filePath.contains("test")){
+                continue;
+            }
+            Mat image = Imgcodecs.imread(cacheFile(filePath).getAbsolutePath(), Imgcodecs.IMREAD_COLOR);
+            Bitmap bmp = Bitmap.createBitmap(image.cols(), image.rows(), Bitmap.Config.ARGB_8888);
+            Utils.matToBitmap(image, bmp);
+            float[][] emb1 = mobileFaceNetinference(bmp);
+            double similarity = cosineSimilarity(emb[0], emb1[0]);
+            System.out.println(filePath+ "similarity:" + similarity);
+        }
+        faceRec.setEnabled(true);
     }
 
     public void inference(View view) throws IOException {
@@ -185,7 +230,7 @@ public class MainActivity extends AppCompatActivity {
         faceRec.setEnabled(true);
     }
 
-    public void mobileFaceNetinference(Bitmap bitmap){
+    public float[][] mobileFaceNetinference(Bitmap bitmap){
         String MODEL_FILE = "rec/mobileFaceNet.tflite";
         Interpreter.Options options = new Interpreter.Options();
         options.setNumThreads(4);
@@ -200,12 +245,9 @@ public class MainActivity extends AppCompatActivity {
         float[][][][] datasets = new float[1][INPUT_IMAGE_SIZE][INPUT_IMAGE_SIZE][3];
         datasets[0] = normalizeImage(bitmapScale);
         float[][] embeddings = new float[1][192];
-        Timestamp timestamp = new Timestamp(System.currentTimeMillis());
-        System.out.println("识别1" + timestamp);
         interpreter.run(datasets, embeddings);
         l2Normalize(embeddings, 1e-10);
-        timestamp = new Timestamp(System.currentTimeMillis());
-        System.out.println("识别1" + timestamp);
+        return embeddings;
     }
 
     public void localPbTest(Bitmap bitmap){

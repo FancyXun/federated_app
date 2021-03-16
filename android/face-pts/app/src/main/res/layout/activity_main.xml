@@ -14,35 +14,35 @@
 <!--        android:background="@android:color/black"-->
 <!--        tools:context="org.tensorflow.lite.examples.classification.CameraActivity" />-->
 
-    <ImageView
+<!--    <ImageView-->
+<!--        android:layout_width="match_parent"-->
+<!--        android:layout_height="200dp"-->
+<!--        android:id="@+id/faceImg"-->
+<!--        android:layout_marginTop="20dp"-->
+<!--        android:contentDescription="Face image" />-->
+<!--    <Button-->
+<!--        android:layout_width="wrap_content"-->
+<!--        android:layout_height="wrap_content"-->
+<!--        android:text="人脸导入"-->
+<!--        android:layout_gravity="center"-->
+<!--        android:layout_marginTop="20dp"-->
+<!--        android:id="@+id/faceUpload"/>-->
+    <Button
+        android:id="@+id/faceRec"
         android:layout_width="match_parent"
-        android:layout_height="200dp"
-        android:id="@+id/faceImg"
-        android:layout_marginTop="20dp"
-        android:contentDescription="Face image" />
-    <Button
-        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="人脸导入"
         android:layout_gravity="center"
-        android:layout_marginTop="20dp"
-        android:id="@+id/faceUpload"/>
-    <Button
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="20dp"
-        android:layout_gravity="center"
-        android:text="人脸识别"
-        android:onClick="inference"
-        android:id="@+id/faceRec"/>
+        android:layout_marginTop="40dp"
+        android:onClick="inference_local"
+        android:text="人脸识别" />
 
     <Button
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="20dp"
         android:id="@+id/train"
-        android:onClick="Training"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
         android:layout_gravity="center"
+        android:layout_marginTop="40dp"
+        android:onClick="Training"
         android:text="联合训练" />
 <!--        android:background="@drawable/bt_shape"-->
 

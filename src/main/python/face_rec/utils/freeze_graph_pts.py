@@ -1,6 +1,7 @@
 import os
 import tensorflow as tf
 from nets.MobileFaceNet import inference
+import numpy as np
 
 training_checkpoint = "../arch/pretrained_model/MobileFaceNet_TF.ckpt"
 output_dir = '../model/pb/mobileFaceNet_pts.pb'
@@ -20,6 +21,7 @@ def save():
     init = tf.global_variables_initializer()
     with tf.Session() as sess:
         sess.run(init)
+
         saver = tf.train.Saver()
         saver.restore(sess, training_checkpoint)
 
@@ -31,4 +33,22 @@ def save():
             f.write(output_graph_def.SerializeToString())
 
 
-save()
+def save_from_np():
+    data_input = tf.placeholder(name='input', dtype=tf.float32, shape=[None, 112, 112, 3])
+    output, _ = inference(data_input, bottleneck_layer_size=192)  # ? why 192
+    tf.identity(output, name='embeddings')
+    init = tf.global_variables_initializer()
+    with tf.Session() as sess:
+        sess.run(init)
+        trainable_var = tf.trainable_variables()
+        for var in trainable_var:
+            txt_name = var.op.name.replace("/","_") +".txt"
+            with open("../weights_numpy/"+txt_name, "r") as f:
+                float_np = np.asarray([float(i.replace("\n", "")) for i in f.readlines()])
+            print(txt_name)
+            float_np = float_np.reshape(var.shape)
+            val_op = var.assign(float_np)
+            sess.run(val_op)
+
+
+save_from_np()

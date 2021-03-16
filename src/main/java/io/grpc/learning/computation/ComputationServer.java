@@ -68,6 +68,7 @@ public class ComputationServer {
         /* initialize the model and graph */
         modelHelper = new ModelHelper();
         modelHelper.loadModel();
+        modelHelper.LoadModelWeights();
         ch.qos.logback.classic.Logger logbackLogger =
                 (ch.qos.logback.classic.Logger) logger;
         logbackLogger.setLevel(Level.INFO);
@@ -136,13 +137,11 @@ public class ComputationServer {
         public int minRequestNum = 2;
         public int finished =0;
         public int maxBlock = 4;
-        public int currentBlock = 1;
         public String token = UUID.randomUUID().toString();
         public String state = "ready";
         public boolean firstRound = true;
         public List<String> AggregationClients = new ArrayList<>();
         public Client client = new Client();
-        public String rootPath = "/tmp/model_weights/";
         public ModelHelper modelHelper;
         public int currentRound = 0;
 
@@ -176,17 +175,12 @@ public class ComputationServer {
             model.setGraph(ByteString.copyFrom(graph.toGraphDef()));
             // set model layer and layer shape
             int layer_index = 0;
-            for (String key: modelInitMap.keySet()) {
+            for (String key: modelTrainableMap.keySet()) {
                 Layer.Builder layer = Layer.newBuilder();
-                if (!modelTrainableMap.containsKey(key)){
-                    layer.setLayerName("non_trainable");
-                }
-                else{
-                    layer.setLayerName(modelTrainableMap.get(key));
-                    layer.setLayerTrainableShape(modelInitMap.get(key));
-                }
-                layer.setLayerShape(modelInitMap.get(key));
                 layer.setLayerInitName(key);
+                layer.setLayerName(modelTrainableMap.get(key));
+//                layer.setLayerTrainableShape(modelInitMap.get(key));
+                layer.setLayerShape(modelInitMap.get(key));
                 model.addLayer(layer_index, layer);
                 layer_index++;
             }
@@ -198,15 +192,6 @@ public class ComputationServer {
                 meta.setMetaShape(metaMap.get(key));
                 model.addMeta(meta_index, meta);
                 meta_index++;
-            }
-            Set<String> set = modelHelper.getLayerWeightsHashMap().keySet();
-            int key_index = 0;
-            for (String key: set){
-                LayerFeed.Builder layerFeed = LayerFeed.newBuilder();
-                layerFeed.setLayerFeedWeightsName(key);
-                layerFeed.setLayerFeedWeightsShape(modelHelper.getLayerWeightsShapeHashMap().get(key));
-                layerFeed.setLayerInitFeedWeightsName(modelHelper.getLayerWeightsInitHashMap().get(key));
-                model.addLayerFeed(key_index, layerFeed);
             }
             model.setFirstRound(firstRound);
             responseObserver.onNext(model.build());
@@ -254,29 +239,15 @@ public class ComputationServer {
             client.getComputeLayerWeightsClients().add(request.getId());
             if (client_token.equals(token) && state.equals("ready")){
                 // valid token
-                File file=new File(rootPath+clientRequest.getId());
+                File file=new File(modelHelper.getModelWeighsPath()+"/"+clientRequest.getId());
                 if (!file.exists()) {
                     file.mkdir();
                 }
-//                File f = new File(rootPath+clientRequest.getId()+"/"+request.getLayerName()+".txt");
-//                if (!f.exists()) {
-//                    try {
-//                        f.createNewFile();
-//                    } catch (IOException e) {
-//                        e.printStackTrace();
-//                    }
-//                }
-//                try{
-//                    BufferedWriter bw = new BufferedWriter(new FileWriter(f, true));
-//                    bw.write(String.valueOf(request.getTensor().getFloatValList()));
-//                    bw.close();
-//                }catch(IOException e){
-//                    e.printStackTrace();
-//                }
-                Path filePath = new File(rootPath+clientRequest.getId()+"/"+
-                        request.getLayerName().replace("/","@")
+                Path filePath = new File(modelHelper.getModelWeighsPath()+"/"+clientRequest.getId()+"/"+
+                        request.getLayerName().replace("/","_")
                         +"__"+(int)request.getPart()+".npz").toPath();
                 NpzFile.Writer writer = NpzFile.write(filePath, true);
+
                 float[] arr = new float[request.getTensor().getFloatValList().size()];
                 int index = 0;
                 for (Float value: request.getTensor().getFloatValList()) {
@@ -303,14 +274,14 @@ public class ComputationServer {
             List<Float> lossEvalFloatList = request.getEvalLossValueList();
             String client_id = request.getId();
             int round = request.getRound();
-            File file=new File(rootPath+client_id+"/"+round);
+            File file=new File(modelHelper.getModelWeighsPath()+"/"+client_id+"/"+round);
             if (!file.exists()) {
                 file.mkdir();
             }
 
             FileWriter writer = null;
             try {
-                writer = new FileWriter(rootPath+client_id+"/"+round + "/accFloat.txt");
+                writer = new FileWriter(modelHelper.getModelWeighsPath()+"/"+client_id+"/"+round + "/accFloat.txt");
                 for(Float acc: accFloatList) {
                     writer.write(acc + System.lineSeparator());
                 }
@@ -320,7 +291,7 @@ public class ComputationServer {
             }
 
             try {
-                writer = new FileWriter(rootPath+client_id+"/"+round + "/lossFloat.txt");
+                writer = new FileWriter(modelHelper.getModelWeighsPath()+"/"+client_id+"/"+round + "/lossFloat.txt");
                 for(Float loss: lossFloatList) {
                     writer.write(loss + System.lineSeparator());
                 }
@@ -330,7 +301,7 @@ public class ComputationServer {
             }
 
             try {
-                writer = new FileWriter(rootPath+client_id+"/"+round + "/accEvalFloat.txt");
+                writer = new FileWriter(modelHelper.getModelWeighsPath()+"/"+client_id+"/"+round + "/accEvalFloat.txt");
                 for(Float accEval: accEvalFloatList) {
                     writer.write(accEval + System.lineSeparator());
                 }
@@ -340,7 +311,7 @@ public class ComputationServer {
             }
 
             try {
-                writer = new FileWriter(rootPath+client_id+"/"+round + "/lossEvalFloat.txt");
+                writer = new FileWriter(modelHelper.getModelWeighsPath()+"/"+client_id+"/"+round + "/lossEvalFloat.txt");
                 for(Float lossEval: lossEvalFloatList) {
                     writer.write(lossEval + System.lineSeparator());
                 }
@@ -367,7 +338,7 @@ public class ComputationServer {
             synchronized(this){
                 if (AggregationClients.size() >= minRequestNum){
                     state = "wait";
-                    File f = new File(rootPath +"aggClients.txt");
+                    File f = new File(modelHelper.getModelWeighsPath()+"/" +"aggClients.txt");
                     try{
                         BufferedWriter bw = new BufferedWriter(new FileWriter(f, false));
                         bw.write(AggregationClients.stream()
@@ -377,18 +348,13 @@ public class ComputationServer {
                     }catch(IOException e){
                         e.printStackTrace();
                     }
+
                     modelHelper.updateWeights();
                     AggregationClients.clear();
-                    modelHelper.ModelWeightsUpdate();
+                    modelHelper.LoadModelWeights();
                     firstRound = false;
                     token = UUID.randomUUID().toString();
                     state = "ready";
-                    if (currentBlock < maxBlock){
-                        currentBlock += 1;
-                    }
-                    else {
-                        currentBlock = 1;
-                    }
                 }
             }
             

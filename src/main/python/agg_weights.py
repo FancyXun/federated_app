@@ -2,9 +2,9 @@ import numpy as np
 import os
 import glob
 
-clients_url = "/tmp/model_weights/aggClients.txt"
-root_url = "/tmp/model_weights/"
-root_mean_url = "/tmp/model_weights/average"
+root_path = "/Users/voyager/code/android-demo/federated_app/tmp/mobileFaceNet"
+clients_url = root_path + "/aggClients.txt"
+root_mean_url = root_path + "/average"
 
 if not os.path.exists(root_mean_url):
     os.makedirs(root_mean_url)
@@ -13,7 +13,7 @@ with open(clients_url, "r") as f:
     c_ids = f.readlines()
 
 for c_id in c_ids:
-    pt = os.path.join(root_url, c_id.replace("\n", "").strip(" "))
+    pt = os.path.join(root_path, c_id.replace("\n", "").strip(" "))
     all_npz.append(glob.glob(pt+"/*.npz"))
 
 all_npz = np.asarray(all_npz)

@@ -43,6 +43,16 @@ public class ModelHelper {
     private String graphTrainableVarPath = (String) rb.getObject("graphTrainableVarPath");
     private String graphTrainInfoPath = (String) rb.getObject("graphTrainInfoPath");
 
+    public String getModelWeighsPath() {
+        return modelWeighsPath;
+    }
+
+    public void setModelWeighsPath(String modelWeighsPath) {
+        this.modelWeighsPath = modelWeighsPath;
+    }
+
+    private String modelWeighsPath = (String) rb.getObject("modelWeighsPath");
+
     // agg
     private final String pyDirAgg = (String) rb.getObject("pyAggRootPath");
     private Graph graph;
@@ -183,7 +193,7 @@ public class ModelHelper {
         return map;
     }
 
-    public void ModelWeightsUpdate() {
+    public void LoadModelWeights() {
         layerWeightsHashMap.clear();
         layerWeightsShapeHashMap.clear();
         layerWeightsInitHashMap.clear();
@@ -217,8 +227,9 @@ public class ModelHelper {
             TensorEntity.TensorProto.Builder tensorBuilder =
                     TensorEntity.TensorProto.newBuilder();
             LayerWeights.Builder layerWeightsBuilder = LayerWeights.newBuilder();
-            try (BufferedReader br = new BufferedReader(new FileReader("/tmp/model_weights/average/"+
-                    modelTrainableMap.get(key).replace("/","@")+".txt"))) {
+            try (BufferedReader br = new BufferedReader(new FileReader(modelWeighsPath+"/"+"average/"+
+                    modelTrainableMap.get(key).replace("/","_")+".txt"))) {
+
                 try {
                     String line = br.readLine();
                     while (line != null) {
@@ -242,6 +253,7 @@ public class ModelHelper {
             modelWeightsBuilder.addTensor(layer_index, tensorBuilder);
             layerWeightsBuilder.setTensor(tensorBuilder);
             layerWeightsBuilder.setLayerId(layer_index);
+            System.out.println(modelTrainableMap.get(key));
             layerWeightsHashMap.put(modelTrainableMap.get(key), layerWeightsBuilder);
             layerWeightsShapeHashMap.put(modelTrainableMap.get(key),shape);
             layerWeightsInitHashMap.put(modelTrainableMap.get(key), key);
