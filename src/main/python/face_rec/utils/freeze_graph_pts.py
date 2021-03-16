@@ -42,13 +42,21 @@ def save_from_np():
         sess.run(init)
         trainable_var = tf.trainable_variables()
         for var in trainable_var:
-            txt_name = var.op.name.replace("/","_") +".txt"
-            with open("../weights_numpy/"+txt_name, "r") as f:
-                float_np = np.asarray([float(i.replace("\n", "")) for i in f.readlines()])
-            print(txt_name)
-            float_np = float_np.reshape(var.shape)
-            val_op = var.assign(float_np)
-            sess.run(val_op)
+            try:
+                txt_name = var.op.name.replace("/", "_") +".txt"
+                with open("../weights_numpy/"+txt_name, "r") as f:
+                    float_np = np.asarray([float(i.replace("\n", "")) for i in f.readlines()])
+                float_np = float_np.reshape(var.shape)
+                val_op = var.assign(float_np)
+                sess.run(val_op)
+            except Exception as e:
+                print(e)
+        # Freeze the graph def
+        output_graph_def = freeze_graph_def(sess, 'embeddings')
+
+        # Serialize and dump the output graph to the filesystem
+        with tf.gfile.GFile(output_dir, 'wb') as f:
+            f.write(output_graph_def.SerializeToString())
 
 
 save_from_np()
