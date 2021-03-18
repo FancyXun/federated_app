@@ -42,8 +42,18 @@ service Computation {
   rpc ComputeMetrics(TrainMetrics) returns(ValueReply){}
   rpc ComputeFinish(ClientRequest) returns(ValueReply){}
 
+  // update architecture
+  rpc Register(ClientRequest) returns(Model){}
+  rpc RegisterState(ClientRequest) returns(RegisterStateResponse){}
+
 
 }
+
+message RegisterStateResponse{
+  bool stateResponse = 1;
+}
+
+
 
 message ClientRequest{
   string id = 1;
@@ -192,6 +202,9 @@ message TrainMetrics{
   repeated float evalLossValue = 4;
   repeated float accValue = 3;
   repeated float evalAccValue = 5;
+  float loss = 7;
+  float acc = 8;
+  int32 dataNum = 9;
 }
 
 message Certificate{

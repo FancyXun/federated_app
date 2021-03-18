@@ -6,10 +6,29 @@ import org.tensorflow.Tensor;
 import io.grpc.computation.TrainerStreamUtils;
 import io.grpc.learning.computation.ComputationGrpc;
 import io.grpc.learning.computation.Layer;
-import io.grpc.learning.computation.LayerFeed;
 import io.grpc.vo.StaticTrainerInfo;
 
 public class WeightsFeed {
+
+
+    private volatile static WeightsFeed instance = null;
+
+    private WeightsFeed() {
+
+    }
+
+    public static WeightsFeed getInstance() {
+        if (instance == null) {
+            synchronized (WeightsFeed.class) {
+                if (instance == null) {
+                    instance = new WeightsFeed();
+                }
+            }
+
+        }
+        return instance;
+    }
+
     
     public void weightsFeed(Session session,
                             ComputationGrpc.ComputationBlockingStub stub){

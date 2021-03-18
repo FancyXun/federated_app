@@ -43,6 +43,11 @@ public class ModelHelper {
     private String graphTrainableVarPath = (String) rb.getObject("graphTrainableVarPath");
     private String graphTrainInfoPath = (String) rb.getObject("graphTrainInfoPath");
 
+    public HashMap<String ,Float>  hashMapACC = new HashMap<>();
+    public HashMap<String ,Float>  hashMapLoss = new HashMap<>();
+    public HashMap<String ,Integer>  hashMapDataNum = new HashMap<>();
+
+
     public String getModelWeighsPath() {
         return modelWeighsPath;
     }
@@ -253,11 +258,27 @@ public class ModelHelper {
             modelWeightsBuilder.addTensor(layer_index, tensorBuilder);
             layerWeightsBuilder.setTensor(tensorBuilder);
             layerWeightsBuilder.setLayerId(layer_index);
-            System.out.println(modelTrainableMap.get(key));
             layerWeightsHashMap.put(modelTrainableMap.get(key), layerWeightsBuilder);
             layerWeightsShapeHashMap.put(modelTrainableMap.get(key),shape);
             layerWeightsInitHashMap.put(modelTrainableMap.get(key), key);
             layer_index++;
         }
+    }
+
+    public void calMetrics(){
+        float acc_agg = 0;
+        float loss_agg = 0;
+        int dataSum = 0;
+        for (String key: hashMapACC.keySet()){
+            acc_agg += hashMapACC.get(key) * hashMapDataNum.get(key);
+        }
+        for (String key: hashMapLoss.keySet()){
+            loss_agg += hashMapLoss.get(key) * hashMapDataNum.get(key);
+        }
+        for (int num: hashMapDataNum.values()){
+            dataSum +=num;
+        }
+        System.out.println("loss: " + loss_agg/dataSum);
+        System.out.println("acc: " + acc_agg/dataSum);
     }
 }

@@ -136,14 +136,11 @@ public class ComputationServer {
     static class ComputationImpl extends ComputationGrpc.ComputationImplBase {
         public int minRequestNum = 2;
         public int finished =0;
-        public int maxBlock = 4;
         public String token = UUID.randomUUID().toString();
         public String state = "ready";
-        public boolean firstRound = true;
         public List<String> AggregationClients = new ArrayList<>();
         public Client client = new Client();
         public ModelHelper modelHelper;
-        public int currentRound = 0;
 
         public ComputationImpl(ModelHelper modelHelper){
             this.modelHelper = modelHelper;
@@ -193,7 +190,6 @@ public class ComputationServer {
                 model.addMeta(meta_index, meta);
                 meta_index++;
             }
-            model.setFirstRound(firstRound);
             responseObserver.onNext(model.build());
             responseObserver.onCompleted();
         }
@@ -202,7 +198,6 @@ public class ComputationServer {
         public void callLayerWeights(LayerWeightsRequest request, StreamObserver<LayerWeights> responseObserver) {
             String client_id = request.getId();
             client.getCallLayerWeightsClients().add(client_id);
-            System.out.println("Receive callLayerWeights request from " + client_id);
             String layer_name = request.getLayerName();
             responseObserver.onNext(modelHelper.getLayerWeightsHashMap().get(layer_name).build());
             responseObserver.onCompleted();
@@ -268,58 +263,10 @@ public class ComputationServer {
         @Override
         public void computeMetrics(TrainMetrics request, StreamObserver<ValueReply> responseObserver) {
             ValueReply.Builder valueReplyBuilder = ValueReply.newBuilder();
-            List<Float> accFloatList = request.getAccValueList();
-            List<Float> lossFloatList = request.getLossValueList();
-            List<Float> accEvalFloatList = request.getEvalAccValueList();
-            List<Float> lossEvalFloatList = request.getEvalLossValueList();
             String client_id = request.getId();
-            int round = request.getRound();
-            File file=new File(modelHelper.getModelWeighsPath()+"/"+client_id+"/"+round);
-            if (!file.exists()) {
-                file.mkdir();
-            }
-
-            FileWriter writer = null;
-            try {
-                writer = new FileWriter(modelHelper.getModelWeighsPath()+"/"+client_id+"/"+round + "/accFloat.txt");
-                for(Float acc: accFloatList) {
-                    writer.write(acc + System.lineSeparator());
-                }
-                writer.close();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-
-            try {
-                writer = new FileWriter(modelHelper.getModelWeighsPath()+"/"+client_id+"/"+round + "/lossFloat.txt");
-                for(Float loss: lossFloatList) {
-                    writer.write(loss + System.lineSeparator());
-                }
-                writer.close();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-
-            try {
-                writer = new FileWriter(modelHelper.getModelWeighsPath()+"/"+client_id+"/"+round + "/accEvalFloat.txt");
-                for(Float accEval: accEvalFloatList) {
-                    writer.write(accEval + System.lineSeparator());
-                }
-                writer.close();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-
-            try {
-                writer = new FileWriter(modelHelper.getModelWeighsPath()+"/"+client_id+"/"+round + "/lossEvalFloat.txt");
-                for(Float lossEval: lossEvalFloatList) {
-                    writer.write(lossEval + System.lineSeparator());
-                }
-                writer.close();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-
+            modelHelper.hashMapACC.put(client_id, request.getAcc());
+            modelHelper.hashMapLoss.put(client_id, request.getLoss());
+            modelHelper.hashMapDataNum.put(client_id, request.getDataNum());
             responseObserver.onNext(valueReplyBuilder.build());
             responseObserver.onCompleted();
         }
@@ -332,9 +279,11 @@ public class ComputationServer {
                 AggregationClients.add(request.getId());
             }
             client.getComputeFinishClients().add(request.getId());
+
             System.out.println(AggregationClients.stream()
                     .map(Object::toString)
                     .collect(Collectors.joining("\n")));
+
             synchronized(this){
                 if (AggregationClients.size() >= minRequestNum){
                     state = "wait";
@@ -348,11 +297,10 @@ public class ComputationServer {
                     }catch(IOException e){
                         e.printStackTrace();
                     }
-
+                    modelHelper.calMetrics();
                     modelHelper.updateWeights();
                     AggregationClients.clear();
                     modelHelper.LoadModelWeights();
-                    firstRound = false;
                     token = UUID.randomUUID().toString();
                     state = "ready";
                 }

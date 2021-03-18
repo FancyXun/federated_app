@@ -94,7 +94,25 @@ if __name__ == '__main__':
         write_graph_netInfo(args, sess, net_info, None)
 
         if args.only_gen_graph:
+            trainable_var = tf.trainable_variables()
+            for var in trainable_var:
+                try:
+                    v = sess.run(var)
+                    v_ravel = v.ravel()
+                    np.save("./weights_numpy/" +
+                            var.op.name.replace("/", "_") + ".npy", v)
+                    with open("./weights_numpy/" +
+                              var.op.name.replace("/", "_") + ".txt", "w") as f:
+                        for i in v_ravel:
+                            f.write(str(float(i)))
+                            f.write("\n")
+
+                    # print(var.initial_value.op.name + ";" + str(var.shape) + "\n")
+                except Exception as e:
+                    print(e)
             exit()
+
+
 
         data_block = get_img_path_and_label(args.data_path, 10)
         saver = tf.train.Saver(max_to_keep=5)

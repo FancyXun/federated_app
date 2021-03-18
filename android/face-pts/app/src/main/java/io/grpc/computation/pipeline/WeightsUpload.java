@@ -7,11 +7,27 @@ import io.grpc.computation.TrainerStreamUtils;
 import io.grpc.learning.computation.ClientRequest;
 import io.grpc.learning.computation.ComputationGrpc;
 import io.grpc.learning.computation.Layer;
-import io.grpc.learning.computation.LayerFeed;
 import io.grpc.learning.computation.ValueReply;
 import io.grpc.vo.StaticTrainerInfo;
 
 public class WeightsUpload {
+    private volatile static WeightsUpload instance = null;
+
+    private WeightsUpload() {
+
+    }
+
+    public static WeightsUpload getInstance() {
+        if (instance == null) {
+            synchronized (WeightsUpload.class) {
+                if (instance == null) {
+                    instance = new WeightsUpload();
+                }
+            }
+
+        }
+        return instance;
+    }
     public void streamUpload(ComputationGrpc.ComputationBlockingStub stub,
                               Session session) {
         ValueReply valueReply = null;

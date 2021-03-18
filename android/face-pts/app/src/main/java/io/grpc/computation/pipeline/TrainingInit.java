@@ -12,6 +12,26 @@ import io.grpc.learning.computation.Model;
 import io.grpc.vo.StaticTrainerInfo;
 
 public class TrainingInit {
+
+    private volatile static TrainingInit instance = null;
+
+    private TrainingInit() {
+
+    }
+
+    public static TrainingInit getInstance() {
+        if (instance == null) {
+            synchronized (TrainingInit.class) {
+                if (instance == null) {
+                    instance = new TrainingInit();
+                }
+            }
+
+        }
+        return instance;
+    }
+    
+    
     public Session ModelGraphInit(ComputationGrpc.ComputationBlockingStub stub,
                                   ClientRequest.Builder builder) {
         // call model

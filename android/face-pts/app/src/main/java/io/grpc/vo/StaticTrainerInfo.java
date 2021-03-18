@@ -4,7 +4,6 @@ import java.util.List;
 import java.util.UUID;
 
 import io.grpc.learning.computation.Layer;
-import io.grpc.learning.computation.LayerFeed;
 
 public class StaticTrainerInfo {
     public static class MetaInfo {
@@ -37,6 +36,8 @@ public class StaticTrainerInfo {
 
     public static class TrainInfo {
         public static int batch_size = 1;
-        public static float total_loss = 0;
+        public static double loss = 0;
+        public static double acc = 0;
+        public static int dataNum = 0;
     }
 }
