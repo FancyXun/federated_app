@@ -108,6 +108,7 @@ public class BackgroundTrainer {
             stub.computeMetrics(trainBuilder.build());
             stub.computeFinish(builder.build());
             this.session.close();
+            TrainingInit.getInstance().getGraph().close();
         }
     }
 }

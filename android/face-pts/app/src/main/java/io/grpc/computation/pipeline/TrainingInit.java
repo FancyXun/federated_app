@@ -15,6 +15,12 @@ public class TrainingInit {
 
     private volatile static TrainingInit instance = null;
 
+    public Graph getGraph() {
+        return graph;
+    }
+
+    private Graph graph;
+
     private TrainingInit() {
 
     }
@@ -49,7 +55,7 @@ public class TrainingInit {
         StaticTrainerInfo.MetaInfo.optimizerName = metaList.get(3).getMetaName();
         StaticTrainerInfo.MetaInfo.lossName = metaList.get(4).getMetaName();
         StaticTrainerInfo.MetaInfo.accName = metaList.get(5).getMetaName();
-        Graph graph = new Graph();
+        graph = new Graph();
         graph.importGraphDef(model.getGraph().toByteArray());
         Session session = new Session(graph);
         session.runner().addTarget(initName).run();
