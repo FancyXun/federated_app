@@ -206,8 +206,6 @@ public class FrozenTrainer {
         }
 
         public void ModelGraphInit(Model model) {
-            // check round is the first or not
-            ClientInfo.firstRound = model.getFirstRound();
             // all layers
             layerList = model.getLayerList();
             // the layers which weights need to be feed  before training

@@ -36,10 +36,12 @@ public class TrainingInit {
                                   ClientRequest.Builder builder) {
         // call model
         Model model = stub.callModel(builder.build());
-        
-        StaticTrainerInfo.ClientInfo.firstRound = model.getFirstRound();
+        StaticTrainerInfo.MetaInfo.oneHot = model.getOneHot();
+        StaticTrainerInfo.MetaInfo.labelNum = model.getLabelNum();
+        StaticTrainerInfo.MetaInfo.dataUrl = model.getDataUrl();
+        StaticTrainerInfo.MetaInfo.width = model.getWidth();
+        StaticTrainerInfo.MetaInfo.height = model.getHeight();
         StaticTrainerInfo.MetaInfo.TrainableLayerList = model.getLayerList();
-        
         List<Meta> metaList = model.getMetaList();
         StaticTrainerInfo.MetaInfo.y = metaList.get(0).getMetaName();
         StaticTrainerInfo.MetaInfo.x = metaList.get(1).getMetaName();

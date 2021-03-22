@@ -134,7 +134,7 @@ public class ComputationServer {
     }
 
     static class ComputationImpl extends ComputationGrpc.ComputationImplBase {
-        public int minRequestNum = 2;
+        public int minRequestNum = 1;
         public int finished =0;
         public String token = UUID.randomUUID().toString();
         public String state = "ready";
@@ -190,6 +190,12 @@ public class ComputationServer {
                 model.addMeta(meta_index, meta);
                 meta_index++;
             }
+            // set one hot
+            model.setOneHot(modelHelper.getOneHot().equals("true"));
+            model.setLabelNum(modelHelper.getLabelNum());
+            model.setDataUrl(modelHelper.getDataUrl());
+            model.setHeight(modelHelper.getHeight());
+            model.setWidth(modelHelper.getWidth());
             responseObserver.onNext(model.build());
             responseObserver.onCompleted();
         }

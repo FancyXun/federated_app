@@ -1,8 +1,10 @@
 import numpy as np
 import os
 import glob
+import sys
 
-root_path = "/Users/voyager/code/android-demo/federated_app/tmp/mobileFaceNet"
+
+root_path = sys.argv[1]
 clients_url = root_path + "/aggClients.txt"
 root_mean_url = root_path + "/average"
 

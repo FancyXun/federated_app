@@ -79,7 +79,6 @@ public class BackgroundTrainer {
                 }
                 StaticTrainerInfo.ClientInfo.token = certificate.getToken();
                 
-//                new RunOneRound(session, activityReference.get(), this.context).runOneRound(stub, builder);
                 runOneRound(stub, builder);
                 StaticTrainerInfo.ClientInfo.round += 1;
                 System.out.println(StaticTrainerInfo.ClientInfo.round);

@@ -42,6 +42,31 @@ public class ModelHelper {
     private String graphGlobalVarPath = (String) rb.getObject("graphGlobalVarPath");
     private String graphTrainableVarPath = (String) rb.getObject("graphTrainableVarPath");
     private String graphTrainInfoPath = (String) rb.getObject("graphTrainInfoPath");
+    private String oneHot = (String) rb.getObject("oneHot");
+    private String dataUrl = (String) rb.getObject("dataUrl");
+    private int labelNum = Integer.parseInt(String.valueOf(rb.getObject("labelNum")));
+    private int height = Integer.parseInt(String.valueOf(rb.getObject("height")));
+    private int width = Integer.parseInt(String.valueOf(rb.getObject("width")));
+
+    public String getOneHot() {
+        return oneHot;
+    }
+
+    public int getLabelNum() {
+        return labelNum;
+    }
+
+    public String getDataUrl() {
+        return dataUrl;
+    }
+
+    public int getHeight() {
+        return height;
+    }
+
+    public int getWidth() {
+        return width;
+    }
 
     public HashMap<String ,Float>  hashMapACC = new HashMap<>();
     public HashMap<String ,Float>  hashMapLoss = new HashMap<>();
@@ -131,7 +156,8 @@ public class ModelHelper {
     public void updateWeights(){
         Process process;
         try {
-            process = Runtime.getRuntime().exec(String.format("%s %s", pythonExe, pyDirAgg));
+            process = Runtime.getRuntime().exec(String.format("%s %s %s",
+                    pythonExe, pyDirAgg, modelWeighsPath));
             BufferedReader in = new BufferedReader(new InputStreamReader(process.getErrorStream()));
             String line;
             while ((line = in.readLine()) != null) {

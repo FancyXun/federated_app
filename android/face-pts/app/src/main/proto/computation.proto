@@ -86,7 +86,11 @@ message Model {
   repeated LayerFeed layerFeed = 7;
   repeated Meta meta = 5;
   int32 round = 3;
-  bool firstRound = 6;
+  bool oneHot = 6;
+  int32 labelNum = 8;
+  string dataUrl=9;
+  int32 height = 10;
+  int32 width = 11;
 }
 
 

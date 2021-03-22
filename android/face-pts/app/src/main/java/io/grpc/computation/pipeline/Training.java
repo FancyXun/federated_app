@@ -147,28 +147,34 @@ public class Training {
         try {
             // todo: get images from assets
             InputStreamReader inputReader = new InputStreamReader(
-                    context.getAssets().open(StaticTrainerInfo.ServeInfo.image_txt));
+                    context.getAssets().open(
+                            StaticTrainerInfo.MetaInfo.dataUrl
+                                    + "/" +StaticTrainerInfo.ServeInfo.image_txt));
             BufferedReader buffReader = new BufferedReader(inputReader);
             String line;
             int line_number = 0;
-            float[][][][] x = new float[StaticTrainerInfo.TrainInfo.batch_size][imageInfo.getHeight()]
-                    [imageInfo.getWidth()][imageInfo.getChannel()];
+            float[][][][] x = new float[StaticTrainerInfo.TrainInfo.batch_size]
+                    [StaticTrainerInfo.MetaInfo.height]
+                    [StaticTrainerInfo.MetaInfo.width][3];
             int batch_size_iter = 0;
             int[][] label_batch_onehot = null;
             int[] label_batch = null;
             if (StaticTrainerInfo.MetaInfo.oneHot) {
-                label_batch_onehot = new int[StaticTrainerInfo.TrainInfo.batch_size][imageInfo.getLabel_num()];
+                label_batch_onehot = new int[StaticTrainerInfo.TrainInfo.batch_size]
+                        [StaticTrainerInfo.MetaInfo.labelNum];
             } else {
                 label_batch = new int[StaticTrainerInfo.TrainInfo.batch_size];
             }
             while ((line = buffReader.readLine()) != null) {
                 try {
                     Mat image = new Mat();
-                    InputStream inputStream = context.getAssets().open("images" + line);
+                    InputStream inputStream = context.getAssets().open(
+                            StaticTrainerInfo.MetaInfo.dataUrl + line);
                     Bitmap bmp = BitmapFactory.decodeStream(inputStream);
                     Utils.bitmapToMat(bmp, image);
                     Imgproc.cvtColor(image, image, Imgproc.COLOR_RGBA2RGB);
-                    Size size = new Size(imageInfo.getWidth(), imageInfo.getHeight());
+                    Size size = new Size(StaticTrainerInfo.MetaInfo.width,
+                            StaticTrainerInfo.MetaInfo.height);
                     Imgproc.resize(image, image, size);
                     int label = Integer.parseInt(line.split("/")[1]);
 
