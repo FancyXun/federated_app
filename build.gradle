@@ -37,6 +37,7 @@ def protocVersion = protobufVersion
 dependencies {
     implementation "io.grpc:grpc-protobuf:${grpcVersion}"
     implementation "io.grpc:grpc-stub:${grpcVersion}"
+    implementation 'junit:junit:4.12'
     // https://mvnrepository.com/artifact/org.tensorflow/tensorflow
 //    implementation "org.tensorflow:tensorflow${tensorflowVersion}"
     compile group: 'org.tensorflow', name: 'tensorflow', version: '1.13.1'

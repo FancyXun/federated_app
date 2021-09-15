@@ -18,7 +18,6 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 
@@ -150,16 +149,16 @@ public class ResNetTest {
                     System.out.println("Validation top1 error = " + validation_error_value.floatValue());
                     System.out.println("Validation loss = " + validation_loss_value.floatValue());
                     System.out.println("----------------------------");
-                    float [][][][] floats = new float[3][3][3][16];
-                    float [][][][] floats1 = new float[3][3][3][16];
-                    float [][][][] floats2 = new float[3][3][3][16];
-                    for (Object key: linkedHashMap.keySet()){
+                    float[][][][] floats = new float[3][3][3][16];
+                    float[][][][] floats1 = new float[3][3][3][16];
+                    float[][][][] floats2 = new float[3][3][3][16];
+                    for (Object key : linkedHashMap.keySet()) {
                         Tensor var = session.runner().fetch(String.valueOf(key)).run().get(0);
                         String shape = (String) linkedHashMap.get(key);
-                        System.out.println(var +" "+ shape);
+                        System.out.println(var + " " + shape);
                         var.copyTo(floats);
                         session.runner().feed(String.valueOf(key), Tensor.create(floats1))
-                                .addTarget(String.valueOf(key) +"/Assign")
+                                .addTarget(String.valueOf(key) + "/Assign")
                                 .run();
                         Tensor var1 = session.runner().fetch(String.valueOf(key)).run().get(0);
                         var1.copyTo(floats2);
@@ -195,11 +194,11 @@ public class ResNetTest {
             }
 //            StringBuilder stringBuilder = new StringBuilder(str1);
 
-            System.out.println(str1);// 打印出str1
+            System.out.println(str1);
         } catch (FileNotFoundException e) {
-            System.out.println("找不到指定文件");
+            System.out.println("Could not found file");
         } catch (IOException e) {
-            System.out.println("读取文件失败");
+            System.out.println("Read file failed");
         } finally {
             try {
                 br.close();
