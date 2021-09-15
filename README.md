@@ -41,8 +41,6 @@ Input server ip and local epoch number, Click “联邦训练” . You’ll see 
 
 That's it!
 
-### <a name="Structure"></a> Structure
-![image structure](https://github.com/FancyXun/federated_app/blob/master/resource/federated_app.png)
 
 ##### Note
 The client (android device) can access the server.
