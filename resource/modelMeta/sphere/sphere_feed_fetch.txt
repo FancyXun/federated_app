@@ -1,0 +1,5 @@
+y;(?, 10575)
+x;(?, 112, 96, 3)
+init;---
+Momentum;---
+softmax_cross_entropy_with_logits/Reshape_2:0;---

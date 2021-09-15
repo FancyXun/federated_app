@@ -1,0 +1,2 @@
+cat images.txt | while read x ; do  echo $RANDOM:$x; done | sort -t: -k1 -n | sed 's/^[0-9]*://' >> test.txt
+:%s/\.\///

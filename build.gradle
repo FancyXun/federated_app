@@ -8,7 +8,7 @@ plugins {
 
     id 'java'
 
-    id 'com.github.johnrengelman.shadow' version '4.0.3'
+//    id 'com.github.johnrengelman.shadow' version '4.0.3'
 }
 
 mainClassName = 'io.grpc.learning.computation.ComputationServer'
@@ -32,12 +32,12 @@ targetCompatibility = 1.8
 // updating the version in our release process.
 def grpcVersion = '1.31.1' // CURRENT_GRPC_VERSION
 def protobufVersion = '3.12.0'
-def tensorflowVersion = '1.15.0'
 def protocVersion = protobufVersion
 
 dependencies {
     implementation "io.grpc:grpc-protobuf:${grpcVersion}"
     implementation "io.grpc:grpc-stub:${grpcVersion}"
+    implementation 'junit:junit:4.12'
     // https://mvnrepository.com/artifact/org.tensorflow/tensorflow
 //    implementation "org.tensorflow:tensorflow${tensorflowVersion}"
     compile group: 'org.tensorflow', name: 'tensorflow', version: '1.13.1'
@@ -55,9 +55,14 @@ dependencies {
     compile group: 'org.springframework', name: 'spring-context-support', version: '5.2.8.RELEASE'
     // https://mvnrepository.com/artifact/org.springframework/spring-tx
     compile group: 'org.springframework', name: 'spring-tx', version: '5.2.8.RELEASE'
+    // https://mvnrepository.com/artifact/com.google.cloud/google-cloud-logging-logback
+    compile group: 'com.google.cloud', name: 'google-cloud-logging-logback', version: '0.116.0-alpha'
+
     // https://mvnrepository.com/artifact/org.springframework.boot/spring-boot-starter-test
     testCompile group: 'org.springframework.boot', name: 'spring-boot-starter-test', version: '2.3.3.RELEASE'
 
+    // https://mvnrepository.com/artifact/org.jetbrains.bio/npy
+    compile group: 'org.jetbrains.bio', name: 'npy', version: '0.3.3'
 
     compileOnly "org.apache.tomcat:annotations-api:6.0.53"
 
@@ -100,6 +105,13 @@ task computationServer(type: CreateStartScripts) {
     classpath = startScripts.classpath
 }
 
+task LRComputationServer(type: CreateStartScripts) {
+    mainClassName = 'io.grpc.learning.computation.LRComputationServer'
+    applicationName = 'LRComputation-server'
+    outputDir = new File(project.buildDir, 'tmp')
+    classpath = startScripts.classpath
+}
+
 task computationClient(type: CreateStartScripts) {
     mainClassName = 'io.grpc.learning.computation.ComputationClient'
     applicationName = 'computation-client'
@@ -117,7 +129,7 @@ applicationDistribution.into('bin') {
 //    manifest {
 //        attributes(
 //                "Manifest-Version": 1.0,
-//                "Main-Class": "io.grpc.learning.computation.ComputationServer"   //主函数的名称
+//                "Main-Class": "io.grpc.learning.computation.ComputationServer"
 //        )
 //    }
 //    from { configurations.compile.collect { it.isDirectory() ? it : zipTree(it) } }

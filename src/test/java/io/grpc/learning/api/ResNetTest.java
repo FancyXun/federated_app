@@ -17,12 +17,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
-import java.util.List;
 
 import javax.imageio.ImageIO;
 
@@ -67,6 +64,7 @@ public class ResNetTest {
             Operation op = operationIterator.next();
             System.out.println(op);
         }
+        System.out.println("----------------------------");
         // train data
         ArrayList<String[]> arrayList = new ArrayList();
         for (int i = 0; i < LabelList.length; i++) {
@@ -84,7 +82,6 @@ public class ResNetTest {
         session.runner().addTarget("init").run();
 
         LinkedHashMap linkedHashMap = readTXT();
-        Session.Runner runner;
         try {
             int imgIdx = 0;
             for (String[] f : arrayList) {
@@ -130,7 +127,7 @@ public class ResNetTest {
                         val_batch_data[i] = batch_data[train_batch + i];
                         val_label[i] = label[train_batch + i];
                     }
-                    runner = session.runner()
+                    Session.Runner runner = session.runner()
                             .feed("Placeholder", Tensor.create(0.1f))
                             .feed("Placeholder_1", Tensor.create(val_label))
                             .feed("Placeholder_2", Tensor.create(val_batch_data))
@@ -139,62 +136,33 @@ public class ResNetTest {
 
                     // val
                     runner.addTarget("group_deps").run();
-
-                    List<Tensor<?>> tensorList = runner.fetch("truediv_1").fetch("cross_entropy_1").run();
-                    Tensor validation_error_value = tensorList.get(0);
-                    Tensor validation_loss_value = tensorList.get(1);
-
+                    Tensor validation_error_value = runner.fetch("truediv_1").run().get(0);
+                    Tensor validation_loss_value = runner.fetch("cross_entropy_1").run().get(0);
 
                     // train bp
                     runner.addTarget("Momentum").run();
                     runner.addTarget("ExponentialMovingAverage").run();
-
-                    runner = session.runner()
-                            .feed("Placeholder", Tensor.create(0.1f))
-                            .feed("Placeholder_1", Tensor.create(val_label))
-                            .feed("Placeholder_2", Tensor.create(val_batch_data))
-                            .feed("Placeholder_3", Tensor.create(train_label))
-                            .feed("Placeholder_4", Tensor.create(train_batch_data));
-
-                    List<Tensor<?>> tensorList1 = runner.fetch("AddN").fetch("truediv").run();
-                    Tensor train_loss_value = tensorList1.get(0);
-                    Tensor train_error_value = tensorList1.get(1);
+                    Tensor train_loss_value = runner.fetch("AddN").run().get(0);
+                    Tensor train_error_value = runner.fetch("truediv").run().get(0);
                     System.out.println("Train top1 error = " + train_error_value.floatValue());
                     System.out.println("Train loss = " + train_loss_value.floatValue());
                     System.out.println("Validation top1 error = " + validation_error_value.floatValue());
                     System.out.println("Validation loss = " + validation_loss_value.floatValue());
                     System.out.println("----------------------------");
-
+                    float[][][][] floats = new float[3][3][3][16];
+                    float[][][][] floats1 = new float[3][3][3][16];
+                    float[][][][] floats2 = new float[3][3][3][16];
                     for (Object key : linkedHashMap.keySet()) {
                         Tensor var = session.runner().fetch(String.valueOf(key)).run().get(0);
                         String shape = (String) linkedHashMap.get(key);
-                        String[] stringShape = shape.replaceAll("[^0-9]+", " ").trim().split(" ");
-                        if (stringShape.length == 1){
-                            float[] floats = arrayCopy(stringShape);
-                            var.copyTo(floats);
-                            session.runner().feed(String.valueOf(key)+"/Assign", Tensor.create(floats))
-                                    .addTarget(String.valueOf(key))
-                                    .run();
-//                            System.out.println(var + " " + Arrays.toString(floats));
-                        }
-                        else if (stringShape.length == 2){
-                            float[][] floats  = arrayCopy2d(stringShape);
-                            var.copyTo(floats);
-//                            System.out.println(var + " " + Arrays.toString(floats));
-                        }
-                        else if (stringShape.length == 3){
-                            float[][][] floats = arrayCopy3d(stringShape);
-                            var.copyTo(floats);
-//                            System.out.println(var + " " + Arrays.toString(floats));
-                        }
-                        else if (stringShape.length == 4){
-                            float[][][][] floats = arrayCopy4d(stringShape);
-                            var.copyTo(floats);
-//                            System.out.println(var + " " + Arrays.toString(floats));
-                        }
-
+                        System.out.println(var + " " + shape);
+                        var.copyTo(floats);
+                        session.runner().feed(String.valueOf(key), Tensor.create(floats1))
+                                .addTarget(String.valueOf(key) + "/Assign")
+                                .run();
+                        Tensor var1 = session.runner().fetch(String.valueOf(key)).run().get(0);
+                        var1.copyTo(floats2);
                     }
-
                     imgIdx = 0;
                 } else {
                     imgIdx += 1;
@@ -206,24 +174,6 @@ public class ResNetTest {
             e.printStackTrace();
         }
 
-    }
-
-    public float[] arrayCopy(String[] stringShape) {
-        return new float[Integer.parseInt(stringShape[0])];
-    }
-
-    public float[][] arrayCopy2d(String[] stringShape) {
-        return new float[Integer.parseInt(stringShape[0])][Integer.parseInt(stringShape[1])];
-    }
-
-    public float[][][] arrayCopy3d(String[] stringShape) {
-        return new float[Integer.parseInt(stringShape[0])][Integer.parseInt(stringShape[1])]
-                [Integer.parseInt(stringShape[2])];
-    }
-
-    public float[][][][] arrayCopy4d(String[] stringShape) {
-        return new float[Integer.parseInt(stringShape[0])][Integer.parseInt(stringShape[1])]
-                [Integer.parseInt(stringShape[2])][Integer.parseInt(stringShape[3])];
     }
 
     public LinkedHashMap<String, String> readTXT() {
@@ -244,11 +194,11 @@ public class ResNetTest {
             }
 //            StringBuilder stringBuilder = new StringBuilder(str1);
 
-//            System.out.println(str1);
+            System.out.println(str1);
         } catch (FileNotFoundException e) {
-            System.out.println("File not find...");
+            System.out.println("Could not found file");
         } catch (IOException e) {
-            System.out.println("Failed to read file...");
+            System.out.println("Read file failed");
         } finally {
             try {
                 br.close();

@@ -16,60 +16,84 @@
 
 package io.grpc.learning.computation;
 
+import ch.qos.logback.classic.Level;
 import io.grpc.Server;
 import io.grpc.ServerBuilder;
-import io.grpc.learning.storage.MapQueue;
-import io.grpc.learning.vo.GraphZoo;
-import io.grpc.learning.storage.ModelWeights;
-import io.grpc.learning.storage.RoundStateInfo;
-import io.grpc.learning.vo.SequenceData;
-import io.grpc.learning.vo.StateMachine;
+import io.grpc.learning.model.ModelHelper;
+import io.grpc.learning.model.Updater;
+import io.grpc.learning.vo.Client;
 import io.grpc.stub.StreamObserver;
 
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
+import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import java.util.stream.Collectors;
 
 import com.google.protobuf.ByteString;
 
+import org.jetbrains.bio.npy.NpzFile;
 import org.tensorflow.Graph;
 
-import static io.grpc.learning.computation.FederatedComp.getGraph;
-import static io.grpc.learning.computation.SequenceComp.offsetStreamReply;
 
 /**
  * Server that manages startup/shutdown of a {@code Computation} server.
  */
 public class ComputationServer {
-    private static final Logger logger = Logger.getLogger(ComputationServer.class.getName());
+    private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(ComputationServer.class.getName());
     private Server server;
+    public ModelHelper modelHelper;
+    // Determine what logging framework SLF4J is bound to:
+//    final StaticLoggerBinder binder = StaticLoggerBinder.getSingleton();
+
+//    static {
+//        LoggerContext ctx = (LoggerContext) LogManager.getContext(false);
+//
+//        ctx.getLogger("io.netty").setLevel(Level.INFO);
+//    }
+
 
     private void start() throws IOException {
+        /* initialize the model and graph */
+        modelHelper = new ModelHelper();
+        modelHelper.loadModel();
+        modelHelper.LoadModelWeights();
+        ch.qos.logback.classic.Logger logbackLogger =
+                (ch.qos.logback.classic.Logger) logger;
+        logbackLogger.setLevel(Level.INFO);
+//        Logger root = (Logger) LoggerFactory.getLogger(ComputationServer.class.getName());
+        logger.info(ModelHelper.getInstance().toString() + " initialization finished");
+        // this will print the name of the logger factory to stdout
+//        System.out.println(binder.getLoggerFactoryClassStr());
         /* The port on which the server should run */
         String localIP;
         Enumeration<NetworkInterface> n = NetworkInterface.getNetworkInterfaces();
-        Logger.getLogger("io.netty").setLevel(Level.OFF);
         try {
             NetworkInterface e = n.nextElement();
             Enumeration<InetAddress> a = e.getInetAddresses();
             a.nextElement();
-            InetAddress addr = a.nextElement();
-            localIP = addr.getHostAddress();
+            InetAddress address = a.nextElement();
+            localIP = address.getHostAddress();
         } catch (Exception e1) {
             localIP = "127.0.0.1";
         }
-
         int port = 50051;
+        logger.info(ComputationServer.class.getName() +": " +localIP + ":" + port);
         server = ServerBuilder.forPort(port)
-                .addService(new ComputationImpl())
+                .addService(new ComputationImpl(modelHelper))
                 .build()
                 .start();
-        logger.info("Server started, ip is " + localIP + " listening on " + port);
         Runtime.getRuntime().addShutdownHook(new Thread() {
             @Override
             public void run() {
@@ -111,76 +135,184 @@ public class ComputationServer {
 
     static class ComputationImpl extends ComputationGrpc.ComputationImplBase {
         public int minRequestNum = 1;
+        public int finished =0;
+        public String token = UUID.randomUUID().toString();
+        public String state = "ready";
+        public List<String> AggregationClients = new ArrayList<>();
+        public Client client = new Client();
+        public ModelHelper modelHelper;
 
-        /**
-         * @param request
-         * @param responseObserver
-         */
+        public ComputationImpl(ModelHelper modelHelper){
+            this.modelHelper = modelHelper;
+        }
+
         @Override
-        public void call(ComputationRequest request, StreamObserver<ComputationReply> responseObserver) {
-            String nodeName = request.getNodeName();
-            String clientId = request.getId();
-            String action = request.getAction();
-            // Update server state if call is a training request.
-            if (action.equals("training")){
-                MapQueue.queueChecker(nodeName, clientId);
-                RoundStateInfo.callUpdate(nodeName, clientId);
-            }
-            Graph graph = new GraphZoo().getGraphZoo().get(nodeName);
-            byte[] byteGraph = graph == null ? getGraph(nodeName).toGraphDef() : graph.toGraphDef();
-            ComputationReply.Builder reply = ComputationReply.newBuilder();
-            reply.setGraph(ByteString.copyFrom(byteGraph));
-            if (action.equals("training")){
-                reply.setRound(RoundStateInfo.epochMap.get(clientId));
-            }
-            reply.setMessage(RoundStateInfo.dataSplit);
-            responseObserver.onNext(reply.build());
+        public void callTraining(ClientRequest request, StreamObserver<Certificate> responseObserver) {
+            String client_id = request.getId();
+            client.getCallTrainingClients().add(client_id);
+            System.out.println("Receive callTraining request from " + client_id );
+            Certificate.Builder cBuilder = Certificate.newBuilder();
+            cBuilder.setServerState(state);
+            cBuilder.setToken(token);
+            responseObserver.onNext(cBuilder.build());
             responseObserver.onCompleted();
         }
 
-        /**
-         * @param request
-         * @param responseObserver
-         */
         @Override
-        public void callValue(ComputationRequest request, StreamObserver<TensorValue> responseObserver) {
-            String nodeName = request.getNodeName();
-            String clientId = request.getId();
-            SequenceData weight = ModelWeights.weightsAggregation.get(nodeName);
-            HashMap<String, SequenceData> weightMap =
-                    ModelWeights.weightsCollector.get(clientId);
-            if (weightMap == null) {
-                SequenceData sequenceData = FederatedComp.weightsInitializer(nodeName, clientId);
-                if (weight == null) {
-                    ModelWeights.weightsAggregation.put(nodeName, sequenceData);
-                }
-                weight = ModelWeights.weightsAggregation.get(nodeName);
+        public void callModel(ClientRequest request, StreamObserver<Model> responseObserver) {
+            String client_id = request.getId();
+            client.getCallModelClients().add(client_id);
+            System.out.println("Receive callModel request from " + client_id );
+            Graph graph = modelHelper.getGraph();
+            LinkedHashMap<String, String> modelTrainableMap = modelHelper.getModelTrainableMap();
+            LinkedHashMap<String, String> modelInitMap = modelHelper.getModelInitMap();
+            LinkedHashMap<String, String> metaMap = modelHelper.getMetaMap();
+            // set model graph
+            Model.Builder model = Model.newBuilder();
+            model.setGraph(ByteString.copyFrom(graph.toGraphDef()));
+            // set model layer and layer shape
+            int layer_index = 0;
+            for (String key: modelTrainableMap.keySet()) {
+                Layer.Builder layer = Layer.newBuilder();
+                layer.setLayerInitName(key);
+                layer.setLayerName(modelTrainableMap.get(key));
+//                layer.setLayerTrainableShape(modelInitMap.get(key));
+                layer.setLayerShape(modelInitMap.get(key));
+                model.addLayer(layer_index, layer);
+                layer_index++;
             }
-            TensorValue.Builder reply = offsetStreamReply(weight, request.getOffset());
-            responseObserver.onNext(reply.build());
+            // set model meta and its shape if necessary
+            int meta_index = 0;
+            for (String key : metaMap.keySet()) {
+                Meta.Builder meta = Meta.newBuilder();
+                meta.setMetaName(key);
+                meta.setMetaShape(metaMap.get(key));
+                model.addMeta(meta_index, meta);
+                meta_index++;
+            }
+            // set one hot
+            model.setOneHot(modelHelper.getOneHot().equals("true"));
+            model.setLabelNum(modelHelper.getLabelNum());
+            model.setDataUrl(modelHelper.getDataUrl());
+            model.setHeight(modelHelper.getHeight());
+            model.setWidth(modelHelper.getWidth());
+            responseObserver.onNext(model.build());
             responseObserver.onCompleted();
         }
 
-        /**
-         * @param request
-         * @param responseObserver
-         */
         @Override
-        public void compute(TensorValue request, StreamObserver<ValueReply> responseObserver) {
-            ValueReply.Builder reply;
-            String nodeName = request.getNodeName();
-            StateMachine currentState = RoundStateInfo.roundState.get(nodeName);
-            if (StateMachine.end != currentState) {
-                RoundStateInfo.collectValueUpdate(request);
-                int collectClients = RoundStateInfo.waitRequest.get(nodeName).size();
-                if (collectClients == minRequestNum) {
-                    // update weights
-                    FederatedComp.aggregationInner(request);
-                    FederatedComp.update = false;
+        public void callLayerWeights(LayerWeightsRequest request, StreamObserver<LayerWeights> responseObserver) {
+            String client_id = request.getId();
+            client.getCallLayerWeightsClients().add(client_id);
+            String layer_name = request.getLayerName();
+            responseObserver.onNext(modelHelper.getLayerWeightsHashMap().get(layer_name).build());
+            responseObserver.onCompleted();
+        }
+
+        // todo: Received DATA frame for an unknown stream error
+        //  https://github.com/grpc/grpc-java/issues/4651
+        @Deprecated
+        @Override
+        public void callModelWeights(ClientRequest request,
+                                     StreamObserver<io.grpc.learning.computation.ModelWeights> responseObserver) {
+            String client_id = request.getId();
+            System.out.println("Receive callModelWeights request from " + client_id);
+            Updater updater = Updater.getInstance();
+            responseObserver.onNext(updater.modelWeightsBuilder.build());
+            responseObserver.onCompleted();
+        }
+
+        // todo: Received DATA frame for an unknown stream error
+        //  https://github.com/grpc/grpc-java/issues/4651
+        @Deprecated
+        @Override
+        public void computeWeights(io.grpc.learning.computation.ModelWeights request, StreamObserver<ValueReply> responseObserver) {
+            ValueReply.Builder valueReplyBuilder = ValueReply.newBuilder();
+            valueReplyBuilder.setMessage(true);
+            responseObserver.onNext(valueReplyBuilder.build());
+            responseObserver.onCompleted();
+        }
+
+        @Override
+        public void computeLayerWeights(LayerWeights request, StreamObserver<ValueReply> responseObserver) {
+            ClientRequest clientRequest = request.getClientRequest();
+            String client_token = clientRequest.getToken();
+            client.getComputeLayerWeightsClients().add(request.getId());
+            if (client_token.equals(token) && state.equals("ready")){
+                // valid token
+                File file=new File(modelHelper.getModelWeighsPath()+"/"+clientRequest.getId());
+                if (!file.exists()) {
+                    file.mkdir();
+                }
+                Path filePath = new File(modelHelper.getModelWeighsPath()+"/"+clientRequest.getId()+"/"+
+                        request.getLayerName().replace("/","_")
+                        +"__"+(int)request.getPart()+".npz").toPath();
+                NpzFile.Writer writer = NpzFile.write(filePath, true);
+
+                float[] arr = new float[request.getTensor().getFloatValList().size()];
+                int index = 0;
+                for (Float value: request.getTensor().getFloatValList()) {
+                    arr[index++] = value;
+                }
+                writer.write("layer_entry", arr);
+                writer.close();
+            }
+            ValueReply.Builder valueReplyBuilder = ValueReply.newBuilder();
+            Certificate.Builder cBuilder =  Certificate.newBuilder();
+            cBuilder.setToken(token);
+            cBuilder.setServerState(state);
+            valueReplyBuilder.setCertificate(cBuilder);
+            responseObserver.onNext(valueReplyBuilder.build());
+            responseObserver.onCompleted();
+        }
+
+        @Override
+        public void computeMetrics(TrainMetrics request, StreamObserver<ValueReply> responseObserver) {
+            ValueReply.Builder valueReplyBuilder = ValueReply.newBuilder();
+            String client_id = request.getId();
+            modelHelper.hashMapACC.put(client_id, request.getAcc());
+            modelHelper.hashMapLoss.put(client_id, request.getLoss());
+            modelHelper.hashMapDataNum.put(client_id, request.getDataNum());
+            responseObserver.onNext(valueReplyBuilder.build());
+            responseObserver.onCompleted();
+        }
+
+        @Override
+        public void computeFinish(ClientRequest request, StreamObserver<ValueReply> responseObserver) {
+            ValueReply.Builder valueReplyBuilder = ValueReply.newBuilder();
+            valueReplyBuilder.setMessage(true);
+            if (state.equals("ready")) {
+                AggregationClients.add(request.getId());
+            }
+            client.getComputeFinishClients().add(request.getId());
+
+            System.out.println(AggregationClients.stream()
+                    .map(Object::toString)
+                    .collect(Collectors.joining("\n")));
+
+            synchronized(this){
+                if (AggregationClients.size() >= minRequestNum){
+                    state = "wait";
+                    File f = new File(modelHelper.getModelWeighsPath()+"/" +"aggClients.txt");
+                    try{
+                        BufferedWriter bw = new BufferedWriter(new FileWriter(f, false));
+                        bw.write(AggregationClients.stream()
+                                .map(Object::toString)
+                                .collect(Collectors.joining("\n")));
+                        bw.close();
+                    }catch(IOException e){
+                        e.printStackTrace();
+                    }
+                    modelHelper.calMetrics();
+                    modelHelper.updateWeights();
+                    AggregationClients.clear();
+                    modelHelper.LoadModelWeights();
+                    token = UUID.randomUUID().toString();
+                    state = "ready";
                 }
             }
-            reply = ValueReply.newBuilder().setMessage(true);
-            responseObserver.onNext(reply.build());
+            
+            responseObserver.onNext(valueReplyBuilder.build());
             responseObserver.onCompleted();
         }
     }
